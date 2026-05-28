@@ -1,0 +1,29 @@
+:root {
+    --exad-font-body: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    --exad-font-mono: var(--exad-font-body);
+    --exad-font-h1: var(--exad-font-body);
+    --exad-ink: #0b1220;
+    --exad-muted: #64748b;
+    --bs-body-font-family: var(--exad-font-body);
+}
+
+html,
+body,
+.app-font-manrope {
+    font-family: var(--exad-font-body) !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.app-font-manrope *:not(.fa):not(.fa-solid):not(.fa-regular):not(.fa-brands):not([class^="fa-"]):not([class*=" fa-"]) {
+    font-family: var(--exad-font-body) !important;
+}
+
+code,
+kbd,
+samp,
+pre,
+.font-mono,
+.technical-code {
+    font-family: var(--exad-font-mono) !important;
+}
