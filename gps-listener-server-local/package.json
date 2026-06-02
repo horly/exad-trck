@@ -1,0 +1,14 @@
+{
+  "name": "gps-listener-server-local",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Serveur TCP local de test pour simuler l'écoute de traceurs GPS EXAD Tracking.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "simulate": "node src/simulators/fake-tracker-client.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

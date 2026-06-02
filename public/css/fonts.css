@@ -5,14 +5,29 @@
     --exad-ink: #0b1220;
     --exad-muted: #64748b;
     --bs-body-font-family: var(--exad-font-body);
+    --exad-ui-font-size: 0.88rem;
+    --exad-ui-small: 0.72rem;
+    --exad-ui-label: 0.76rem;
+    --exad-ui-title: 1.52rem;
+    --exad-ui-radius: 8px;
 }
 
 html,
 body,
 .app-font-manrope {
     font-family: var(--exad-font-body) !important;
+    font-size: var(--exad-ui-font-size);
+    font-weight: 560;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+
+.app-font-manrope .btn,
+.app-font-manrope .form-control,
+.app-font-manrope .form-select,
+.app-font-manrope .dropdown-menu,
+.app-font-manrope .table {
+    font-size: var(--exad-ui-font-size);
 }
 
 .app-font-manrope *:not(.fa):not(.fa-solid):not(.fa-regular):not(.fa-brands):not([class^="fa-"]):not([class*=" fa-"]) {

@@ -32,6 +32,7 @@ return [
     'remember' => 'Se souvenir de moi',
     'forgot_password' => 'Mot de passe oublié ?',
     'login_button' => 'Se connecter',
+    'processing' => 'Traitement...',
     'or' => 'ou',
     'secure_data' => 'Vos données sont sécurisées',
     'security_standard' => 'Conformes aux standards de sécurité',

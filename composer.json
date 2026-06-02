@@ -10,10 +10,13 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "akaunting/laravel-apexcharts": "^4.0",
         "fonts-asset/roboto": "^1.0",
         "fortawesome/font-awesome": "^7.2",
         "joedixon/laravel-translation": "^1.1",
+        "laravel/fortify": "^1.37",
         "laravel/framework": "^12.0",
+        "laravel/reverb": "^1.10",
         "laravel/tinker": "^2.10.1",
         "twbs/bootstrap": "^5.3"
     },

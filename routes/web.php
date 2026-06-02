@@ -1,19 +1,24 @@
 <?php
 
-use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AlertController;
+use App\Http\Controllers\CustomizationController;
+use App\Http\Controllers\DeviceController;
+use App\Http\Controllers\FleetController;
+use App\Http\Controllers\MapController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\VehicleController;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return auth()->check()
-        ? redirect()->route('dashboard')
-        : redirect()->route('login');
-});
+    if (! auth()->check()) {
+        return redirect()->route('login');
+    }
 
-Route::middleware('guest')->group(function () {
-    Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [LoginController::class, 'login']);
+    return auth()->user()->isSuperadmin()
+        ? redirect()->route('dashboard')
+        : redirect()->route('fleets.index');
 });
 
 Route::get('/lang/{locale}', function (string $locale): RedirectResponse {
@@ -22,8 +27,17 @@ Route::get('/lang/{locale}', function (string $locale): RedirectResponse {
     return back();
 })->whereIn('locale', ['fr', 'en'])->name('lang.switch');
 
-Route::post('/logout', [LoginController::class, 'logout'])
-    ->middleware('auth')
-    ->name('logout');
-
-Route::middleware('auth')->get('/dashboard', DashboardController::class)->name('dashboard');
+Route::middleware(['auth', 'superadmin'])->group(function () {
+    Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::resource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::resource('fleets', FleetController::class)->except(['show']);
+    Route::resource('vehicles', VehicleController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::resource('trackers', DeviceController::class)->only(['index', 'store', 'update', 'destroy'])
+        ->parameters(['trackers' => 'device']);
+    Route::get('/map', [MapController::class, 'index'])->name('map.index');
+    Route::get('/map/devices', [MapController::class, 'devices'])->name('map.devices');
+    Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
+    Route::get('/alerts/recent', [AlertController::class, 'recent'])->name('alerts.recent');
+    Route::patch('/alerts/{alert}/acknowledge', [AlertController::class, 'acknowledge'])->name('alerts.acknowledge');
+    Route::get('/customization', CustomizationController::class)->name('customization.index');
+});

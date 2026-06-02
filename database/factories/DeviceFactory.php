@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Device;
+use App\Models\Subscription;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -14,13 +15,16 @@ class DeviceFactory extends Factory
     {
         return [
             'imei' => fake()->unique()->numerify('###############'),
+            'subscription_id' => Subscription::factory(),
+            'fleet_id' => null,
+            'brand' => 'teltonika',
             'name' => fake()->randomElement(['Camion Kin 01', 'Pick-up Gombe', 'Bus Matadi', 'Moto Livraison']),
-            'model' => fake()->randomElement(['Teltonika FMB920', 'Queclink GV300', 'Concox GT06N']),
+            'model' => fake()->randomElement(['FMB920', 'FMC130', 'FMM130', 'FTC920']),
             'sim_number' => fake()->numerify('+243#########'),
             'operator_name' => fake()->randomElement(['Vodacom', 'Airtel', 'Orange', 'Africell']),
             'protocol' => 'TCP',
             'codec' => fake()->randomElement(['Codec8', 'GT06', 'JT808']),
-            'status' => fake()->randomElement(['online', 'offline', 'maintenance']),
+            'status' => 'inactive',
             'last_seen_at' => fake()->dateTimeBetween('-2 days'),
             'last_position_at' => fake()->dateTimeBetween('-2 days'),
             'last_latitude' => fake()->latitude(-4.55, -4.20),

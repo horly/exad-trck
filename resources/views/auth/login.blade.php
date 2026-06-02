@@ -5,41 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ __('auth.login_title') }}</title>
+    @include('partials.favicon')
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/auth-login.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/auth-login.css') }}?v=20260529-form-loading">
 </head>
 <body>
     <main class="login-shell">
         <div class="top-actions">
-        <div class="language-switch dropdown">
-            <button class="language-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <svg aria-hidden="true" viewBox="0 0 24 24">
-                    <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"/>
-                    <path d="M3.6 9h16.8M3.6 15h16.8M12 3c2.1 2.2 3.1 5.2 3.1 9s-1 6.8-3.1 9c-2.1-2.2-3.1-5.2-3.1-9s1-6.8 3.1-9Z"/>
-                </svg>
-                <span>{{ strtoupper(app()->getLocale()) }}</span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end language-menu">
-                <li>
-                    <a class="language-option {{ app()->getLocale() === 'fr' ? 'active' : '' }}" href="{{ route('lang.switch', 'fr') }}">
-                        <span class="language-code">FR</span>
-                        <strong>{{ __('auth.language_fr') }}</strong>
-                        @if (app()->getLocale() === 'fr')
-                            <svg class="language-check" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg>
-                        @endif
-                    </a>
-                </li>
-                <li>
-                    <a class="language-option {{ app()->getLocale() === 'en' ? 'active' : '' }}" href="{{ route('lang.switch', 'en') }}">
-                        <span class="language-code">EN</span>
-                        <strong>{{ __('auth.language_en') }}</strong>
-                        @if (app()->getLocale() === 'en')
-                            <svg class="language-check" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg>
-                        @endif
-                    </a>
-                </li>
-            </ul>
-        </div>
+            <div class="language-switch dropdown">
+                <button class="language-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                        <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"/>
+                        <path d="M3.6 9h16.8M3.6 15h16.8M12 3c2.1 2.2 3.1 5.2 3.1 9s-1 6.8-3.1 9c-2.1-2.2-3.1-5.2-3.1-9s1-6.8 3.1-9Z"/>
+                    </svg>
+                    <span>{{ strtoupper(app()->getLocale()) }}</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end language-menu">
+                    <li>
+                        <a class="language-option {{ app()->getLocale() === 'fr' ? 'active' : '' }}" href="{{ route('lang.switch', 'fr') }}">
+                            <span class="language-code">FR</span>
+                            <strong>{{ __('auth.language_fr') }}</strong>
+                            @if (app()->getLocale() === 'fr')
+                                <svg class="language-check" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg>
+                            @endif
+                        </a>
+                    </li>
+                    <li>
+                        <a class="language-option {{ app()->getLocale() === 'en' ? 'active' : '' }}" href="{{ route('lang.switch', 'en') }}">
+                            <span class="language-code">EN</span>
+                            <strong>{{ __('auth.language_en') }}</strong>
+                            @if (app()->getLocale() === 'en')
+                                <svg class="language-check" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg>
+                            @endif
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
 
         <section class="login-hero">
@@ -131,7 +132,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('login') }}" novalidate>
+                <form method="POST" action="{{ route('login') }}" novalidate data-validate-form data-required-message="{{ __('validation.required') }}" data-email-message="{{ __('validation.email') }}" data-loading-form data-loading-text="{{ __('auth.processing') }}">
                     @csrf
 
                     <div class="form-group-block">
@@ -188,7 +189,7 @@
                         @endif
                     </div>
 
-                    <button type="submit" class="btn login-button">
+                    <button type="submit" class="btn login-button" data-loading-button>
                         {{ __('auth.login_button') }}
                     </button>
                 </form>
@@ -204,9 +205,16 @@
                 </div>
             </div>
         </section>
+
+        <footer class="login-footer">
+            <span>&copy; 2026 EXAD Tracking - Tous droits r&eacute;serv&eacute;s.</span>
+            <a href="#" aria-label="Confidentialite">Confidentialit&eacute;</a>
+        </footer>
     </main>
 
     <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ asset('js/form-validation.js') }}?v=20260529-form-validation"></script>
+    <script src="{{ asset('js/form-loading.js') }}?v=20260529-form-loading"></script>
     <script>
         document.querySelector('[data-password-toggle]')?.addEventListener('click', function () {
             const password = document.getElementById('password');
