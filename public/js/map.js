@@ -142,6 +142,27 @@
                     <strong>${escapeHtml(properties.last_signal)}</strong>
                 </div>
             </div>
+            <div class="map-popup-actions">
+                <button
+                    type="button"
+                    class="map-popup-action-button"
+                    data-tracker-details
+                    data-details-url="${escapeHtml(properties.details_url)}"
+                >
+                    <i class="fa-regular fa-clock"></i>
+                    <span>${escapeHtml(messages.details)}</span>
+                </button>
+                <button
+                    type="button"
+                    class="map-popup-action-button"
+                    data-trips-open
+                    data-trips-url="${escapeHtml(properties.trips_url)}"
+                    data-trips-name="${escapeHtml(properties.vehicle)}"
+                >
+                    <i class="fa-solid fa-route"></i>
+                    <span>${escapeHtml(messages.trips)}</span>
+                </button>
+            </div>
         </div>
     `;
 
@@ -273,6 +294,22 @@
             },
         });
 
+        map.addSource('trip-history', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] },
+        });
+
+        map.addLayer({
+            id: 'trip-history-line',
+            type: 'line',
+            source: 'trip-history',
+            paint: {
+                'line-color': '#171064',
+                'line-width': 5,
+                'line-opacity': 0.86,
+            },
+        });
+
         map.on('click', 'clusters', (event) => {
             const features = map.queryRenderedFeatures(event.point, { layers: ['clusters'] });
             const clusterId = features[0].properties.cluster_id;
@@ -352,5 +389,38 @@
     searchInput.addEventListener('input', () => {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(() => loadDevices({ fit: true }), 280);
+    });
+
+    document.addEventListener('exad:trips-loaded', (event) => {
+        const source = map.getSource('trip-history');
+        const geojson = event.detail?.geojson || { type: 'FeatureCollection', features: [] };
+
+        if (!source) {
+            return;
+        }
+
+        source.setData(geojson);
+
+        const coordinates = geojson.features.flatMap((feature) => feature.geometry?.coordinates || []);
+        if (!coordinates.length) {
+            return;
+        }
+
+        const bounds = new mapboxgl.LngLatBounds();
+        coordinates.forEach((coordinate) => bounds.extend(coordinate));
+        map.fitBounds(bounds, {
+            padding: {
+                top: 70,
+                right: 420,
+                bottom: 70,
+                left: 80,
+            },
+            maxZoom: 15,
+            duration: 700,
+        });
+    });
+
+    document.addEventListener('exad:trips-cleared', () => {
+        map.getSource('trip-history')?.setData({ type: 'FeatureCollection', features: [] });
     });
 })();

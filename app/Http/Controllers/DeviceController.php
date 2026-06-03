@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Device;
 use App\Models\Vehicle;
+use App\Services\DeviceTripService;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -328,6 +330,60 @@ class DeviceController extends Controller
             ->with('status_type', 'danger');
     }
 
+    public function details(Request $request, Device $device): JsonResponse
+    {
+        abort_unless(
+            Device::query()->visibleTo($request->user())->whereKey($device->id)->exists(),
+            403
+        );
+
+        $device->load([
+            'fleet:id,name,code',
+            'vehicle:id,fleet_id,name,registration_number',
+            'trackerEvents' => fn ($query) => $query
+                ->with('position:id,latitude,longitude')
+                ->latest('started_at')
+                ->latest('id')
+                ->limit(5),
+        ]);
+
+        return response()->json([
+            'html' => view('trackers.partials.details', [
+                'device' => $device,
+                'gpsQuality' => $this->gpsQuality($device),
+                'direction' => $this->directionLabel((int) $device->last_angle),
+            ])->render(),
+        ]);
+    }
+
+    public function trips(Request $request, Device $device, DeviceTripService $tripService): JsonResponse
+    {
+        abort_unless(
+            Device::query()->visibleTo($request->user())->whereKey($device->id)->exists(),
+            403
+        );
+
+        [$from, $to, $periodLabel] = $this->tripPeriod($request);
+        $device->load(['fleet:id,name,code', 'vehicle:id,fleet_id,name,registration_number']);
+        $payload = $tripService->build($device, $from, $to);
+
+        return response()->json([
+            'html' => view('trackers.partials.trips-results', [
+                'device' => $device,
+                'periodLabel' => $periodLabel,
+                'trips' => $payload['trips'],
+                'totalDistanceKm' => $payload['total_distance_km'],
+                'totalDurationLabel' => $tripService->durationLabel($payload['total_duration_seconds']),
+            ])->render(),
+            'geojson' => $payload['geojson'],
+            'summary' => [
+                'count' => count($payload['trips']),
+                'distance_km' => $payload['total_distance_km'],
+                'duration_seconds' => $payload['total_duration_seconds'],
+            ],
+        ]);
+    }
+
     private function authorizeDeviceManagement(Request $request, ?Device $device = null): void
     {
         $user = $request->user();
@@ -421,5 +477,91 @@ class DeviceController extends Controller
         return $this->manageableVehicles($request)
             ->reject(fn (Vehicle $vehicle): bool => in_array($vehicle->id, $assignedVehicleIds, true))
             ->values();
+    }
+
+    private function gpsQuality(Device $device): ?int
+    {
+        if ($device->last_satellites === null) {
+            return null;
+        }
+
+        return min(100, max(0, (int) $device->last_satellites * 7));
+    }
+
+    private function directionLabel(int $angle): string
+    {
+        $directions = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+        $index = (int) round(($angle % 360) / 45) % 8;
+
+        return $directions[$index];
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon, 2: string}
+     */
+    private function tripPeriod(Request $request): array
+    {
+        $period = (string) $request->query('period', 'today');
+        $now = now();
+
+        return match ($period) {
+            'yesterday' => [
+                $now->copy()->subDay()->startOfDay(),
+                $now->copy()->subDay()->endOfDay(),
+                __('trackers.trip_period_yesterday'),
+            ],
+            'week' => [
+                $now->copy()->startOfWeek(),
+                $now->copy()->endOfWeek(),
+                __('trackers.trip_period_week'),
+            ],
+            'current_month' => [
+                $now->copy()->startOfMonth(),
+                $now->copy()->endOfMonth(),
+                __('trackers.trip_period_current_month'),
+            ],
+            'last_month' => [
+                $now->copy()->subMonthNoOverflow()->startOfMonth(),
+                $now->copy()->subMonthNoOverflow()->endOfMonth(),
+                __('trackers.trip_period_last_month'),
+            ],
+            'custom' => $this->customTripPeriod($request),
+            default => [
+                $now->copy()->startOfDay(),
+                $now->copy()->endOfDay(),
+                __('trackers.trip_period_today'),
+            ],
+        };
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon, 2: string}
+     */
+    private function customTripPeriod(Request $request): array
+    {
+        $validated = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+        ]);
+
+        $from = isset($validated['start_date'])
+            ? Carbon::parse($validated['start_date'])->startOfDay()
+            : now()->startOfDay();
+        $to = isset($validated['end_date'])
+            ? Carbon::parse($validated['end_date'])->endOfDay()
+            : now()->endOfDay();
+
+        if ($from->greaterThan($to)) {
+            [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
+        }
+
+        return [
+            $from,
+            $to,
+            __('trackers.trip_period_custom_label', [
+                'from' => $from->format('d.m.Y'),
+                'to' => $to->format('d.m.Y'),
+            ]),
+        ];
     }
 }

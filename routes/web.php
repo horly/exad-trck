@@ -32,6 +32,8 @@ Route::middleware(['auth', 'superadmin'])->group(function () {
     Route::resource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('fleets', FleetController::class)->except(['show']);
     Route::resource('vehicles', VehicleController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::get('/trackers/{device}/details', [DeviceController::class, 'details'])->name('trackers.details');
+    Route::get('/trackers/{device}/trips', [DeviceController::class, 'trips'])->name('trackers.trips');
     Route::resource('trackers', DeviceController::class)->only(['index', 'store', 'update', 'destroy'])
         ->parameters(['trackers' => 'device']);
     Route::get('/map', [MapController::class, 'index'])->name('map.index');

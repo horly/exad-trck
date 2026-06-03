@@ -323,6 +323,42 @@
     text-align: right;
 }
 
+.map-popup-actions {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 12px;
+}
+
+.map-popup-action-button {
+    align-items: center;
+    background: var(--exad-primary);
+    border: 0;
+    border-radius: 8px;
+    color: #fff;
+    display: inline-flex;
+    font-size: 0.74rem;
+    font-weight: 850;
+    gap: 8px;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0 14px;
+    width: 100%;
+}
+
+.map-popup-action-button:hover {
+    background: #255ec7;
+}
+
+.map-popup-action-button:first-child {
+    background: #eef3ff;
+    color: var(--exad-primary);
+}
+
+.map-popup-action-button:first-child:hover {
+    background: #dbe7ff;
+}
+
 .dashboard-dark .map-workspace,
 .dashboard-dark .map-panel,
 .dashboard-dark .map-empty {
@@ -364,6 +400,11 @@
 
 .dashboard-dark .mapboxgl-popup-content {
     background: #0b1c37;
+}
+
+.dashboard-dark .map-popup-action-button:first-child {
+    background: #102849;
+    color: #dce9ff;
 }
 
 @media (max-width: 1100px) {

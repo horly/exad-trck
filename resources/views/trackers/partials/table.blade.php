@@ -126,6 +126,25 @@
                                 <div class="users-actions">
                                     <button
                                         type="button"
+                                        class="icon-action icon-action-history"
+                                        data-tracker-details
+                                        data-details-url="{{ route('trackers.details', $device) }}"
+                                        aria-label="{{ __('trackers.details') }}"
+                                    >
+                                        <i class="fa-regular fa-clock"></i>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="icon-action icon-action-history"
+                                        data-trips-open
+                                        data-trips-url="{{ route('trackers.trips', $device) }}"
+                                        data-trips-name="{{ $device->vehicle?->name ?: ($device->name ?: $device->imei) }}"
+                                        aria-label="{{ __('trackers.trips') }}"
+                                    >
+                                        <i class="fa-solid fa-route"></i>
+                                    </button>
+                                    <button
+                                        type="button"
                                         class="icon-action icon-action-edit"
                                         data-bs-toggle="modal"
                                         data-bs-target="#trackerModal"

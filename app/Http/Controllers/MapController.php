@@ -68,6 +68,8 @@ class MapController extends Controller
                         'speed' => (int) $device->last_speed,
                         'angle' => (int) $device->last_angle,
                         'last_signal' => $device->last_seen_at?->diffForHumans() ?? __('trackers.no_signal'),
+                        'details_url' => route('trackers.details', $device),
+                        'trips_url' => route('trackers.trips', $device),
                     ],
                 ])->values(),
             ],

@@ -90,3 +90,8 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Remplacer le message vide de la page Carte par une formulation professionnelle compatible production, sans mention de serveur GPS local ni de simulation.
 
 - Intégrer Mapbox localement pour la page Carte : assets `public/vendor/mapbox`, token `MAPBOX_PUBLIC_TOKEN`, route `/map`, endpoint GeoJSON `/map/devices`, layers clusterisés par statut, filtres, statistiques, popups et actualisation automatique.
+- Enrichir la gestion des traceurs avec une table `tracker_events`, des états live détaillés sur `devices`, la génération automatique des événements GPS (signal, mouvement, contact), une modale de détails Traceur affichant Flotte, emplacement, GSM et derniers événements, ainsi que la mise à jour du simulateur local.
+- Ajouter la section Alimentation dans les détails Traceur avec tension externe, batterie interne, niveau de batterie et contact, puis clarifier la ligne `P` comme information de parking.
+- Ajouter l’historique des trajets d’un équipement sur les pages Traceurs et Carte : endpoint partagé `/trackers/{device}/trips`, choix de période, rendu timeline, résumé distance/durée et GeoJSON de tracé Mapbox.
+- Remplacer les coordonnées brutes des trajets par des adresses lisibles via Mapbox Reverse Geocoding quand `positions.address` est vide, avec mémorisation de l’adresse trouvée en base.
+- Ajouter sur la page Carte un bouton de popup permettant d’ouvrir les détails du traceur avec la même modale que la page Traceurs, via le partial et le script partagés `tracker-details`.

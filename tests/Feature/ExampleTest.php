@@ -5,11 +5,13 @@ use App\Models\Alert;
 use App\Models\Fleet;
 use App\Models\Position;
 use App\Models\Subscription;
+use App\Models\TrackerEvent;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
@@ -143,7 +145,7 @@ test('map alerts and customization pages display the shared sidebar version', fu
             ->get($url)
             ->assertSuccessful()
             ->assertSee('EXAD Tracking - v.1.0')
-            ->assertSee('20260602-sidebar-version-global', false)
+            ->assertSee('dashboard.css', false)
             ->assertSee('sidebar-version', false);
     }
 });
@@ -347,6 +349,8 @@ test('trackers table uses shared datatable interactions and fleet access', funct
         ->assertSee('Traceur 1')
         ->assertDontSee('Traceur 6')
         ->assertSee('data-confirm-delete', false)
+        ->assertSee('data-trips-open', false)
+        ->assertSee('trackerTripsModal', false)
         ->assertSee('Supprimer ce traceur ?', false);
 
     $response = $this->actingAs($superadmin)
@@ -435,6 +439,8 @@ test('local gps listener commands update registered trackers only', function () 
         'last_seen_at' => null,
         'last_latitude' => null,
         'last_longitude' => null,
+        'last_movement' => null,
+        'last_ignition' => null,
     ]);
 
     $exitCode = Artisan::call('gps:ingest-position', [
@@ -445,6 +451,11 @@ test('local gps listener commands update registered trackers only', function () 
             'speed' => 42,
             'angle' => 90,
             'satellites' => 12,
+            'gsm_signal' => 80,
+            'battery_level' => 92,
+            'external_voltage' => 12.4,
+            'battery_voltage' => 4.1,
+            'address' => 'Kinsuka Pecheur, Ngaliema, Kinshasa',
         ]),
     ]);
 
@@ -456,7 +467,14 @@ test('local gps listener commands update registered trackers only', function () 
         ->and((float) $device->last_latitude)->toBe(-4.325)
         ->and((float) $device->last_longitude)->toBe(15.312)
         ->and($device->last_speed)->toBe(42)
-        ->and($device->last_angle)->toBe(90);
+        ->and($device->last_angle)->toBe(90)
+        ->and($device->last_movement)->toBeTrue()
+        ->and($device->last_satellites)->toBe(12)
+        ->and($device->last_gsm_signal)->toBe(80)
+        ->and($device->last_battery_level)->toBe(92)
+        ->and((float) $device->last_external_voltage)->toBe(12.4)
+        ->and((float) $device->last_battery_voltage)->toBe(4.1)
+        ->and($device->last_address)->toBe('Kinsuka Pecheur, Ngaliema, Kinshasa');
 
     $this->assertDatabaseHas('positions', [
         'device_id' => $device->id,
@@ -471,6 +489,16 @@ test('local gps listener commands update registered trackers only', function () 
         'severity' => 'medium',
     ]);
 
+    $this->assertDatabaseHas('tracker_events', [
+        'device_id' => $device->id,
+        'type' => 'signal_restored',
+    ]);
+
+    $this->assertDatabaseHas('tracker_events', [
+        'device_id' => $device->id,
+        'type' => 'movement_started',
+    ]);
+
     $secondCode = Artisan::call('gps:ingest-position', [
         '--payload' => json_encode([
             'imei' => '356307042441013',
@@ -482,6 +510,19 @@ test('local gps listener commands update registered trackers only', function () 
 
     expect($secondCode)->toBe(0)
         ->and(Alert::query()->where('device_id', $device->id)->where('type', 'signal_recovered')->count())->toBe(1);
+
+    $stoppedCode = Artisan::call('gps:ingest-position', [
+        '--payload' => json_encode([
+            'imei' => '356307042441013',
+            'lat' => -4.327,
+            'lng' => 15.314,
+            'speed' => 0,
+            'movement' => false,
+        ]),
+    ]);
+
+    expect($stoppedCode)->toBe(0)
+        ->and(TrackerEvent::query()->where('device_id', $device->id)->where('type', 'movement_stopped')->exists())->toBeTrue();
 
     $unknownCode = Artisan::call('gps:ingest-position', [
         '--payload' => json_encode([
@@ -510,6 +551,166 @@ test('local gps stale command marks silent online trackers offline', function ()
         'type' => 'no_signal',
         'severity' => 'high',
     ]);
+
+    $this->assertDatabaseHas('tracker_events', [
+        'device_id' => $device->id,
+        'type' => 'signal_lost',
+    ]);
+});
+
+test('superadmin can open tracker details with fleet and latest events', function () {
+    $superadmin = User::factory()->superadmin()->create();
+    $fleet = Fleet::factory()->create(['name' => 'EXAD CARS', 'code' => 'EX-CRS']);
+    $vehicle = Vehicle::factory()->create([
+        'fleet_id' => $fleet->id,
+        'name' => 'Suzuki Swift Horly',
+        'registration_number' => '6823BV01',
+    ]);
+    $device = Device::factory()->create([
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $vehicle->id,
+        'brand' => 'teltonika',
+        'model' => 'FMB003',
+        'imei' => '353201355315547',
+        'status' => 'online',
+        'last_latitude' => -4.33509,
+        'last_longitude' => 15.22408,
+        'last_gsm_signal' => 80,
+        'last_battery_level' => 76,
+        'last_external_voltage' => 12.6,
+        'last_battery_voltage' => 4.05,
+        'last_movement' => false,
+        'operator_name' => 'Vodacom',
+    ]);
+
+    TrackerEvent::query()->create([
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $vehicle->id,
+        'device_id' => $device->id,
+        'type' => 'movement_started',
+        'title' => __('trackers.event_movement_started_title'),
+        'message' => __('trackers.event_movement_started_message', ['vehicle' => $vehicle->name]),
+        'started_at' => now(),
+        'metadata' => [
+            'translation' => [
+                'title_key' => 'trackers.event_movement_started_title',
+                'message_key' => 'trackers.event_movement_started_message',
+                'replace' => ['vehicle' => $vehicle->name],
+            ],
+        ],
+    ]);
+
+    $response = $this->actingAs($superadmin)
+        ->withHeader('X-Requested-With', 'XMLHttpRequest')
+        ->getJson(route('trackers.details', $device))
+        ->assertSuccessful()
+        ->assertJsonStructure(['html']);
+
+    expect($response->json('html'))
+        ->toContain('Flotte : EXAD CARS')
+        ->toContain('Suzuki Swift Horly')
+        ->toContain('Alimentation')
+        ->toContain('Parking')
+        ->toContain('Tension externe : 12.6 V')
+        ->toContain('Vodacom')
+        ->toContain('Début de déplacement')
+        ->not->toContain('Groupe');
+});
+
+test('superadmin can display tracker trips as html and geojson', function () {
+    $superadmin = User::factory()->superadmin()->create();
+    $fleet = Fleet::factory()->create(['name' => 'EXAD CARS']);
+    $vehicle = Vehicle::factory()->create([
+        'fleet_id' => $fleet->id,
+        'name' => 'Toyota Trajet',
+        'registration_number' => '1234BV01',
+    ]);
+    $device = Device::factory()->create([
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $vehicle->id,
+        'imei' => '356307042441013',
+    ]);
+
+    $points = [
+        ['time' => now()->setTime(8, 0), 'lat' => -4.33000, 'lng' => 15.22000, 'address' => 'Kinsuka Pecheur, Ngaliema'],
+        ['time' => now()->setTime(8, 8), 'lat' => -4.33100, 'lng' => 15.22500, 'address' => 'Avenue de l’OUA, Kinshasa'],
+        ['time' => now()->setTime(8, 16), 'lat' => -4.33500, 'lng' => 15.23200, 'address' => 'Centre cité, Avenue Kasa-Vubu'],
+    ];
+
+    foreach ($points as $point) {
+        Position::factory()->forDevice($device)->create([
+            'server_time' => $point['time'],
+            'gps_time' => $point['time'],
+            'latitude' => $point['lat'],
+            'longitude' => $point['lng'],
+            'address' => $point['address'],
+            'movement' => true,
+            'speed' => 28,
+        ]);
+    }
+
+    $response = $this->actingAs($superadmin)
+        ->withHeader('X-Requested-With', 'XMLHttpRequest')
+        ->getJson(route('trackers.trips', ['device' => $device, 'period' => 'today']))
+        ->assertSuccessful()
+        ->assertJsonStructure(['html', 'geojson', 'summary'])
+        ->assertJsonPath('geojson.type', 'FeatureCollection')
+        ->assertJsonPath('summary.count', 1);
+
+    expect($response->json('html'))
+        ->toContain('Aujourd’hui')
+        ->toContain('Kinsuka Pecheur')
+        ->toContain('Centre cité')
+        ->toContain('Total : 1 trajets')
+        ->and($response->json('geojson.features.0.geometry.type'))->toBe('LineString');
+});
+
+test('tracker trips resolve missing addresses with mapbox reverse geocoding', function () {
+    Http::fake([
+        'api.mapbox.com/search/geocode/v6/reverse*' => Http::response([
+            'features' => [
+                [
+                    'properties' => [
+                        'full_address' => 'Avenue de l’OUA, Ngaliema, Kinshasa, Congo-Kinshasa',
+                    ],
+                ],
+            ],
+        ]),
+    ]);
+
+    $superadmin = User::factory()->superadmin()->create();
+    $device = Device::factory()->create();
+    $start = Position::factory()->forDevice($device)->create([
+        'server_time' => now()->setTime(9, 0),
+        'gps_time' => now()->setTime(9, 0),
+        'latitude' => -4.3414,
+        'longitude' => 15.2867,
+        'address' => null,
+        'movement' => true,
+        'speed' => 20,
+        'raw_data' => null,
+    ]);
+    Position::factory()->forDevice($device)->create([
+        'server_time' => now()->setTime(9, 8),
+        'gps_time' => now()->setTime(9, 8),
+        'latitude' => -4.3420,
+        'longitude' => 15.2872,
+        'address' => null,
+        'movement' => true,
+        'speed' => 18,
+        'raw_data' => null,
+    ]);
+
+    $response = $this->actingAs($superadmin)
+        ->withHeader('X-Requested-With', 'XMLHttpRequest')
+        ->getJson(route('trackers.trips', ['device' => $device, 'period' => 'today']))
+        ->assertSuccessful();
+
+    expect($response->json('html'))
+        ->toContain('Avenue de l’OUA')
+        ->not->toContain('Latitude : -4.3414000');
+
+    expect($start->refresh()->address)->toBe('Avenue de l’OUA, Ngaliema, Kinshasa, Congo-Kinshasa');
 });
 
 test('authenticated users can view the map page with local mapbox assets', function () {
@@ -521,6 +722,8 @@ test('authenticated users can view the map page with local mapbox assets', funct
         ->assertSee('vendor/mapbox/mapbox-gl.css', false)
         ->assertSee('vendor/mapbox/mapbox-gl.js', false)
         ->assertSee('js/map.js', false)
+        ->assertSee('trackerDetailsModal', false)
+        ->assertSee('js/tracker-details.js', false)
         ->assertDontSee('https://api.mapbox.com/mapbox-gl-js', false)
         ->assertSee('exadMapConfig', false);
 });
@@ -574,7 +777,9 @@ test('map devices endpoint returns geojson for every positioned tracker to super
     expect($response->json('geojson.features'))
         ->toHaveCount(2)
         ->and(collect($response->json('geojson.features'))->pluck('properties.vehicle')->all())
-        ->toContain('Toyota Carte');
+        ->toContain('Toyota Carte')
+        ->and($response->json('geojson.features.0.properties.details_url'))->toContain('/trackers/')
+        ->and($response->json('geojson.features.0.properties.trips_url'))->toContain('/trackers/');
 });
 
 test('superadmin can view alerts page with local realtime client and datatable', function () {

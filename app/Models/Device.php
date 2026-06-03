@@ -44,6 +44,14 @@ class Device extends Model
         'last_longitude',
         'last_speed',
         'last_angle',
+        'last_ignition',
+        'last_movement',
+        'last_satellites',
+        'last_gsm_signal',
+        'last_battery_level',
+        'last_external_voltage',
+        'last_battery_voltage',
+        'last_address',
         'settings',
     ];
 
@@ -57,6 +65,13 @@ class Device extends Model
             'last_position_at' => 'datetime',
             'last_latitude' => 'decimal:7',
             'last_longitude' => 'decimal:7',
+            'last_ignition' => 'boolean',
+            'last_movement' => 'boolean',
+            'last_satellites' => 'integer',
+            'last_gsm_signal' => 'integer',
+            'last_battery_level' => 'integer',
+            'last_external_voltage' => 'decimal:3',
+            'last_battery_voltage' => 'decimal:3',
             'settings' => 'array',
         ];
     }
@@ -64,6 +79,11 @@ class Device extends Model
     public function positions(): HasMany
     {
         return $this->hasMany(Position::class);
+    }
+
+    public function trackerEvents(): HasMany
+    {
+        return $this->hasMany(TrackerEvent::class);
     }
 
     public function subscription(): BelongsTo

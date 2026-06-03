@@ -20,6 +20,7 @@ class Position extends Model
         'server_time',
         'latitude',
         'longitude',
+        'address',
         'is_valid',
         'speed',
         'angle',

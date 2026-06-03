@@ -31,6 +31,14 @@ class DeviceFactory extends Factory
             'last_longitude' => fake()->longitude(15.15, 15.55),
             'last_speed' => fake()->numberBetween(0, 85),
             'last_angle' => fake()->numberBetween(0, 359),
+            'last_ignition' => fake()->boolean(),
+            'last_movement' => fake()->boolean(),
+            'last_satellites' => fake()->numberBetween(5, 18),
+            'last_gsm_signal' => fake()->numberBetween(45, 100),
+            'last_battery_level' => fake()->numberBetween(35, 100),
+            'last_external_voltage' => fake()->randomFloat(3, 11, 28),
+            'last_battery_voltage' => fake()->randomFloat(3, 3, 5),
+            'last_address' => fake()->streetAddress(),
             'settings' => [
                 'heartbeat_interval' => 60,
             ],
@@ -42,6 +50,7 @@ class DeviceFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'status' => 'online',
             'last_speed' => 0,
+            'last_movement' => false,
         ]);
     }
 
@@ -50,6 +59,7 @@ class DeviceFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'status' => 'online',
             'last_speed' => 42,
+            'last_movement' => true,
         ]);
     }
 }

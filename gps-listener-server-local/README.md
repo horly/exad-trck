@@ -11,7 +11,15 @@ Il écoute des positions GPS simulées au format JSON ligne par ligne, vérifie 
 - `devices.last_longitude`
 - `devices.last_speed`
 - `devices.last_angle`
+- `devices.last_movement`
+- `devices.last_satellites`
+- `devices.last_gsm_signal`
+- `devices.last_battery_level`
+- `devices.last_external_voltage`
+- `devices.last_battery_voltage`
 - la table `positions`
+- la table `tracker_events`
+- les alertes de signal
 
 ## Démarrer le serveur
 
@@ -49,13 +57,18 @@ Champs optionnels :
 - `gps_time`
 - `altitude`
 - `satellites`
+- `gsm_signal`
+- `battery_level`
+- `external_voltage`
+- `battery_voltage`
+- `address`
 - `ignition`
 - `movement`
 
 ## Simuler un traceur
 
 ```bash
-node gps-listener-server-local/src/simulators/fake-tracker-client.js 356307042441013 -4.325 15.312 42 90
+node gps-listener-server-local/src/simulators/fake-tracker-client.js 356307042441013 -4.325 15.312 42 90 80 90 12.4 4.1
 ```
 
 Le serveur accepte uniquement les IMEI déjà enregistrés dans la table `devices`.

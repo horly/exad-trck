@@ -20,6 +20,7 @@ class PositionFactory extends Factory
             'server_time' => fake()->dateTimeBetween('-12 hours'),
             'latitude' => fake()->latitude(-4.55, -4.20),
             'longitude' => fake()->longitude(15.15, 15.55),
+            'address' => fake()->streetAddress(),
             'is_valid' => true,
             'speed' => fake()->numberBetween(0, 90),
             'angle' => fake()->numberBetween(0, 359),
