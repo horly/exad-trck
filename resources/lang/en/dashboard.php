@@ -18,6 +18,7 @@ return [
     'map' => 'Map',
     'alerts' => 'Alerts',
     'server_logs' => 'Server logs',
+    'server_monitoring' => 'Monitoring',
     'devices' => 'Trackers',
     'online_devices' => 'Online',
     'moving_devices' => 'Moving',

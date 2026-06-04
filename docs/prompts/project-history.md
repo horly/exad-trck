@@ -131,3 +131,20 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Correction de la coloration des onglets et boutons de la page `Logs serveur`.
 - Remplacement de la variable CSS inexistante par le bleu theme `--exad-primary`.
 - Les etats actif, hover et focus restent maintenant lisibles.
+
+## 2026-06-04 - Page monitoring serveur
+
+- Creation d'une page superadmin `Monitoring serveur` accessible via la sidebar apres `Logs serveur`.
+- Ajout des routes `/server-monitoring` et `/server-monitoring/metrics`.
+- Ajout d'un endpoint JSON de metriques temps reel pour :
+  - CPU
+  - RAM
+  - swap
+  - disque
+  - charge systeme
+  - uptime
+  - debits reseau entrants/sortants
+  - interfaces reseau
+  - informations PHP/Laravel/environnement
+- La page se rafraichit automatiquement via AJAX toutes les 2 secondes.
+- Les lectures systeme utilisent `/proc` sur Linux et retournent `Indisponible` proprement en environnement local non compatible.

@@ -3472,6 +3472,197 @@ body.theme-dark .alert-summary-card small {
     color: #e5edff;
 }
 
+.server-monitoring {
+    margin: 40px;
+}
+
+.server-monitoring-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+    color: var(--exad-muted);
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.monitoring-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
+    margin-bottom: 20px;
+}
+
+.monitor-card,
+.monitor-panel {
+    border: 1px solid var(--exad-line);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 20px 54px rgba(15, 23, 42, 0.07);
+}
+
+.monitor-card {
+    min-height: 180px;
+    padding: 22px;
+}
+
+.monitor-card-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 54px;
+    height: 54px;
+    margin-bottom: 24px;
+    border-radius: 14px;
+    font-size: 1.15rem;
+}
+
+.monitor-blue { color: #2563eb; background: #dbeafe; }
+.monitor-green { color: #059669; background: #d1fae5; }
+.monitor-yellow { color: #d97706; background: #fef3c7; }
+.monitor-red { color: #e11d48; background: #ffe4e6; }
+
+.monitor-card small,
+.network-rate-grid small {
+    display: block;
+    color: var(--exad-muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.monitor-card strong,
+.network-rate-grid strong {
+    display: block;
+    margin-top: 8px;
+    color: var(--exad-ink);
+    font-size: 1.55rem;
+    font-weight: 900;
+}
+
+.monitor-card span {
+    display: block;
+    margin-top: 8px;
+    color: var(--exad-muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.monitor-progress {
+    height: 8px;
+    margin-top: 18px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e8eef7;
+}
+
+.monitor-progress span {
+    display: block;
+    height: 100%;
+    margin: 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--exad-primary), #2f6cf6);
+    transition: width 0.35s ease;
+}
+
+.monitoring-panels {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+    gap: 20px;
+}
+
+.monitor-panel {
+    padding: 24px;
+}
+
+.network-rate-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.network-rate-grid > div {
+    padding: 16px;
+    border: 1px solid #dce7f5;
+    border-radius: 16px;
+    background: #f8fbff;
+}
+
+.monitor-table-wrap {
+    overflow-x: auto;
+}
+
+.monitor-table {
+    margin: 0;
+    min-width: 720px;
+}
+
+.monitor-table th {
+    color: var(--exad-muted);
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.monitor-table td {
+    padding: 16px 8px;
+    color: var(--exad-ink);
+    font-size: 0.84rem;
+    font-weight: 750;
+}
+
+.system-list {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+}
+
+.system-list div {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #e2eaf5;
+}
+
+.system-list dt {
+    color: var(--exad-muted);
+    font-size: 0.76rem;
+    font-weight: 900;
+}
+
+.system-list dd {
+    margin: 0;
+    color: var(--exad-ink);
+    font-size: 0.82rem;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.dashboard-dark .monitor-card,
+.dashboard-dark .monitor-panel {
+    border-color: rgba(96, 165, 250, 0.22);
+    background: rgba(15, 23, 42, 0.84);
+}
+
+.dashboard-dark .monitor-card strong,
+.dashboard-dark .network-rate-grid strong,
+.dashboard-dark .monitor-table td,
+.dashboard-dark .system-list dd {
+    color: #e5edff;
+}
+
+.dashboard-dark .network-rate-grid > div {
+    border-color: rgba(96, 165, 250, 0.22);
+    background: rgba(15, 23, 42, 0.56);
+}
+
+.dashboard-dark .system-list div {
+    border-color: rgba(96, 165, 250, 0.18);
+}
+
 @media (max-width: 991.98px) {
     .server-logs-panel {
         margin: 28px;
@@ -3483,6 +3674,15 @@ body.theme-dark .alert-summary-card small {
 
     .server-logs-actions {
         justify-content: flex-start;
+    }
+
+    .server-monitoring {
+        margin: 28px;
+    }
+
+    .monitoring-grid,
+    .monitoring-panels {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -3502,5 +3702,19 @@ body.theme-dark .alert-summary-card small {
         max-height: 60vh;
         padding: 16px;
         font-size: 0.72rem;
+    }
+
+    .server-monitoring {
+        margin: 22px;
+    }
+
+    .monitor-card,
+    .monitor-panel {
+        padding: 18px;
+    }
+
+    .network-rate-grid,
+    .system-list div {
+        grid-template-columns: 1fr;
     }
 }

@@ -1057,3 +1057,26 @@ test('superadmin can view server logs page and fetch whitelisted log content', f
         $previous === null ? @unlink($path) : file_put_contents($path, $previous);
     }
 });
+
+test('superadmin can view server monitoring metrics', function () {
+    $superadmin = User::factory()->superadmin()->create();
+
+    $this->actingAs($superadmin)
+        ->get(route('server-monitoring.index'))
+        ->assertSuccessful()
+        ->assertSee(__('server_monitoring.title'))
+        ->assertSee(route('server-monitoring.metrics'), false);
+
+    $this->actingAs($superadmin)
+        ->getJson(route('server-monitoring.metrics'))
+        ->assertSuccessful()
+        ->assertJsonStructure([
+            'generated_at',
+            'cpu' => ['usage', 'cores'],
+            'memory' => ['total', 'used', 'available', 'percent', 'swap_total', 'swap_used', 'swap_percent'],
+            'disk' => ['total', 'used', 'free', 'percent'],
+            'load' => ['one', 'five', 'fifteen'],
+            'network' => ['interfaces', 'total_rx_rate', 'total_tx_rate'],
+            'system' => ['hostname', 'os', 'php', 'laravel', 'environment', 'uptime'],
+        ]);
+});

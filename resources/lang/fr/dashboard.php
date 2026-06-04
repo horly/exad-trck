@@ -18,6 +18,7 @@ return [
     'map' => 'Carte',
     'alerts' => 'Alertes',
     'server_logs' => 'Logs serveur',
+    'server_monitoring' => 'Monitoring',
     'devices' => 'Traceurs',
     'online_devices' => 'En ligne',
     'moving_devices' => 'En mouvement',

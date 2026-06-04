@@ -56,6 +56,10 @@
                 <i class="fa-solid fa-terminal"></i>
                 <span>{{ __('dashboard.server_logs') }}</span>
             </a>
+            <a class="nav-link {{ $active === 'server-monitoring' ? 'active' : '' }}" href="{{ route('server-monitoring.index') }}">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>{{ __('dashboard.server_monitoring') }}</span>
+            </a>
         @endif
         <a class="nav-link {{ $active === 'customization' ? 'active' : '' }}" href="{{ route('customization.index') }}">
             <i class="fa-solid fa-sliders"></i>

@@ -7,6 +7,7 @@ use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\FleetController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\ServerLogController;
+use App\Http\Controllers\ServerMonitoringController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VehicleController;
 use Illuminate\Http\RedirectResponse;
@@ -44,5 +45,7 @@ Route::middleware(['auth', 'superadmin'])->group(function () {
     Route::patch('/alerts/{alert}/acknowledge', [AlertController::class, 'acknowledge'])->name('alerts.acknowledge');
     Route::get('/server-logs', [ServerLogController::class, 'index'])->name('server-logs.index');
     Route::get('/server-logs/content', [ServerLogController::class, 'content'])->name('server-logs.content');
+    Route::get('/server-monitoring', [ServerMonitoringController::class, 'index'])->name('server-monitoring.index');
+    Route::get('/server-monitoring/metrics', [ServerMonitoringController::class, 'metrics'])->name('server-monitoring.metrics');
     Route::get('/customization', CustomizationController::class)->name('customization.index');
 });
