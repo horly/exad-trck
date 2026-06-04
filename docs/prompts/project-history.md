@@ -106,3 +106,28 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 
 - Mise a jour de la liste des modeles Teltonika disponibles dans le formulaire traceur.
 - Ajout des familles BASIC, FAST&EASY, ADVANCED, AUTONOMOUS, E-MOBILITY, OBD, CAN et PRO selon la liste fournie.
+
+## 2026-06-04 - Page logs serveur GPS
+
+- Creation d'une page superadmin `Logs serveur` accessible via la sidebar.
+- Ajout de la route `/server-logs` et de l'endpoint AJAX `/server-logs/content`.
+- La page affiche en temps reel les fichiers autorises de `storage/logs` :
+  - `gps-tcp.log`
+  - `gps-tcp-error.log`
+  - `gps-udp.log`
+  - `gps-udp-error.log`
+  - `gps-tcpdump.log`
+  - `laravel.log`
+- Ajout de controles : selection du fichier, nombre de lignes, pause/reprise et rafraichissement manuel.
+- Le backend refuse les chemins arbitraires et ne lit que les fichiers explicitement autorises.
+
+## 2026-06-04 - Sidebar scrollable invisible
+
+- La sidebar reste scrollable lorsque le menu depasse la hauteur disponible.
+- La barre de defilement visuelle est masquee sur Firefox, Chromium/WebKit et anciens moteurs Microsoft.
+
+## 2026-06-04 - Correction boutons logs serveur
+
+- Correction de la coloration des onglets et boutons de la page `Logs serveur`.
+- Remplacement de la variable CSS inexistante par le bleu theme `--exad-primary`.
+- Les etats actif, hover et focus restent maintenant lisibles.

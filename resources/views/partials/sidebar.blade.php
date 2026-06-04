@@ -51,6 +51,12 @@
             <i class="fa-solid fa-bell"></i>
             <span>{{ __('dashboard.alerts') }}</span>
         </a>
+        @if ($user->isSuperadmin())
+            <a class="nav-link {{ $active === 'server-logs' ? 'active' : '' }}" href="{{ route('server-logs.index') }}">
+                <i class="fa-solid fa-terminal"></i>
+                <span>{{ __('dashboard.server_logs') }}</span>
+            </a>
+        @endif
         <a class="nav-link {{ $active === 'customization' ? 'active' : '' }}" href="{{ route('customization.index') }}">
             <i class="fa-solid fa-sliders"></i>
             <span>{{ __('dashboard.customization') }}</span>

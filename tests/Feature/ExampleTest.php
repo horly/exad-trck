@@ -1019,3 +1019,41 @@ test('alert demo command creates an alert and dispatches broadcast event', funct
 
     Event::assertDispatched(\App\Events\AlertCreated::class);
 });
+
+test('superadmin can view server logs page and fetch whitelisted log content', function () {
+    $superadmin = User::factory()->superadmin()->create();
+    $path = storage_path('logs/gps-tcpdump.log');
+    $previous = file_exists($path) ? file_get_contents($path) : null;
+
+    file_put_contents($path, implode(PHP_EOL, [
+        '[TCP] connection from 153.67.139.222:24291',
+        '[TCP] IMEI received: 353691840797368',
+        '[TCP] IMEI accepted: 353691840797368',
+        '[TCP] 353691840797368 codec8_extended records=1 ACK=1',
+    ]));
+
+    try {
+        $this->actingAs($superadmin)
+            ->get(route('server-logs.index'))
+            ->assertSuccessful()
+            ->assertSee(__('server_logs.title'))
+            ->assertSee(route('server-logs.content'), false);
+
+        $response = $this->actingAs($superadmin)
+            ->getJson(route('server-logs.content', ['log' => 'gps-tcpdump', 'lines' => 2]))
+            ->assertSuccessful()
+            ->assertJsonPath('exists', true);
+
+        expect($response->json('content'))
+            ->toContain('[TCP] IMEI accepted: 353691840797368')
+            ->toContain('[TCP] 353691840797368 codec8_extended records=1 ACK=1');
+
+        $response = $this->actingAs($superadmin)
+            ->getJson(route('server-logs.content', ['log' => '../../.env']))
+            ->assertSuccessful();
+
+        expect($response->json('content'))->not->toContain('APP_KEY=');
+    } finally {
+        $previous === null ? @unlink($path) : file_put_contents($path, $previous);
+    }
+});

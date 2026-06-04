@@ -17,6 +17,7 @@ return [
     'trackers' => 'Traceurs',
     'map' => 'Carte',
     'alerts' => 'Alertes',
+    'server_logs' => 'Logs serveur',
     'devices' => 'Traceurs',
     'online_devices' => 'En ligne',
     'moving_devices' => 'En mouvement',
