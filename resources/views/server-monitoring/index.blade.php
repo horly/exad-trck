@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260604-server-monitoring-2">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260604-server-monitoring-dark">
 </head>
 <body class="app-font-manrope dashboard-body">
     @php
@@ -58,14 +58,18 @@
                 data-server-monitoring
                 data-endpoint="{{ route('server-monitoring.metrics') }}"
                 data-unavailable="{{ __('server_monitoring.unavailable') }}"
-                data-refreshing="{{ __('server_monitoring.refreshing') }}"
+                data-label-cpu="{{ __('server_monitoring.cpu') }}"
+                data-label-ram="{{ __('server_monitoring.ram') }}"
+                data-label-disk="{{ __('server_monitoring.disk') }}"
+                data-label-load="{{ __('server_monitoring.load') }}"
+                data-label-download="{{ __('server_monitoring.download') }}"
+                data-label-upload="{{ __('server_monitoring.upload') }}"
             >
                 <div class="server-monitoring-status">
                     <span class="server-log-pill is-live">
                         <i class="fa-solid fa-circle"></i>
                         <span>{{ __('server_monitoring.live') }}</span>
                     </span>
-                    <span data-monitoring-meta>{{ __('server_monitoring.waiting') }}</span>
                 </div>
 
                 <div class="monitoring-grid">
@@ -101,6 +105,49 @@
                     </article>
                 </div>
 
+                <div class="monitoring-charts">
+                    <section class="monitor-chart-panel monitor-chart-wide">
+                        <div class="panel-heading">
+                            <div>
+                                <p class="eyebrow mb-1">{{ __('server_monitoring.performance_eyebrow') }}</p>
+                                <h2>{{ __('server_monitoring.cpu_memory_chart') }}</h2>
+                            </div>
+                            <span class="monitor-chart-badge">{{ __('server_monitoring.live') }}</span>
+                        </div>
+                        <div class="monitor-chart" data-monitoring-chart="cpu-memory"></div>
+                    </section>
+
+                    <section class="monitor-chart-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <p class="eyebrow mb-1">{{ __('server_monitoring.capacity_eyebrow') }}</p>
+                                <h2>{{ __('server_monitoring.disk_chart') }}</h2>
+                            </div>
+                        </div>
+                        <div class="monitor-chart monitor-chart-radial" data-monitoring-chart="disk"></div>
+                    </section>
+
+                    <section class="monitor-chart-panel monitor-chart-wide">
+                        <div class="panel-heading">
+                            <div>
+                                <p class="eyebrow mb-1">{{ __('server_monitoring.network_eyebrow') }}</p>
+                                <h2>{{ __('server_monitoring.network_chart') }}</h2>
+                            </div>
+                        </div>
+                        <div class="monitor-chart" data-monitoring-chart="network"></div>
+                    </section>
+
+                    <section class="monitor-chart-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <p class="eyebrow mb-1">{{ __('server_monitoring.load_eyebrow') }}</p>
+                                <h2>{{ __('server_monitoring.load_chart') }}</h2>
+                            </div>
+                        </div>
+                        <div class="monitor-chart" data-monitoring-chart="load"></div>
+                    </section>
+                </div>
+
                 <div class="monitoring-panels">
                     <section class="monitor-panel">
                         <div class="panel-heading">
@@ -112,12 +159,18 @@
 
                         <div class="network-rate-grid">
                             <div>
-                                <small>{{ __('server_monitoring.download') }}</small>
-                                <strong data-monitoring-value="network.total_rx_rate">{{ $monitorFormatRate($monitorMetric('network.total_rx_rate')) }}</strong>
+                                <span class="network-rate-icon network-rate-in"><i class="fa-solid fa-arrow-down"></i></span>
+                                <span>
+                                    <small>{{ __('server_monitoring.download') }}</small>
+                                    <strong data-monitoring-value="network.total_rx_rate">{{ $monitorFormatRate($monitorMetric('network.total_rx_rate')) }}</strong>
+                                </span>
                             </div>
                             <div>
-                                <small>{{ __('server_monitoring.upload') }}</small>
-                                <strong data-monitoring-value="network.total_tx_rate">{{ $monitorFormatRate($monitorMetric('network.total_tx_rate')) }}</strong>
+                                <span class="network-rate-icon network-rate-out"><i class="fa-solid fa-arrow-up"></i></span>
+                                <span>
+                                    <small>{{ __('server_monitoring.upload') }}</small>
+                                    <strong data-monitoring-value="network.total_tx_rate">{{ $monitorFormatRate($monitorMetric('network.total_tx_rate')) }}</strong>
+                                </span>
                             </div>
                         </div>
 
@@ -175,9 +228,10 @@
     </div>
 
     <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ asset('vendor/apexcharts/apexcharts.js') }}"></script>
     <script src="{{ asset('js/dashboard-sidebar.js') }}?v=20260528-sidebar-toggle"></script>
     <script src="{{ asset('js/dashboard-controls.js') }}?v=20260529-shared-controls"></script>
-    <script src="{{ asset('js/server-monitoring.js') }}?v=20260604-server-monitoring-2"></script>
+    <script src="{{ asset('js/server-monitoring.js') }}?v=20260604-server-monitoring-dark"></script>
     @include('partials.realtime-alerts')
 </body>
 </html>
