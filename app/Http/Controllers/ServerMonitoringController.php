@@ -3,20 +3,30 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\CarbonInterval;
-use Illuminate\Support\Facades\Cache;
+use Carbon\CarbonInterval;
 use Illuminate\View\View;
 
 class ServerMonitoringController extends Controller
 {
     public function index(): View
     {
-        return view('server-monitoring.index');
+        return view('server-monitoring.index', [
+            'metrics' => $this->payload(),
+        ]);
     }
 
     public function metrics(): JsonResponse
     {
-        return response()->json([
+        return response()->json($this->payload())
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function payload(): array
+    {
+        return [
             'generated_at' => now()->toIso8601String(),
             'cpu' => $this->cpu(),
             'memory' => $this->memory(),
@@ -24,7 +34,7 @@ class ServerMonitoringController extends Controller
             'load' => $this->load(),
             'network' => $this->network(),
             'system' => $this->system(),
-        ]);
+        ];
     }
 
     /**
@@ -36,8 +46,8 @@ class ServerMonitoringController extends Controller
         $usage = null;
 
         if ($stat !== null) {
-            $previous = Cache::get('server_monitoring.cpu');
-            Cache::put('server_monitoring.cpu', $stat, now()->addMinutes(10));
+            $previous = $this->state('cpu');
+            $this->putState('cpu', $stat);
 
             if (is_array($previous)) {
                 $totalDelta = $stat['total'] - ($previous['total'] ?? 0);
@@ -120,7 +130,7 @@ class ServerMonitoringController extends Controller
      */
     private function load(): array
     {
-        if (! function_exists('sys_getloadavg')) {
+        if (! \function_exists('sys_getloadavg')) {
             return [
                 'one' => null,
                 'five' => null,
@@ -128,7 +138,7 @@ class ServerMonitoringController extends Controller
             ];
         }
 
-        $load = sys_getloadavg();
+        $load = \sys_getloadavg();
 
         return [
             'one' => $load[0] ?? null,
@@ -143,7 +153,7 @@ class ServerMonitoringController extends Controller
     private function network(): array
     {
         $interfaces = $this->networkInterfaces();
-        $previous = Cache::get('server_monitoring.network');
+        $previous = $this->state('network');
         $now = microtime(true);
         $totalRxRate = 0;
         $totalTxRate = 0;
@@ -164,7 +174,7 @@ class ServerMonitoringController extends Controller
             }
         }
 
-        Cache::put('server_monitoring.network', [
+        $this->putState('network', [
             'time' => $now,
             'interfaces' => collect($interfaces)
                 ->mapWithKeys(fn (array $interface): array => [$interface['name'] => [
@@ -172,7 +182,7 @@ class ServerMonitoringController extends Controller
                     'tx' => $interface['tx'],
                 ]])
                 ->all(),
-        ], now()->addMinutes(10));
+        ]);
 
         return [
             'interfaces' => $interfaces,
@@ -288,5 +298,59 @@ class ServerMonitoringController extends Controller
             'short' => true,
             'parts' => 3,
         ]);
+    }
+
+    private function state(string $key): mixed
+    {
+        $state = $this->monitoringState();
+
+        return $state[$key] ?? null;
+    }
+
+    private function putState(string $key, mixed $value): void
+    {
+        $path = storage_path('framework/cache/server-monitoring-state.json');
+        $directory = dirname($path);
+
+        if (! is_dir($directory)) {
+            @mkdir($directory, 0775, true);
+        }
+
+        $state = $this->monitoringState();
+        $state[$key] = $value;
+
+        $handle = @fopen($path, 'c+');
+
+        if ($handle === false) {
+            return;
+        }
+
+        try {
+            if (flock($handle, LOCK_EX)) {
+                ftruncate($handle, 0);
+                rewind($handle);
+                fwrite($handle, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) ?: '{}');
+                fflush($handle);
+                flock($handle, LOCK_UN);
+            }
+        } finally {
+            fclose($handle);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function monitoringState(): array
+    {
+        $content = @file_get_contents(storage_path('framework/cache/server-monitoring-state.json'));
+
+        if (! is_string($content) || $content === '') {
+            return [];
+        }
+
+        $state = json_decode($content, true);
+
+        return is_array($state) ? $state : [];
     }
 }

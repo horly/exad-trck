@@ -148,3 +148,12 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
   - informations PHP/Laravel/environnement
 - La page se rafraichit automatiquement via AJAX toutes les 2 secondes.
 - Les lectures systeme utilisent `/proc` sur Linux et retournent `Indisponible` proprement en environnement local non compatible.
+
+## 2026-06-04 - Correction monitoring indisponible
+
+- Correction de l'endpoint `/server-monitoring/metrics` qui pouvait passer en `Indisponible` sur Windows a cause de l'appel `sys_getloadavg`.
+- L'appel systeme est maintenant protege et reference explicitement la fonction globale PHP.
+- Les deltas CPU/reseau ne dependent plus du cache Laravel en base de donnees : un petit etat JSON local est utilise dans `storage/framework/cache`.
+- La page `Monitoring serveur` affiche maintenant un rendu initial cote serveur avant le rafraichissement AJAX, afin que les metriques Ubuntu disponibles apparaissent meme si le script ou l'endpoint est temporairement retarde.
+- Le script AJAX force `cache: no-store`, met le tableau reseau en etat indisponible propre en cas d'echec et evite l'affichage `Indisponible cores`.
+- Correction du `500 Server Error` observe sur le VPS : remplacement de l'import invalide `Illuminate\Support\CarbonInterval` par `Carbon\CarbonInterval` pour le calcul de l'uptime.

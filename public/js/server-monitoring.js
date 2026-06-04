@@ -69,13 +69,14 @@
 
     const render = (data) => {
         const cpuUsage = get(data, 'cpu.usage');
+        const cpuCores = get(data, 'cpu.cores');
         const memoryPercent = get(data, 'memory.percent');
         const diskPercent = get(data, 'disk.percent');
         const loadFive = get(data, 'load.five');
         const loadFifteen = get(data, 'load.fifteen');
 
         setText('cpu.usage', formatPercent(cpuUsage));
-        setText('cpu.cores', `${get(data, 'cpu.cores') || unavailable} cores`);
+        setText('cpu.cores', cpuCores ? `${cpuCores} cores` : unavailable);
         setText('memory.percent', formatPercent(memoryPercent));
         setText('memory.used_total', `${formatBytes(get(data, 'memory.used'))} / ${formatBytes(get(data, 'memory.total'))}`);
         setText('memory.swap', `${formatPercent(get(data, 'memory.swap_percent'))} · ${formatBytes(get(data, 'memory.swap_used'))} / ${formatBytes(get(data, 'memory.swap_total'))}`);
@@ -112,6 +113,7 @@
                     Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
+                cache: 'no-store',
             });
 
             if (!response.ok) {
@@ -121,6 +123,7 @@
             render(await response.json());
         } catch (error) {
             meta.textContent = unavailable;
+            renderInterfaces([]);
         }
     };
 
