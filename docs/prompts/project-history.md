@@ -95,3 +95,14 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Ajouter l’historique des trajets d’un équipement sur les pages Traceurs et Carte : endpoint partagé `/trackers/{device}/trips`, choix de période, rendu timeline, résumé distance/durée et GeoJSON de tracé Mapbox.
 - Remplacer les coordonnées brutes des trajets par des adresses lisibles via Mapbox Reverse Geocoding quand `positions.address` est vide, avec mémorisation de l’adresse trouvée en base.
 - Ajouter sur la page Carte un bouton de popup permettant d’ouvrir les détails du traceur avec la même modale que la page Traceurs, via le partial et le script partagés `tracker-details`.
+## 2026-06-04 - Correction suppression des traceurs
+
+- Correction de l'erreur `SQLSTATE[23000]` lors de la suppression d'un traceur ayant des positions liees.
+- La suppression du traceur passe maintenant par une transaction applicative.
+- Les positions rattachees au traceur sont supprimees avant la suppression du traceur, afin de respecter la contrainte `positions_device_id_foreign`.
+- Les evenements traceur restent geres par la cascade existante et les alertes conservent leur comportement `nullOnDelete`.
+
+## 2026-06-04 - Mise a jour modeles Teltonika
+
+- Mise a jour de la liste des modeles Teltonika disponibles dans le formulaire traceur.
+- Ajout des familles BASIC, FAST&EASY, ADVANCED, AUTONOMOUS, E-MOBILITY, OBD, CAN et PRO selon la liste fournie.
