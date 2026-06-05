@@ -581,6 +581,14 @@ test('superadmin can open tracker details with fleet and latest events', functio
         'last_battery_voltage' => 4.05,
         'last_movement' => false,
         'operator_name' => 'Vodacom',
+        'last_address' => 'Avenue des Ecuries, Joli Parc, Ngaliema, Kinshasa, Congo-Kinshasa',
+    ]);
+    Position::factory()->forDevice($device)->create([
+        'latitude' => -4.33509,
+        'longitude' => 15.22408,
+        'altitude' => 296,
+        'address' => 'Avenue des Ecuries, Joli Parc, Ngaliema, Kinshasa, Congo-Kinshasa',
+        'server_time' => now(),
     ]);
 
     TrackerEvent::query()->create([
@@ -610,6 +618,8 @@ test('superadmin can open tracker details with fleet and latest events', functio
         ->toContain('Flotte : EXAD CARS')
         ->toContain('Suzuki Swift Horly')
         ->toContain('Alimentation')
+        ->toContain('Avenue des Ecuries')
+        ->toContain('altitude : 296 mètres')
         ->toContain('Parking')
         ->toContain('Tension externe : 12.6 V')
         ->toContain('Vodacom')
@@ -617,7 +627,57 @@ test('superadmin can open tracker details with fleet and latest events', functio
         ->not->toContain('Groupe');
 });
 
+test('tracker details show the latest stopped or parked address', function () {
+    config(['services.google_maps.api_key' => '', 'services.mapbox.public_token' => '']);
+
+    $superadmin = User::factory()->superadmin()->create();
+    $fleet = Fleet::factory()->create(['name' => 'EXAD CARS']);
+    $vehicle = Vehicle::factory()->create([
+        'fleet_id' => $fleet->id,
+        'name' => 'Suzuki Swift Horly',
+    ]);
+    $device = Device::factory()->create([
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $vehicle->id,
+        'last_address' => 'Adresse de position courante',
+        'last_movement' => true,
+        'last_ignition' => true,
+    ]);
+
+    Position::factory()->forDevice($device)->create([
+        'server_time' => now()->setTime(8, 10),
+        'latitude' => -4.328,
+        'longitude' => 15.312,
+        'address' => '128 Rue De Bolobo, Kinshasa, République démocratique du Congo',
+        'movement' => false,
+        'speed' => 0,
+        'ignition' => false,
+    ]);
+    Position::factory()->forDevice($device)->create([
+        'server_time' => now()->setTime(8, 30),
+        'latitude' => -4.331,
+        'longitude' => 15.315,
+        'address' => 'Position courante en mouvement',
+        'movement' => true,
+        'speed' => 24,
+        'ignition' => true,
+    ]);
+
+    $response = $this->actingAs($superadmin)
+        ->withHeader('X-Requested-With', 'XMLHttpRequest')
+        ->getJson(route('trackers.details', $device))
+        ->assertSuccessful();
+
+    expect($response->json('html'))
+        ->toContain('128 Rue De Bolobo')
+        ->not->toContain('Position courante en mouvement');
+
+    expect($device->refresh()->last_address)->toBe('Adresse de position courante');
+});
+
 test('superadmin can display tracker trips as html and geojson', function () {
+    config(['services.google_maps.api_key' => '', 'services.mapbox.public_token' => '']);
+
     $superadmin = User::factory()->superadmin()->create();
     $fleet = Fleet::factory()->create(['name' => 'EXAD CARS']);
     $vehicle = Vehicle::factory()->create([
@@ -665,7 +725,78 @@ test('superadmin can display tracker trips as html and geojson', function () {
         ->and($response->json('geojson.features.0.geometry.type'))->toBe('LineString');
 });
 
+test('tracker trips are built from stopped and parking boundaries with the position timezone', function () {
+    config([
+        'services.maps.provider' => 'google',
+        'services.google_maps.api_key' => 'AIza-test-key',
+        'services.google_maps.roads_enabled' => false,
+        'services.mapbox.public_token' => '',
+    ]);
+
+    Http::fake([
+        'maps.googleapis.com/maps/api/timezone/json*' => Http::response([
+            'status' => 'OK',
+            'timeZoneId' => 'Africa/Kinshasa',
+        ]),
+        'maps.googleapis.com/maps/api/geocode/json*' => Http::response(['status' => 'ZERO_RESULTS']),
+    ]);
+
+    $superadmin = User::factory()->superadmin()->create();
+    $device = Device::factory()->create();
+
+    Position::factory()->forDevice($device)->create([
+        'server_time' => today()->setTime(7, 4),
+        'gps_time' => today()->setTime(7, 4),
+        'latitude' => -4.33507,
+        'longitude' => 15.25042,
+        'address' => 'Avenue De Kapanga, Kinshasa, République démocratique du Congo',
+        'movement' => false,
+        'speed' => 0,
+        'ignition' => false,
+    ]);
+    Position::factory()->forDevice($device)->create([
+        'server_time' => today()->setTime(7, 12),
+        'gps_time' => today()->setTime(7, 12),
+        'latitude' => -4.33400,
+        'longitude' => 15.25600,
+        'address' => 'Point en mouvement',
+        'movement' => true,
+        'speed' => 32,
+        'ignition' => true,
+    ]);
+    Position::factory()->forDevice($device)->create([
+        'server_time' => today()->setTime(7, 19),
+        'gps_time' => today()->setTime(7, 19),
+        'latitude' => -4.32800,
+        'longitude' => 15.31200,
+        'address' => '128 Rue De Bolobo, Kinshasa, République démocratique du Congo',
+        'movement' => false,
+        'speed' => 0,
+        'ignition' => true,
+    ]);
+
+    $response = $this->actingAs($superadmin)
+        ->withHeader('X-Requested-With', 'XMLHttpRequest')
+        ->getJson(route('trackers.trips', ['device' => $device, 'period' => 'today']))
+        ->assertSuccessful()
+        ->assertJsonPath('summary.count', 1);
+
+    expect($response->json('html'))
+        ->toContain('08:04')
+        ->toContain('08:19')
+        ->toContain('Avenue De Kapanga')
+        ->toContain('128 Rue De Bolobo')
+        ->and($response->json('geojson.features.0.geometry.coordinates'))
+        ->toHaveCount(3);
+});
+
 test('tracker trips resolve missing addresses with mapbox reverse geocoding', function () {
+    config([
+        'services.maps.provider' => 'mapbox',
+        'services.google_maps.api_key' => '',
+        'services.mapbox.public_token' => 'pk.test',
+    ]);
+
     Http::fake([
         'api.mapbox.com/search/geocode/v6/reverse*' => Http::response([
             'features' => [
@@ -713,6 +844,89 @@ test('tracker trips resolve missing addresses with mapbox reverse geocoding', fu
     expect($start->refresh()->address)->toBe('Avenue de l’OUA, Ngaliema, Kinshasa, Congo-Kinshasa');
 });
 
+test('tracker trips improve generic addresses with google geocoding and snap path to roads', function () {
+    config([
+        'services.maps.provider' => 'google',
+        'services.google_maps.api_key' => 'AIza-test-key',
+        'services.google_maps.roads_enabled' => true,
+        'services.mapbox.public_token' => '',
+    ]);
+
+    Http::fake([
+        'maps.googleapis.com/maps/api/geocode/json*' => Http::response([
+            'status' => 'OK',
+            'results' => [
+                [
+                    'types' => ['route'],
+                    'formatted_address' => 'Avenue des Ecuries, Joli Parc, Ngaliema, Kinshasa, Congo-Kinshasa',
+                    'geometry' => ['location_type' => 'GEOMETRIC_CENTER'],
+                    'address_components' => [
+                        ['long_name' => 'Avenue des Ecuries', 'types' => ['route']],
+                        ['long_name' => 'Joli Parc', 'types' => ['neighborhood']],
+                        ['long_name' => 'Ngaliema', 'types' => ['sublocality_level_1']],
+                        ['long_name' => 'Kinshasa', 'types' => ['locality']],
+                        ['long_name' => 'Congo-Kinshasa', 'types' => ['country']],
+                    ],
+                ],
+                [
+                    'types' => ['locality'],
+                    'formatted_address' => 'Kinshasa, Kinshasa, République démocratique du Congo',
+                    'geometry' => ['location_type' => 'APPROXIMATE'],
+                ],
+            ],
+        ]),
+        'roads.googleapis.com/v1/snapToRoads*' => Http::response([
+            'snappedPoints' => [
+                ['location' => ['latitude' => -4.33510, 'longitude' => 15.25010]],
+                ['location' => ['latitude' => -4.33520, 'longitude' => 15.25110]],
+                ['location' => ['latitude' => -4.33540, 'longitude' => 15.25210]],
+            ],
+        ]),
+        'maps.googleapis.com/maps/api/timezone/json*' => Http::response([
+            'status' => 'OK',
+            'timeZoneId' => 'Africa/Kinshasa',
+        ]),
+    ]);
+
+    $superadmin = User::factory()->superadmin()->create();
+    $device = Device::factory()->create();
+    $start = Position::factory()->forDevice($device)->create([
+        'server_time' => now()->setTime(7, 4),
+        'gps_time' => now()->setTime(7, 4),
+        'latitude' => -4.33507,
+        'longitude' => 15.25042,
+        'address' => 'Kinshasa, Kinshasa, République démocratique du Congo',
+        'movement' => true,
+        'speed' => 24,
+    ]);
+    Position::factory()->forDevice($device)->create([
+        'server_time' => now()->setTime(7, 19),
+        'gps_time' => now()->setTime(7, 19),
+        'latitude' => -4.33590,
+        'longitude' => 15.25240,
+        'address' => 'Kinshasa, Kinshasa, République démocratique du Congo',
+        'movement' => true,
+        'speed' => 21,
+    ]);
+
+    $response = $this->actingAs($superadmin)
+        ->withHeader('X-Requested-With', 'XMLHttpRequest')
+        ->getJson(route('trackers.trips', ['device' => $device, 'period' => 'today']))
+        ->assertSuccessful();
+
+    expect($response->json('html'))
+        ->toContain('Avenue des Ecuries')
+        ->not->toContain('Kinshasa, Kinshasa, République démocratique du Congo')
+        ->and($response->json('geojson.features.0.geometry.coordinates'))
+        ->toBe([
+            [15.2501, -4.3351],
+            [15.2511, -4.3352],
+            [15.2521, -4.3354],
+        ])
+        ->and($start->refresh()->address)
+        ->toBe('Avenue des Ecuries, Joli Parc, Ngaliema, Kinshasa, Congo-Kinshasa');
+});
+
 test('authenticated users can view the map page with google maps as default provider', function () {
     $user = User::factory()->superadmin()->create();
     config([
@@ -749,6 +963,8 @@ test('mapbox provider remains available for the future map selector', function (
 });
 
 test('map devices endpoint returns geojson for every positioned tracker to superadmin', function () {
+    config(['services.google_maps.api_key' => '']);
+
     $subscription = Subscription::factory()->create();
     $admin = User::factory()->admin($subscription)->create();
     $otherAdmin = User::factory()->admin()->create();
@@ -796,6 +1012,40 @@ test('map devices endpoint returns geojson for every positioned tracker to super
         'last_seen_at' => now(),
     ]);
 
+    $movingVehicle = Vehicle::factory()->create([
+        'fleet_id' => $fleet->id,
+        'name' => 'Toyota Mouvement',
+        'registration_number' => 'MAP-003',
+    ]);
+    $movingDevice = Device::factory()->create([
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $movingVehicle->id,
+        'imei' => '356307042441015',
+        'name' => 'Traceur Mouvement',
+        'status' => 'online',
+        'last_latitude' => -4.328,
+        'last_longitude' => 15.315,
+        'last_speed' => 36,
+        'last_movement' => true,
+        'last_ignition' => true,
+        'last_angle' => 180,
+        'last_seen_at' => now(),
+    ]);
+    Position::factory()->forDevice($movingDevice)->create([
+        'latitude' => -4.330,
+        'longitude' => 15.314,
+        'speed' => 32,
+        'movement' => true,
+        'server_time' => now()->subMinutes(3),
+    ]);
+    Position::factory()->forDevice($movingDevice)->create([
+        'latitude' => -4.329,
+        'longitude' => 15.3145,
+        'speed' => 34,
+        'movement' => true,
+        'server_time' => now()->subMinute(),
+    ]);
+
     $hiddenFleet = Fleet::factory()->create(['subscription_id' => null, 'name' => 'Flotte cachee carte']);
     $hiddenFleet->users()->attach($otherAdmin->id, ['permission' => 'manager']);
     $hiddenVehicle = Vehicle::factory()->create(['fleet_id' => $hiddenFleet->id]);
@@ -812,15 +1062,16 @@ test('map devices endpoint returns geojson for every positioned tracker to super
         ->getJson(route('map.devices'))
         ->assertSuccessful()
         ->assertJsonPath('geojson.type', 'FeatureCollection')
-        ->assertJsonPath('summary.total', 3)
-        ->assertJsonPath('summary.positioned', 3);
+        ->assertJsonPath('summary.total', 4)
+        ->assertJsonPath('summary.positioned', 4);
 
     $features = collect($response->json('geojson.features'));
     $toyotaFeature = $features->firstWhere('properties.vehicle', 'Toyota Carte');
     $idleFeature = $features->firstWhere('properties.vehicle', 'Toyota Ralenti');
+    $movingFeature = $features->firstWhere('properties.vehicle', 'Toyota Mouvement');
 
     expect($features->all())
-        ->toHaveCount(3)
+        ->toHaveCount(4)
         ->and($features->pluck('properties.vehicle')->all())
         ->toContain('Toyota Carte')
         ->and($toyotaFeature['properties']['is_parking'])
@@ -831,6 +1082,10 @@ test('map devices endpoint returns geojson for every positioned tracker to super
         ->toBeFalse()
         ->and($idleFeature['properties']['is_stationary_running'])
         ->toBeTrue()
+        ->and($movingFeature['properties']['is_moving'])
+        ->toBeTrue()
+        ->and($movingFeature['properties']['trail'])
+        ->toHaveCount(3)
         ->and($response->json('geojson.features.0.properties.details_url'))->toContain('/trackers/')
         ->and($response->json('geojson.features.0.properties.trips_url'))->toContain('/trackers/');
 });

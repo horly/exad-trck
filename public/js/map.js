@@ -14,19 +14,29 @@
     const refreshButton = document.querySelector('[data-map-refresh]');
     const fitButton = document.querySelector('[data-map-fit]');
     const autoInput = document.querySelector('[data-map-auto]');
+    const showAllInput = document.querySelector('[data-map-show-all]');
+    const resultsPanel = document.querySelector('[data-map-results]');
+    const resultsList = document.querySelector('[data-map-results-list]');
+    const resultsCount = document.querySelector('[data-map-results-count]');
+    const panelToggle = document.querySelector('[data-map-panel-toggle]');
+    const panelClose = document.querySelector('[data-map-panel-close]');
     const lastUpdate = document.querySelector('[data-map-last-update]');
     const counters = Array.from(document.querySelectorAll('[data-map-count]'));
     const messages = config.messages || {};
 
     let map;
+    let serverGeojson = { type: 'FeatureCollection', features: [] };
     let latestGeojson = { type: 'FeatureCollection', features: [] };
+    let selectedDeviceId = null;
+    let selectedMarker = null;
     let refreshTimer;
     let searchTimer;
 
     const statusColors = {
         online: '#10b981',
+        moving: '#229bd8',
         parking: '#22a7df',
-        stationaryRunning: '#f59e0b',
+        stationaryRunning: '#229bd8',
         inactive: '#ef4444',
         offline: '#f59e0b',
         maintenance: '#8b5cf6',
@@ -76,6 +86,44 @@
         ],
     ];
 
+    const markerState = (properties) => {
+        if (properties.is_moving) {
+            return 'moving';
+        }
+
+        if (properties.is_parking) {
+            return 'parking';
+        }
+
+        if (properties.is_stationary_running) {
+            return 'stationary-running';
+        }
+
+        return properties.status || 'online';
+    };
+
+    const markerGlyph = (properties) => {
+        if (properties.is_moving) {
+            return '';
+        }
+
+        if (properties.is_parking) {
+            return 'P';
+        }
+
+        return '';
+    };
+
+    const vehicleMarkerHtml = (properties, isSelected = false) => `
+        <span
+            class="map-vehicle-marker state-${escapeHtml(markerState(properties))}${isSelected ? ' is-selected' : ''}"
+            style="--marker-angle: ${Number(properties.angle || 0)}deg"
+        >
+            <span class="map-vehicle-marker__icon">${escapeHtml(markerGlyph(properties))}</span>
+            <span class="map-vehicle-marker__label">${escapeHtml(properties.vehicle)} ${escapeHtml(properties.registration)}</span>
+        </span>
+    `;
+
     const updateCounters = (summary = {}) => {
         counters.forEach((counter) => {
             const key = counter.dataset.mapCount;
@@ -123,7 +171,7 @@
     const popupHtml = (properties) => `
         <div class="map-popup">
             <div class="map-popup-header">
-                <span class="map-popup-dot status-${escapeHtml(properties.is_parking ? 'parking' : (properties.is_stationary_running ? 'stationary-running' : properties.status))}"></span>
+                <span class="map-popup-dot status-${escapeHtml(markerState(properties))}"></span>
                 <div>
                     <strong class="map-popup-title">${escapeHtml(properties.vehicle)}</strong>
                     <span class="map-popup-subtitle">${escapeHtml(properties.status_label)} · ${escapeHtml(properties.imei)}</span>
@@ -175,16 +223,141 @@
         </div>
     `;
 
+    const openMapboxPopup = (feature) => {
+        new mapboxgl.Popup({
+            closeButton: true,
+            closeOnClick: true,
+            maxWidth: '320px',
+        })
+            .setLngLat(feature.geometry.coordinates)
+            .setHTML(popupHtml(feature.properties))
+            .addTo(map);
+    };
+
+    const displayedGeojson = () => {
+        if (showAllInput.checked) {
+            return serverGeojson;
+        }
+
+        if (selectedDeviceId === null) {
+            return { type: 'FeatureCollection', features: [] };
+        }
+
+        return {
+            type: 'FeatureCollection',
+            features: serverGeojson.features.filter((feature) => String(feature.properties.id) === String(selectedDeviceId)),
+        };
+    };
+
+    const renderSearchResults = (geojson) => {
+        const hasSearch = searchInput.value.trim() !== '';
+
+        resultsPanel.hidden = !hasSearch;
+        resultsList.innerHTML = '';
+
+        if (!hasSearch) {
+            resultsCount.textContent = '0';
+            return;
+        }
+
+        const features = geojson.features || [];
+        resultsCount.textContent = String(features.length);
+
+        if (!features.length) {
+            resultsList.innerHTML = `<p class="map-result-empty">${escapeHtml(messages.noResults || 'No result found.')}</p>`;
+            return;
+        }
+
+        features.slice(0, 12).forEach((feature) => {
+            const properties = feature.properties;
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = `map-result-item${String(properties.id) === String(selectedDeviceId) ? ' is-selected' : ''}`;
+            item.setAttribute('aria-label', `${messages.selectVehicle || 'Select vehicle'} ${properties.vehicle}`);
+            item.innerHTML = `
+                <span class="map-result-icon state-${escapeHtml(markerState(properties))}">${escapeHtml(markerGlyph(properties))}</span>
+                <span class="map-result-body">
+                    <strong class="map-result-title">${escapeHtml(properties.vehicle)} ${escapeHtml(properties.registration)}</strong>
+                    <span class="map-result-meta">${escapeHtml(properties.imei)} · ${escapeHtml(properties.fleet)} · ${escapeHtml(properties.status_label)}</span>
+                </span>
+            `;
+            item.addEventListener('click', () => {
+                selectedDeviceId = properties.id;
+                showAllInput.checked = false;
+                renderCurrentMap({ fit: true });
+            });
+            resultsList.appendChild(item);
+        });
+    };
+
+    const renderSelectedMarker = () => {
+        if (selectedMarker) {
+            selectedMarker.remove();
+            selectedMarker = null;
+        }
+
+        const feature = latestGeojson.features.find((feature) => String(feature.properties.id) === String(selectedDeviceId));
+
+        if (!feature) {
+            return;
+        }
+
+        const element = document.createElement('div');
+        element.className = 'mapbox-vehicle-marker';
+        element.innerHTML = vehicleMarkerHtml(feature.properties, true);
+        element.addEventListener('click', () => openMapboxPopup(feature));
+
+        selectedMarker = new mapboxgl.Marker({
+            element,
+            anchor: 'center',
+        })
+            .setLngLat(feature.geometry.coordinates)
+            .addTo(map);
+    };
+
     const setMapData = (geojson) => {
         latestGeojson = geojson || { type: 'FeatureCollection', features: [] };
         const source = map.getSource('devices');
+        const trailsSource = map.getSource('device-trails');
 
         if (source) {
             source.setData(latestGeojson);
         }
 
-        emptyState.hidden = latestGeojson.features.length > 0;
+        if (trailsSource) {
+            trailsSource.setData(buildTrailGeojson(latestGeojson));
+        }
+
+        renderSelectedMarker();
+
+        const hasIntentionalDisplay = showAllInput.checked || selectedDeviceId !== null;
+        emptyState.hidden = !hasIntentionalDisplay || latestGeojson.features.length > 0;
     };
+
+    const renderCurrentMap = ({ fit = false } = {}) => {
+        renderSearchResults(serverGeojson);
+        setMapData(displayedGeojson());
+
+        if (fit) {
+            fitToFeatures();
+        }
+    };
+
+    const buildTrailGeojson = (geojson) => ({
+        type: 'FeatureCollection',
+        features: (geojson.features || [])
+            .filter((feature) => feature.properties?.is_moving && Array.isArray(feature.properties.trail) && feature.properties.trail.length > 1)
+            .map((feature) => ({
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: feature.properties.trail,
+                },
+                properties: {
+                    id: feature.properties.id,
+                },
+            })),
+    });
 
     const loadDevices = async ({ fit = false } = {}) => {
         const url = `${config.devicesUrl}${queryParams() ? `?${queryParams()}` : ''}`;
@@ -204,16 +377,13 @@
 
             const payload = await response.json();
             updateCounters(payload.summary || {});
-            setMapData(payload.geojson);
+            serverGeojson = payload.geojson || { type: 'FeatureCollection', features: [] };
+            renderCurrentMap({ fit });
             lastUpdate.textContent = new Date().toLocaleTimeString([], {
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
             });
-
-            if (fit) {
-                fitToFeatures();
-            }
         } catch (error) {
             console.error(error);
         } finally {
@@ -228,6 +398,36 @@
             cluster: true,
             clusterMaxZoom: 14,
             clusterRadius: 52,
+        });
+
+        map.addSource('device-trails', {
+            type: 'geojson',
+            data: buildTrailGeojson(latestGeojson),
+            lineMetrics: true,
+        });
+
+        map.addLayer({
+            id: 'device-trails',
+            type: 'line',
+            source: 'device-trails',
+            layout: {
+                'line-cap': 'round',
+                'line-join': 'round',
+            },
+            paint: {
+                'line-width': 5,
+                'line-gradient': [
+                    'interpolate',
+                    ['linear'],
+                    ['line-progress'],
+                    0,
+                    'rgba(34, 155, 216, 0.12)',
+                    0.55,
+                    'rgba(34, 155, 216, 0.45)',
+                    1,
+                    'rgba(34, 155, 216, 0.88)',
+                ],
+            },
         });
 
         map.addLayer({
@@ -262,7 +462,12 @@
             id: 'device-halo',
             type: 'circle',
             source: 'devices',
-            filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'is_stationary_running'], true]],
+            filter: [
+                'all',
+                ['!', ['has', 'point_count']],
+                ['!=', ['get', 'is_stationary_running'], true],
+                ['!=', ['get', 'is_moving'], true],
+            ],
             paint: {
                 'circle-radius': 15,
                 'circle-color': statusColorExpression,
@@ -274,7 +479,12 @@
             id: 'devices',
             type: 'circle',
             source: 'devices',
-            filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'is_stationary_running'], true]],
+            filter: [
+                'all',
+                ['!', ['has', 'point_count']],
+                ['!=', ['get', 'is_stationary_running'], true],
+                ['!=', ['get', 'is_moving'], true],
+            ],
             paint: {
                 'circle-radius': 7,
                 'circle-color': statusColorExpression,
@@ -314,6 +524,27 @@
             },
             paint: {
                 'text-color': statusColors.stationaryRunning,
+                'text-halo-color': '#ffffff',
+                'text-halo-width': 2,
+            },
+        });
+
+        map.addLayer({
+            id: 'device-moving-arrows',
+            type: 'symbol',
+            source: 'devices',
+            filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'is_moving'], true]],
+            layout: {
+                'text-field': '▲',
+                'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                'text-size': 24,
+                'text-rotate': ['get', 'angle'],
+                'text-rotation-alignment': 'map',
+                'text-allow-overlap': true,
+                'text-ignore-placement': true,
+            },
+            paint: {
+                'text-color': statusColors.moving,
                 'text-halo-color': '#ffffff',
                 'text-halo-width': 2,
             },
@@ -374,20 +605,16 @@
         const openDevicePopup = (event) => {
             const feature = event.features[0];
 
-            new mapboxgl.Popup({
-                closeButton: true,
-                closeOnClick: true,
-                maxWidth: '320px',
-            })
-                .setLngLat(feature.geometry.coordinates)
-                .setHTML(popupHtml(feature.properties))
-                .addTo(map);
+            selectedDeviceId = feature.properties.id;
+            renderCurrentMap();
+            openMapboxPopup(feature);
         };
 
         map.on('click', 'devices', openDevicePopup);
         map.on('click', 'device-stationary-symbols', openDevicePopup);
+        map.on('click', 'device-moving-arrows', openDevicePopup);
 
-        ['clusters', 'devices', 'device-stationary-symbols'].forEach((layer) => {
+        ['clusters', 'devices', 'device-stationary-symbols', 'device-moving-arrows'].forEach((layer) => {
             map.on('mouseenter', layer, () => {
                 map.getCanvas().style.cursor = 'pointer';
             });
@@ -425,18 +652,34 @@
 
     map.on('load', () => {
         addLayers();
-        loadDevices({ fit: true });
+        loadDevices();
         scheduleAutoRefresh();
     });
 
     refreshButton.addEventListener('click', () => loadDevices());
     fitButton.addEventListener('click', fitToFeatures);
     autoInput.addEventListener('change', scheduleAutoRefresh);
-    statusFilter.addEventListener('change', () => loadDevices({ fit: true }));
-    fleetFilter.addEventListener('change', () => loadDevices({ fit: true }));
+    showAllInput.addEventListener('change', () => {
+        if (!showAllInput.checked) {
+            selectedDeviceId = null;
+        }
+
+        renderCurrentMap({ fit: showAllInput.checked });
+    });
+    panelToggle.addEventListener('click', () => shell.classList.remove('is-panel-collapsed'));
+    panelClose.addEventListener('click', () => shell.classList.add('is-panel-collapsed'));
+    statusFilter.addEventListener('change', () => {
+        selectedDeviceId = null;
+        loadDevices({ fit: showAllInput.checked });
+    });
+    fleetFilter.addEventListener('change', () => {
+        selectedDeviceId = null;
+        loadDevices({ fit: showAllInput.checked });
+    });
     searchInput.addEventListener('input', () => {
+        selectedDeviceId = null;
         clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => loadDevices({ fit: true }), 280);
+        searchTimer = setTimeout(() => loadDevices({ fit: showAllInput.checked }), 280);
     });
 
     document.addEventListener('exad:trips-loaded', (event) => {

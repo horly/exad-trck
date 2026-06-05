@@ -92,6 +92,7 @@ return [
     'percent_value' => ':value%',
     'unknown_value' => '-',
     'coordinates_value' => 'Latitude: :latitude, Longitude: :longitude',
+    'altitude_value' => '(altitude: :altitude meters)',
     'coordinates_unavailable' => 'Coordinates unavailable',
     'moving_now' => 'Moving',
     'parking_value' => 'Parking: :duration',

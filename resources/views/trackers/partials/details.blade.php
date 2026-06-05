@@ -6,6 +6,10 @@
     $modelLabel = trim(($device->brand ? __('trackers.brand_' . $device->brand) : '') . ' ' . (string) $device->model);
     $formatVoltage = fn ($value) => $value !== null ? rtrim(rtrim(number_format((float) $value, 2, '.', ''), '0'), '.') : null;
     $parkingDuration = $device->last_position_at ? $device->last_position_at->diffForHumans(null, true) : null;
+    $locationAddress = $latestPosition?->address ?: $device->last_address;
+    $locationLatitude = $latestPosition?->latitude ?? $device->last_latitude;
+    $locationLongitude = $latestPosition?->longitude ?? $device->last_longitude;
+    $locationAltitude = $latestPosition?->altitude;
 @endphp
 
 <div class="tracker-details-grid">
@@ -49,8 +53,8 @@
             <div>
                 <dt><i class="fa-solid fa-location-crosshairs"></i></dt>
                 <dd>
-                    @if ($device->last_latitude && $device->last_longitude)
-                        {{ __('trackers.coordinates_value', ['latitude' => $device->last_latitude, 'longitude' => $device->last_longitude]) }}
+                    @if ($locationLatitude && $locationLongitude)
+                        {{ __('trackers.coordinates_value', ['latitude' => $locationLatitude, 'longitude' => $locationLongitude]) }}
                     @else
                         {{ __('trackers.coordinates_unavailable') }}
                     @endif
@@ -74,7 +78,17 @@
             </div>
             <div>
                 <dt><i class="fa-solid fa-house-chimney"></i></dt>
-                <dd>{{ $device->last_address ?: __('trackers.address_unavailable') }}</dd>
+                <dd>
+                    <span class="tracker-location-address">{{ $locationAddress ?: __('trackers.address_unavailable') }}</span>
+                    @if ($locationLatitude && $locationLongitude)
+                        <small class="tracker-location-meta">
+                            {{ __('trackers.coordinates_value', ['latitude' => $locationLatitude, 'longitude' => $locationLongitude]) }}
+                            @if ($locationAltitude !== null)
+                                {{ __('trackers.altitude_value', ['altitude' => $locationAltitude]) }}
+                            @endif
+                        </small>
+                    @endif
+                </dd>
             </div>
         </dl>
 

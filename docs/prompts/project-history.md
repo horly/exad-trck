@@ -170,3 +170,15 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Retrait du style Google Maps qui masquait les POI et le transit, afin d'afficher une carte plus detaillee avec lieux, commerces et libelles standards comme sur Navixy.
 - Ajout de l'état visuel parking sur la carte : les traceurs en ligne, arrêtés et moteur coupé s'affichent avec un marqueur bleu `P`, compatible Google Maps et Mapbox.
 - Ajout de l'état visuel arrêt moteur allumé : les traceurs en ligne, arrêtés et moteur allumé s'affichent avec un marqueur carré pour les distinguer du parking.
+- Ajout de l'état visuel en mouvement : les traceurs en ligne et mobiles s'affichent avec une flèche bleue orientée par l'angle GPS et une trace récente qui disparaît progressivement derrière le véhicule.
+- La page Carte n'affiche plus les véhicules par défaut : une case permet d'afficher tous les véhicules, la recherche affiche une liste de résultats, et la sélection d'un véhicule affiche uniquement ce véhicule avec sa légende.
+- Ajout du panneau de filtres carte repliable, avec bouton flottant pour le réafficher comme dans une interface de tracking type Navixy.
+- Amélioration de la précision des emplacements : reverse geocoding Google prioritaire avec fallback Mapbox, remplacement des adresses trop génériques et affichage adresse + coordonnées + altitude dans les détails traceur.
+- Amélioration de l'historique des trajets : ajout d'un service de recalage Google Roads optionnel pour faire suivre la ligne du parcours aux routes disponibles, avec fallback automatique sur les points GPS bruts.
+- Correction de la logique d'historique des trajets : un trajet est maintenant borné par les points d'arrêt/parking, afin d'afficher les lieux où le véhicule s'est arrêté ou s'est mis en parking.
+- Correction de l'heure affichée dans les trajets : l'heure est convertie selon le fuseau horaire de la position GPS via Google Time Zone API, avec fallback `Africa/Kinshasa` lorsque l'API n'est pas disponible.
+- La fiche détails traceur affiche maintenant la dernière adresse d'arrêt/parking connue plutôt que l'adresse courante du serveur si le véhicule est déjà reparti.
+- Correction des marqueurs de la carte : flèche directionnelle bleue sans cercle pour les véhicules en mouvement, `P` bleu pour le parking et carré bleu pour un véhicule arrêté moteur allumé.
+- Le label du véhicule est maintenant ancré à droite du marqueur sans déplacer visuellement la position GPS du véhicule.
+- Le recalage Google Roads est aussi utilisé pour la position affichée sur la carte lorsque possible, afin de réduire les écarts visuels par rapport à la route.
+- Les micro-segments de trajet sans distance réelle sont filtrés pour éviter les lignes parasites à `0.00 km` dans l'historique.

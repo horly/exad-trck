@@ -1999,6 +1999,20 @@ body.theme-dark .alert-summary-card small {
     margin: 0;
 }
 
+.tracker-location-address {
+    color: var(--exad-ink);
+    display: block;
+    font-weight: 820;
+}
+
+.tracker-location-meta {
+    color: #7b8da8;
+    display: block;
+    font-size: 0.74rem;
+    font-weight: 720;
+    margin-top: 3px;
+}
+
 .tracker-status-dot {
     border-radius: 50%;
     display: inline-flex;
@@ -2647,6 +2661,7 @@ body.theme-dark .alert-summary-card small {
 .dashboard-dark .search-select-toggle,
 .dashboard-dark .search-select-empty,
 .dashboard-dark .tracker-details-list dd,
+.dashboard-dark .tracker-location-meta,
 .dashboard-dark .tracker-details-time,
 .dashboard-dark .tracker-event-item p,
 .dashboard-dark .tracker-event-item time,
@@ -2661,6 +2676,10 @@ body.theme-dark .alert-summary-card small {
 }
 
 .dashboard-dark .search-select-option {
+    color: #eef5ff;
+}
+
+.dashboard-dark .tracker-location-address {
     color: #eef5ff;
 }
 

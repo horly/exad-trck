@@ -10,9 +10,13 @@ use Illuminate\Support\Collection;
 class DeviceTripService
 {
     private const MAX_GAP_MINUTES = 15;
+    private const MIN_TRIP_DISTANCE_KM = 0.05;
 
-    public function __construct(private readonly ReverseGeocodingService $reverseGeocoding)
-    {
+    public function __construct(
+        private readonly ReverseGeocodingService $reverseGeocoding,
+        private readonly GoogleRoadsService $googleRoads,
+        private readonly LocationTimezoneService $locationTimezone,
+    ) {
     }
 
     /**
@@ -34,7 +38,7 @@ class DeviceTripService
             ->orderBy('id')
             ->get();
 
-        $segments = $this->movingSegments($positions);
+        $segments = $this->tripSegments($positions);
         $trips = [];
 
         foreach ($segments as $index => $segment) {
@@ -70,22 +74,14 @@ class DeviceTripService
      * @param  Collection<int, Position>  $positions
      * @return list<Collection<int, Position>>
      */
-    private function movingSegments(Collection $positions): array
+    private function tripSegments(Collection $positions): array
     {
         $segments = [];
         $current = collect();
         $previous = null;
+        $lastStop = null;
 
         foreach ($positions as $position) {
-            $isMoving = $position->movement ?? ((int) $position->speed > 0);
-
-            if (! $isMoving) {
-                $this->pushSegment($segments, $current);
-                $current = collect();
-                $previous = $position;
-                continue;
-            }
-
             if (
                 $previous instanceof Position
                 && $current->isNotEmpty()
@@ -95,7 +91,23 @@ class DeviceTripService
                 $current = collect();
             }
 
-            $current->push($position);
+            if ($this->isMovingPosition($position)) {
+                if ($current->isEmpty() && $lastStop instanceof Position) {
+                    $current->push($lastStop);
+                }
+
+                $current->push($position);
+                $previous = $position;
+                continue;
+            }
+
+            if ($current->isNotEmpty()) {
+                $current->push($position);
+                $this->pushSegment($segments, $current);
+                $current = collect();
+            }
+
+            $lastStop = $position;
             $previous = $position;
         }
 
@@ -110,7 +122,11 @@ class DeviceTripService
      */
     private function pushSegment(array &$segments, Collection $segment): void
     {
-        if ($segment->count() < 2) {
+        if ($segment->count() < 2 || ! $segment->contains(fn (Position $position): bool => $this->isMovingPosition($position))) {
+            return;
+        }
+
+        if ($this->distanceFor($segment) < self::MIN_TRIP_DISTANCE_KM) {
             return;
         }
 
@@ -128,27 +144,42 @@ class DeviceTripService
         /** @var Position $end */
         $end = $positions->last();
         $distance = $this->distanceFor($positions);
-        $duration = max(0, (int) $start->server_time->diffInSeconds($end->server_time));
+        $startTimestamp = $this->timestampFor($start);
+        $endTimestamp = $this->timestampFor($end);
+        $startTime = $this->localTimeFor($start);
+        $endTime = $this->localTimeFor($end);
+        $duration = max(0, (int) $startTimestamp->diffInSeconds($endTimestamp));
 
         return [
             'index' => $index,
-            'date' => $start->server_time->format('d.m.Y'),
-            'start_time' => $start->server_time->format('H:i'),
-            'end_time' => $end->server_time->format('H:i'),
+            'date' => $startTime->format('d.m.Y'),
+            'start_time' => $startTime->format('H:i'),
+            'end_time' => $endTime->format('H:i'),
             'start_address' => $this->addressFor($start),
             'end_address' => $this->addressFor($end),
             'distance_km' => round($distance, 2),
             'distance_label' => __('trackers.trip_distance_value', ['distance' => number_format($distance, 2, '.', '')]),
             'duration_seconds' => $duration,
             'duration_label' => $this->durationLabel($duration),
-            'coordinates' => $positions
-                ->map(fn (Position $position): array => [
-                    (float) $position->longitude,
-                    (float) $position->latitude,
-                ])
-                ->values()
-                ->all(),
+            'coordinates' => $this->googleRoads->snap($positions),
         ];
+    }
+
+    private function isMovingPosition(Position $position): bool
+    {
+        return (bool) ($position->movement ?? ((int) $position->speed > 0));
+    }
+
+    private function timestampFor(Position $position): Carbon
+    {
+        return ($position->gps_time ?: $position->server_time ?: now())->copy();
+    }
+
+    private function localTimeFor(Position $position): Carbon
+    {
+        $timestamp = $this->timestampFor($position);
+
+        return $timestamp->copy()->setTimezone($this->locationTimezone->forPosition($position, $timestamp));
     }
 
     /**
@@ -189,23 +220,19 @@ class DeviceTripService
 
     private function addressFor(Position $position): string
     {
-        if ($position->address) {
-            return $position->address;
-        }
-
         $payloadAddress = data_get($position->raw_data, 'payload.address');
+        $currentAddress = $position->address ?: (is_string($payloadAddress) ? $payloadAddress : null);
 
-        if (is_string($payloadAddress) && $payloadAddress !== '') {
-            return $payloadAddress;
-        }
-
-        $resolvedAddress = $this->reverseGeocoding->resolve(
+        $resolvedAddress = $this->reverseGeocoding->resolveBest(
             (float) $position->latitude,
             (float) $position->longitude,
+            $currentAddress,
         );
 
         if ($resolvedAddress !== null) {
-            $position->forceFill(['address' => $resolvedAddress])->save();
+            if ($position->address !== $resolvedAddress) {
+                $position->forceFill(['address' => $resolvedAddress])->save();
+            }
 
             return $resolvedAddress;
         }

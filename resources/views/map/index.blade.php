@@ -12,7 +12,7 @@
     @endif
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260602-tracker-trips-shared">
-    <link rel="stylesheet" href="{{ asset('css/map.css') }}?v=20260605-map-stop-states">
+    <link rel="stylesheet" href="{{ asset('css/map.css') }}?v=20260605-map-selective-display">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -31,16 +31,24 @@
 
             <section class="map-workspace" data-map-shell>
                 <div id="trackingMap" class="tracking-map" aria-label="{{ __('map.title') }}"></div>
+                <button type="button" class="map-panel-toggle" aria-label="{{ __('map.show_filters') }}" data-map-panel-toggle>
+                    <i class="fa-solid fa-sliders"></i>
+                </button>
 
-                <aside class="map-panel" aria-label="{{ __('map.filters') }}">
+                <aside class="map-panel" aria-label="{{ __('map.filters') }}" data-map-panel>
                     <div class="map-panel-header">
                         <div>
                             <span>{{ __('map.filters') }}</span>
                             <strong>{{ __('map.title') }}</strong>
                         </div>
-                        <button type="button" class="icon-action" aria-label="{{ __('map.refresh') }}" data-map-refresh>
-                            <i class="fa-solid fa-rotate"></i>
-                        </button>
+                        <div class="map-panel-tools">
+                            <button type="button" class="icon-action" aria-label="{{ __('map.refresh') }}" data-map-refresh>
+                                <i class="fa-solid fa-rotate"></i>
+                            </button>
+                            <button type="button" class="icon-action" aria-label="{{ __('map.hide_filters') }}" data-map-panel-close>
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="map-stats">
@@ -61,6 +69,11 @@
                             <strong data-map-count="inactive">{{ $summary['inactive'] }}</strong>
                         </div>
                     </div>
+
+                    <label class="map-visibility-toggle">
+                        <input type="checkbox" data-map-show-all>
+                        <span>{{ __('map.show_all_vehicles') }}</span>
+                    </label>
 
                     <div class="map-filter-grid">
                         <label class="map-filter">
@@ -91,6 +104,14 @@
                                 <input type="search" class="form-control" placeholder="{{ __('map.search') }}" data-map-search>
                             </div>
                         </label>
+                    </div>
+
+                    <div class="map-search-results" hidden data-map-results>
+                        <div class="map-results-header">
+                            <span>{{ __('map.search_results') }}</span>
+                            <strong data-map-results-count>0</strong>
+                        </div>
+                        <div class="map-results-list" data-map-results-list></div>
                     </div>
 
                     <div class="map-actions">
@@ -141,6 +162,8 @@
                 'speed' => __('map.popup_speed'),
                 'lastSignal' => __('map.popup_last_signal'),
                 'registration' => __('map.popup_registration'),
+                'noResults' => __('map.no_results'),
+                'selectVehicle' => __('map.select_vehicle'),
                 'details' => __('trackers.details'),
                 'trips' => __('trackers.trips'),
                 'kmh' => __('map.kmh'),
@@ -160,12 +183,12 @@
     <script src="{{ asset('js/tracker-details.js') }}?v=20260602-details-shared"></script>
     <script src="{{ asset('js/tracker-trips.js') }}?v=20260602-trips-shared"></script>
     @if ($mapProvider === 'google')
-        <script src="{{ asset('js/google-map.js') }}?v=20260605-google-maps-stop-states"></script>
+        <script src="{{ asset('js/google-map.js') }}?v=20260605-google-maps-selective-display"></script>
         @if ($googleMapsApiKey !== '')
             <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ urlencode($googleMapsApiKey) }}&callback=initExadGoogleMap"></script>
         @endif
     @else
-        <script src="{{ asset('js/map.js') }}?v=20260605-mapbox-stop-states"></script>
+        <script src="{{ asset('js/map.js') }}?v=20260605-mapbox-selective-display"></script>
     @endif
 </body>
 </html>

@@ -32,6 +32,11 @@ return [
 
     'google_maps' => [
         'api_key' => env('GOOGLE_MAPS_API_KEY'),
+        'roads_enabled' => env('GOOGLE_MAPS_ROADS_ENABLED', true),
+    ],
+
+    'gps' => [
+        'fallback_timezone' => env('GPS_FALLBACK_TIMEZONE', 'Africa/Kinshasa'),
     ],
 
     'ses' => [

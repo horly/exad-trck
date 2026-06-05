@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Device;
+use App\Models\Position;
 use App\Models\Vehicle;
 use App\Services\DeviceTripService;
+use App\Services\ReverseGeocodingService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
@@ -326,7 +328,7 @@ class DeviceController extends Controller
             ->with('status_type', 'danger');
     }
 
-    public function details(Request $request, Device $device): JsonResponse
+    public function details(Request $request, Device $device, ReverseGeocodingService $reverseGeocoding): JsonResponse
     {
         abort_unless(
             Device::query()->visibleTo($request->user())->whereKey($device->id)->exists(),
@@ -342,10 +344,39 @@ class DeviceController extends Controller
                 ->latest('id')
                 ->limit(5),
         ]);
+        $latestPosition = Position::query()
+            ->where('device_id', $device->id)
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->latest('server_time')
+            ->latest('id')
+            ->first(['id', 'device_id', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'movement', 'ignition']);
+        $locationPosition = Position::query()
+            ->where('device_id', $device->id)
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->where(function ($query): void {
+                $query
+                    ->where('movement', false)
+                    ->orWhere('speed', 0)
+                    ->orWhere('ignition', false);
+            })
+            ->latest('server_time')
+            ->latest('id')
+            ->first(['id', 'device_id', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'movement', 'ignition'])
+            ?: $latestPosition;
+
+        $this->refreshReadableAddress(
+            $device,
+            $locationPosition,
+            $reverseGeocoding,
+            $locationPosition instanceof Position && $latestPosition instanceof Position && $locationPosition->is($latestPosition),
+        );
 
         return response()->json([
             'html' => view('trackers.partials.details', [
                 'device' => $device,
+                'latestPosition' => $locationPosition,
                 'gpsQuality' => $this->gpsQuality($device),
                 'direction' => $this->directionLabel((int) $device->last_angle),
             ])->render(),
@@ -391,6 +422,40 @@ class DeviceController extends Controller
         }
 
         abort_unless($this->manageableVehicles($request)->contains('id', $device->vehicle_id), 403);
+    }
+
+    private function refreshReadableAddress(
+        Device $device,
+        ?Position $latestPosition,
+        ReverseGeocodingService $reverseGeocoding,
+        bool $syncDeviceAddress = true,
+    ): void {
+        $latitude = $latestPosition?->latitude ?? $device->last_latitude;
+        $longitude = $latestPosition?->longitude ?? $device->last_longitude;
+
+        if ($latitude === null || $longitude === null) {
+            return;
+        }
+
+        $resolvedAddress = $reverseGeocoding->resolveBest(
+            (float) $latitude,
+            (float) $longitude,
+            $latestPosition?->address ?: $device->last_address,
+        );
+
+        if ($resolvedAddress === null) {
+            return;
+        }
+
+        if ($latestPosition instanceof Position && $latestPosition->address !== $resolvedAddress) {
+            $latestPosition->forceFill(['address' => $resolvedAddress])->save();
+            $latestPosition->address = $resolvedAddress;
+        }
+
+        if ($syncDeviceAddress && $device->last_address !== $resolvedAddress) {
+            $device->forceFill(['last_address' => $resolvedAddress])->save();
+            $device->last_address = $resolvedAddress;
+        }
     }
 
     /**

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Device;
 use App\Models\Fleet;
+use App\Models\Position;
+use App\Services\GoogleRoadsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -35,47 +37,51 @@ class MapController extends Controller
         ]);
     }
 
-    public function devices(Request $request): JsonResponse
+    public function devices(Request $request, GoogleRoadsService $googleRoads): JsonResponse
     {
         $devices = $this->filteredDevices($request)
             ->whereNotNull('devices.last_latitude')
             ->whereNotNull('devices.last_longitude')
             ->get();
+        $trails = $this->movementTrails($devices, $googleRoads);
 
         return response()->json([
             'summary' => $this->summary($request),
             'geojson' => [
                 'type' => 'FeatureCollection',
-                'features' => $devices->map(fn (Device $device): array => [
-                    'type' => 'Feature',
-                    'geometry' => [
-                        'type' => 'Point',
-                        'coordinates' => [
-                            (float) $device->last_longitude,
-                            (float) $device->last_latitude,
+                'features' => $devices->map(function (Device $device) use ($trails, $googleRoads): array {
+                    $trail = $trails[$device->id] ?? [];
+
+                    return [
+                        'type' => 'Feature',
+                        'geometry' => [
+                            'type' => 'Point',
+                            'coordinates' => $this->deviceCoordinates($device, $trail, $googleRoads),
                         ],
-                    ],
-                    'properties' => [
-                        'id' => $device->id,
-                        'imei' => $device->imei,
-                        'name' => $device->name ?: __('dashboard.device_fallback', ['imei' => $device->imei]),
-                        'brand' => $device->brand ? __('trackers.brand_'.$device->brand) : '-',
-                        'model' => $device->model ?: '-',
-                        'vehicle' => $device->vehicle?->name ?: __('trackers.no_vehicle'),
-                        'registration' => $device->vehicle?->registration_number ?: '-',
-                        'fleet' => $device->fleet?->name ?: __('trackers.no_fleet'),
-                        'fleet_code' => $device->fleet?->code ?: '-',
-                        'status' => $device->status,
-                        'status_label' => __('trackers.status_'.$device->status),
-                        'is_parking' => $this->isParking($device),
-                        'is_stationary_running' => $this->isStationaryRunning($device),
-                        'speed' => (int) $device->last_speed,
-                        'angle' => (int) $device->last_angle,
-                        'last_signal' => $device->last_seen_at?->diffForHumans() ?? __('trackers.no_signal'),
-                        'details_url' => route('trackers.details', $device),
-                        'trips_url' => route('trackers.trips', $device),
-                    ],
-                ])->values(),
+                        'properties' => [
+                            'id' => $device->id,
+                            'imei' => $device->imei,
+                            'name' => $device->name ?: __('dashboard.device_fallback', ['imei' => $device->imei]),
+                            'brand' => $device->brand ? __('trackers.brand_'.$device->brand) : '-',
+                            'model' => $device->model ?: '-',
+                            'vehicle' => $device->vehicle?->name ?: __('trackers.no_vehicle'),
+                            'registration' => $device->vehicle?->registration_number ?: '-',
+                            'fleet' => $device->fleet?->name ?: __('trackers.no_fleet'),
+                            'fleet_code' => $device->fleet?->code ?: '-',
+                            'status' => $device->status,
+                            'status_label' => __('trackers.status_'.$device->status),
+                            'is_parking' => $this->isParking($device),
+                            'is_stationary_running' => $this->isStationaryRunning($device),
+                            'is_moving' => $this->isMoving($device),
+                            'trail' => $trail,
+                            'speed' => (int) $device->last_speed,
+                            'angle' => (int) $device->last_angle,
+                            'last_signal' => $device->last_seen_at?->diffForHumans() ?? __('trackers.no_signal'),
+                            'details_url' => route('trackers.details', $device),
+                            'trips_url' => route('trackers.trips', $device),
+                        ],
+                    ];
+                })->values(),
             ],
         ]);
     }
@@ -132,6 +138,17 @@ class MapController extends Controller
         ];
     }
 
+    private function isMoving(Device $device): bool
+    {
+        if ($device->status !== 'online') {
+            return false;
+        }
+
+        return $device->last_movement !== null
+            ? $device->last_movement
+            : (int) $device->last_speed > 0;
+    }
+
     private function isParking(Device $device): bool
     {
         return $this->isStopped($device) && $device->last_ignition === false;
@@ -151,6 +168,86 @@ class MapController extends Controller
         return $device->last_movement !== null
             ? ! $device->last_movement
             : (int) $device->last_speed === 0;
+    }
+
+    private function movementTrails($devices, GoogleRoadsService $googleRoads): array
+    {
+        $movingDevices = $devices
+            ->filter(fn (Device $device): bool => $this->isMoving($device))
+            ->keyBy('id');
+
+        if ($movingDevices->isEmpty()) {
+            return [];
+        }
+
+        return Position::query()
+            ->whereIn('device_id', $movingDevices->keys())
+            ->where('server_time', '>=', now()->subMinutes(30))
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->where('is_valid', true)
+            ->orderBy('device_id')
+            ->latest('server_time')
+            ->get(['device_id', 'latitude', 'longitude', 'server_time'])
+            ->groupBy('device_id')
+            ->map(function ($positions, int $deviceId) use ($movingDevices, $googleRoads): array {
+                $device = $movingDevices->get($deviceId);
+                $coordinates = $positions
+                    ->take(8)
+                    ->reverse()
+                    ->map(fn (Position $position): array => [
+                        (float) $position->longitude,
+                        (float) $position->latitude,
+                    ])
+                    ->values()
+                    ->all();
+
+                $current = [
+                    (float) $device->last_longitude,
+                    (float) $device->last_latitude,
+                ];
+
+                if ($coordinates === [] || end($coordinates) !== $current) {
+                    $coordinates[] = $current;
+                }
+
+                $snapped = $googleRoads->snap(
+                    $positions
+                        ->take(8)
+                        ->reverse()
+                        ->push(new Position([
+                            'latitude' => $device->last_latitude,
+                            'longitude' => $device->last_longitude,
+                        ]))
+                        ->values()
+                );
+
+                return count($snapped) > 1 ? $snapped : $coordinates;
+            })
+            ->filter(fn (array $coordinates): bool => count($coordinates) > 1)
+            ->all();
+    }
+
+    /**
+     * @param  list<array{0: float, 1: float}>  $trail
+     * @return array{0: float, 1: float}
+     */
+    private function deviceCoordinates(Device $device, array $trail, GoogleRoadsService $googleRoads): array
+    {
+        if ($trail !== []) {
+            $last = end($trail);
+
+            if (is_array($last) && count($last) >= 2) {
+                return [(float) $last[0], (float) $last[1]];
+            }
+        }
+
+        $raw = [
+            (float) $device->last_longitude,
+            (float) $device->last_latitude,
+        ];
+
+        return $googleRoads->nearest((float) $device->last_latitude, (float) $device->last_longitude) ?? $raw;
     }
 
     private function mapProvider(): string
