@@ -713,8 +713,29 @@ test('tracker trips resolve missing addresses with mapbox reverse geocoding', fu
     expect($start->refresh()->address)->toBe('Avenue de l’OUA, Ngaliema, Kinshasa, Congo-Kinshasa');
 });
 
-test('authenticated users can view the map page with local mapbox assets', function () {
+test('authenticated users can view the map page with google maps as default provider', function () {
     $user = User::factory()->superadmin()->create();
+    config([
+        'services.maps.provider' => 'google',
+        'services.google_maps.api_key' => 'AIza-test-key',
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('map.index'))
+        ->assertSuccessful()
+        ->assertSee('maps.googleapis.com/maps/api/js', false)
+        ->assertSee('js/google-map.js', false)
+        ->assertSee('trackerDetailsModal', false)
+        ->assertSee('js/tracker-details.js', false)
+        ->assertDontSee('vendor/mapbox/mapbox-gl.css', false)
+        ->assertDontSee('vendor/mapbox/mapbox-gl.js', false)
+        ->assertDontSee('js/map.js?v=20260602-mapbox-trips', false)
+        ->assertSee('exadMapConfig', false);
+});
+
+test('mapbox provider remains available for the future map selector', function () {
+    $user = User::factory()->superadmin()->create();
+    config(['services.maps.provider' => 'mapbox']);
 
     $this->actingAs($user)
         ->get(route('map.index'))
@@ -722,8 +743,7 @@ test('authenticated users can view the map page with local mapbox assets', funct
         ->assertSee('vendor/mapbox/mapbox-gl.css', false)
         ->assertSee('vendor/mapbox/mapbox-gl.js', false)
         ->assertSee('js/map.js', false)
-        ->assertSee('trackerDetailsModal', false)
-        ->assertSee('js/tracker-details.js', false)
+        ->assertDontSee('maps.googleapis.com/maps/api/js', false)
         ->assertDontSee('https://api.mapbox.com/mapbox-gl-js', false)
         ->assertSee('exadMapConfig', false);
 });

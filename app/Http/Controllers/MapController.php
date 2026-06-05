@@ -25,7 +25,9 @@ class MapController extends Controller
         $summary = $this->summary($request);
 
         return view('map.index', [
+            'mapProvider' => $this->mapProvider(),
             'mapboxToken' => (string) config('services.mapbox.public_token'),
+            'googleMapsApiKey' => (string) config('services.google_maps.api_key'),
             'fleets' => $fleets,
             'summary' => $summary,
             'defaultCenter' => [15.312, -4.325],
@@ -126,5 +128,12 @@ class MapController extends Controller
             'offline' => (clone $baseQuery)->where('devices.status', 'offline')->count(),
             'maintenance' => (clone $baseQuery)->where('devices.status', 'maintenance')->count(),
         ];
+    }
+
+    private function mapProvider(): string
+    {
+        $provider = (string) config('services.maps.provider', 'google');
+
+        return in_array($provider, ['google', 'mapbox'], true) ? $provider : 'google';
     }
 }

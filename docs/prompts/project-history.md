@@ -160,3 +160,10 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Refonte visuelle de la page `Monitoring serveur` en interface de supervision plus professionnelle : suppression de l'heure/message d'actualisation visibles, ajout de graphiques ApexCharts locaux pour CPU/RAM, disque, trafic reseau et charge systeme.
 - Correction du dark mode sur la section Reseau du monitoring : table Bootstrap, en-tetes, lignes, bordures et cartes de debit respectent maintenant le theme sombre.
 - Ajout d'icones de debit entrant/sortant sur les cartes reseau du monitoring serveur.
+
+## 2026-06-05 - Google Maps par defaut
+
+- Ajout de la configuration `MAP_PROVIDER=google` et `GOOGLE_MAPS_API_KEY` pour permettre le choix futur du fournisseur de carte.
+- La page Carte charge maintenant Google Maps par defaut, avec le meme endpoint GeoJSON `/map/devices`, les memes filtres, les popups, les details traceur et l'historique des trajets.
+- Le code Mapbox, les assets locaux Mapbox et `MAPBOX_PUBLIC_TOKEN` sont conserves pour une option de personnalisation future.
+- Ajout du script `public/js/google-map.js` et des traductions de configuration Google Maps.

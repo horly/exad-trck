@@ -7,7 +7,9 @@
     @include('partials.favicon')
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('vendor/mapbox/mapbox-gl.css') }}">
+    @if ($mapProvider === 'mapbox')
+        <link rel="stylesheet" href="{{ asset('vendor/mapbox/mapbox-gl.css') }}">
+    @endif
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260602-tracker-trips-shared">
     <link rel="stylesheet" href="{{ asset('css/map.css') }}?v=20260602-mapbox-trips">
@@ -122,13 +124,17 @@
 
     @php
         $mapConfig = [
+            'provider' => $mapProvider,
             'token' => $mapboxToken,
+            'googleApiKey' => $googleMapsApiKey,
             'devicesUrl' => route('map.devices'),
             'center' => $defaultCenter,
             'zoom' => $defaultZoom,
             'messages' => [
                 'tokenMissing' => __('map.token_missing'),
+                'googleKeyMissing' => __('map.google_key_missing'),
                 'mapUnavailable' => __('map.map_unavailable'),
+                'googleUnavailable' => __('map.google_unavailable'),
                 'vehicle' => __('map.popup_vehicle'),
                 'tracker' => __('map.popup_tracker'),
                 'fleet' => __('map.popup_fleet'),
@@ -145,12 +151,21 @@
         window.exadMapConfig = {{ Illuminate\Support\Js::from($mapConfig) }};
     </script>
     <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-    <script src="{{ asset('vendor/mapbox/mapbox-gl.js') }}"></script>
+    @if ($mapProvider === 'mapbox')
+        <script src="{{ asset('vendor/mapbox/mapbox-gl.js') }}"></script>
+    @endif
     <script src="{{ asset('js/dashboard-sidebar.js') }}?v=20260528-sidebar-toggle"></script>
     <script src="{{ asset('js/dashboard-controls.js') }}?v=20260529-shared-controls"></script>
     @include('partials.realtime-alerts')
     <script src="{{ asset('js/tracker-details.js') }}?v=20260602-details-shared"></script>
     <script src="{{ asset('js/tracker-trips.js') }}?v=20260602-trips-shared"></script>
-    <script src="{{ asset('js/map.js') }}?v=20260602-mapbox-trips"></script>
+    @if ($mapProvider === 'google')
+        <script src="{{ asset('js/google-map.js') }}?v=20260605-google-maps"></script>
+        @if ($googleMapsApiKey !== '')
+            <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ urlencode($googleMapsApiKey) }}&callback=initExadGoogleMap"></script>
+        @endif
+    @else
+        <script src="{{ asset('js/map.js') }}?v=20260602-mapbox-trips"></script>
+    @endif
 </body>
 </html>
