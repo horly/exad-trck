@@ -273,6 +273,14 @@
     background: #10b981;
 }
 
+.map-popup-dot.status-parking {
+    background: #22a7df;
+}
+
+.map-popup-dot.status-stationary-running {
+    background: #f59e0b;
+}
+
 .map-popup-dot.status-inactive {
     background: #ef4444;
 }

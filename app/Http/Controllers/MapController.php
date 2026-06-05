@@ -67,6 +67,8 @@ class MapController extends Controller
                         'fleet_code' => $device->fleet?->code ?: '-',
                         'status' => $device->status,
                         'status_label' => __('trackers.status_'.$device->status),
+                        'is_parking' => $this->isParking($device),
+                        'is_stationary_running' => $this->isStationaryRunning($device),
                         'speed' => (int) $device->last_speed,
                         'angle' => (int) $device->last_angle,
                         'last_signal' => $device->last_seen_at?->diffForHumans() ?? __('trackers.no_signal'),
@@ -128,6 +130,27 @@ class MapController extends Controller
             'offline' => (clone $baseQuery)->where('devices.status', 'offline')->count(),
             'maintenance' => (clone $baseQuery)->where('devices.status', 'maintenance')->count(),
         ];
+    }
+
+    private function isParking(Device $device): bool
+    {
+        return $this->isStopped($device) && $device->last_ignition === false;
+    }
+
+    private function isStationaryRunning(Device $device): bool
+    {
+        return $this->isStopped($device) && $device->last_ignition === true;
+    }
+
+    private function isStopped(Device $device): bool
+    {
+        if ($device->status !== 'online') {
+            return false;
+        }
+
+        return $device->last_movement !== null
+            ? ! $device->last_movement
+            : (int) $device->last_speed === 0;
     }
 
     private function mapProvider(): string

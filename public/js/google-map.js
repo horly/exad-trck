@@ -28,6 +28,8 @@
 
     const statusColors = {
         online: '#10b981',
+        parking: '#22a7df',
+        stationaryRunning: '#f59e0b',
         inactive: '#ef4444',
         offline: '#f59e0b',
         maintenance: '#8b5cf6',
@@ -81,19 +83,25 @@
         return params.toString();
     };
 
-    const markerIcon = (status) => ({
-        path: google.maps.SymbolPath.CIRCLE,
-        fillColor: statusColors[status] || '#64748b',
-        fillOpacity: 1,
-        strokeColor: '#ffffff',
-        strokeWeight: 3,
-        scale: 9,
-    });
+    const markerIcon = (properties) => {
+        const isStationaryRunning = properties.is_stationary_running;
+
+        return {
+            path: isStationaryRunning ? 'M -8 -8 L 8 -8 L 8 8 L -8 8 Z' : google.maps.SymbolPath.CIRCLE,
+            fillColor: properties.is_parking
+                ? statusColors.parking
+                : (isStationaryRunning ? statusColors.stationaryRunning : (statusColors[properties.status] || '#64748b')),
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 3,
+            scale: isStationaryRunning ? 1 : (properties.is_parking ? 13 : 9),
+        };
+    };
 
     const popupHtml = (properties) => `
         <div class="map-popup">
             <div class="map-popup-header">
-                <span class="map-popup-dot status-${escapeHtml(properties.status)}"></span>
+                <span class="map-popup-dot status-${escapeHtml(properties.is_parking ? 'parking' : (properties.is_stationary_running ? 'stationary-running' : properties.status))}"></span>
                 <div>
                     <strong class="map-popup-title">${escapeHtml(properties.vehicle)}</strong>
                     <span class="map-popup-subtitle">${escapeHtml(properties.status_label)} · ${escapeHtml(properties.imei)}</span>
@@ -169,7 +177,13 @@
                 map,
                 position: coordinatesToLatLng(feature.geometry.coordinates),
                 title: feature.properties.vehicle,
-                icon: markerIcon(feature.properties.status),
+                icon: markerIcon(feature.properties),
+                label: feature.properties.is_parking ? {
+                    text: 'P',
+                    color: '#ffffff',
+                    fontWeight: '900',
+                    fontSize: '13px',
+                } : undefined,
                 optimized: true,
             });
 
@@ -267,14 +281,14 @@
         map = new google.maps.Map(mapElement, {
             center,
             zoom: config.zoom || 11,
-            mapTypeControl: false,
-            streetViewControl: false,
+            mapTypeId: google.maps.MapTypeId.ROADMAP,
+            mapTypeControl: true,
+            streetViewControl: true,
             fullscreenControl: true,
+            zoomControl: true,
+            scaleControl: true,
+            clickableIcons: true,
             gestureHandling: 'greedy',
-            styles: [
-                { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-                { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-            ],
         });
         infoWindow = new google.maps.InfoWindow({ maxWidth: 340 });
 

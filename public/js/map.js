@@ -25,6 +25,8 @@
 
     const statusColors = {
         online: '#10b981',
+        parking: '#22a7df',
+        stationaryRunning: '#f59e0b',
         inactive: '#ef4444',
         offline: '#f59e0b',
         maintenance: '#8b5cf6',
@@ -54,17 +56,24 @@
     }
 
     const statusColorExpression = [
-        'match',
-        ['get', 'status'],
-        'online',
-        statusColors.online,
-        'inactive',
-        statusColors.inactive,
-        'offline',
-        statusColors.offline,
-        'maintenance',
-        statusColors.maintenance,
-        '#64748b',
+        'case',
+        ['==', ['get', 'is_parking'], true],
+        statusColors.parking,
+        ['==', ['get', 'is_stationary_running'], true],
+        statusColors.stationaryRunning,
+        [
+            'match',
+            ['get', 'status'],
+            'online',
+            statusColors.online,
+            'inactive',
+            statusColors.inactive,
+            'offline',
+            statusColors.offline,
+            'maintenance',
+            statusColors.maintenance,
+            '#64748b',
+        ],
     ];
 
     const updateCounters = (summary = {}) => {
@@ -114,7 +123,7 @@
     const popupHtml = (properties) => `
         <div class="map-popup">
             <div class="map-popup-header">
-                <span class="map-popup-dot status-${escapeHtml(properties.status)}"></span>
+                <span class="map-popup-dot status-${escapeHtml(properties.is_parking ? 'parking' : (properties.is_stationary_running ? 'stationary-running' : properties.status))}"></span>
                 <div>
                     <strong class="map-popup-title">${escapeHtml(properties.vehicle)}</strong>
                     <span class="map-popup-subtitle">${escapeHtml(properties.status_label)} · ${escapeHtml(properties.imei)}</span>
@@ -253,7 +262,7 @@
             id: 'device-halo',
             type: 'circle',
             source: 'devices',
-            filter: ['!', ['has', 'point_count']],
+            filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'is_stationary_running'], true]],
             paint: {
                 'circle-radius': 15,
                 'circle-color': statusColorExpression,
@@ -265,12 +274,48 @@
             id: 'devices',
             type: 'circle',
             source: 'devices',
-            filter: ['!', ['has', 'point_count']],
+            filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'is_stationary_running'], true]],
             paint: {
                 'circle-radius': 7,
                 'circle-color': statusColorExpression,
                 'circle-stroke-color': '#ffffff',
                 'circle-stroke-width': 3,
+            },
+        });
+
+        map.addLayer({
+            id: 'device-parking-symbols',
+            type: 'symbol',
+            source: 'devices',
+            filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'is_parking'], true]],
+            layout: {
+                'text-field': 'P',
+                'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                'text-size': 12,
+                'text-allow-overlap': true,
+                'text-ignore-placement': true,
+            },
+            paint: {
+                'text-color': '#ffffff',
+            },
+        });
+
+        map.addLayer({
+            id: 'device-stationary-symbols',
+            type: 'symbol',
+            source: 'devices',
+            filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'is_stationary_running'], true]],
+            layout: {
+                'text-field': '■',
+                'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                'text-size': 22,
+                'text-allow-overlap': true,
+                'text-ignore-placement': true,
+            },
+            paint: {
+                'text-color': statusColors.stationaryRunning,
+                'text-halo-color': '#ffffff',
+                'text-halo-width': 2,
             },
         });
 
@@ -326,7 +371,7 @@
             });
         });
 
-        map.on('click', 'devices', (event) => {
+        const openDevicePopup = (event) => {
             const feature = event.features[0];
 
             new mapboxgl.Popup({
@@ -337,9 +382,12 @@
                 .setLngLat(feature.geometry.coordinates)
                 .setHTML(popupHtml(feature.properties))
                 .addTo(map);
-        });
+        };
 
-        ['clusters', 'devices'].forEach((layer) => {
+        map.on('click', 'devices', openDevicePopup);
+        map.on('click', 'device-stationary-symbols', openDevicePopup);
+
+        ['clusters', 'devices', 'device-stationary-symbols'].forEach((layer) => {
             map.on('mouseenter', layer, () => {
                 map.getCanvas().style.cursor = 'pointer';
             });

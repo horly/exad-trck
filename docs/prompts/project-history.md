@@ -167,3 +167,6 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - La page Carte charge maintenant Google Maps par defaut, avec le meme endpoint GeoJSON `/map/devices`, les memes filtres, les popups, les details traceur et l'historique des trajets.
 - Le code Mapbox, les assets locaux Mapbox et `MAPBOX_PUBLIC_TOKEN` sont conserves pour une option de personnalisation future.
 - Ajout du script `public/js/google-map.js` et des traductions de configuration Google Maps.
+- Retrait du style Google Maps qui masquait les POI et le transit, afin d'afficher une carte plus detaillee avec lieux, commerces et libelles standards comme sur Navixy.
+- Ajout de l'état visuel parking sur la carte : les traceurs en ligne, arrêtés et moteur coupé s'affichent avec un marqueur bleu `P`, compatible Google Maps et Mapbox.
+- Ajout de l'état visuel arrêt moteur allumé : les traceurs en ligne, arrêtés et moteur allumé s'affichent avec un marqueur carré pour les distinguer du parking.

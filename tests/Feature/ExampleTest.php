@@ -770,8 +770,29 @@ test('map devices endpoint returns geojson for every positioned tracker to super
         'status' => 'online',
         'last_latitude' => -4.325,
         'last_longitude' => 15.312,
-        'last_speed' => 42,
+        'last_speed' => 0,
+        'last_movement' => false,
+        'last_ignition' => false,
         'last_angle' => 90,
+        'last_seen_at' => now(),
+    ]);
+
+    $idleVehicle = Vehicle::factory()->create([
+        'fleet_id' => $fleet->id,
+        'name' => 'Toyota Ralenti',
+        'registration_number' => 'MAP-002',
+    ]);
+    Device::factory()->create([
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $idleVehicle->id,
+        'imei' => '356307042441014',
+        'name' => 'Traceur Ralenti',
+        'status' => 'online',
+        'last_latitude' => -4.326,
+        'last_longitude' => 15.313,
+        'last_speed' => 0,
+        'last_movement' => false,
+        'last_ignition' => true,
         'last_seen_at' => now(),
     ]);
 
@@ -791,13 +812,25 @@ test('map devices endpoint returns geojson for every positioned tracker to super
         ->getJson(route('map.devices'))
         ->assertSuccessful()
         ->assertJsonPath('geojson.type', 'FeatureCollection')
-        ->assertJsonPath('summary.total', 2)
-        ->assertJsonPath('summary.positioned', 2);
+        ->assertJsonPath('summary.total', 3)
+        ->assertJsonPath('summary.positioned', 3);
 
-    expect($response->json('geojson.features'))
-        ->toHaveCount(2)
-        ->and(collect($response->json('geojson.features'))->pluck('properties.vehicle')->all())
+    $features = collect($response->json('geojson.features'));
+    $toyotaFeature = $features->firstWhere('properties.vehicle', 'Toyota Carte');
+    $idleFeature = $features->firstWhere('properties.vehicle', 'Toyota Ralenti');
+
+    expect($features->all())
+        ->toHaveCount(3)
+        ->and($features->pluck('properties.vehicle')->all())
         ->toContain('Toyota Carte')
+        ->and($toyotaFeature['properties']['is_parking'])
+        ->toBeTrue()
+        ->and($toyotaFeature['properties']['is_stationary_running'])
+        ->toBeFalse()
+        ->and($idleFeature['properties']['is_parking'])
+        ->toBeFalse()
+        ->and($idleFeature['properties']['is_stationary_running'])
+        ->toBeTrue()
         ->and($response->json('geojson.features.0.properties.details_url'))->toContain('/trackers/')
         ->and($response->json('geojson.features.0.properties.trips_url'))->toContain('/trackers/');
 });
