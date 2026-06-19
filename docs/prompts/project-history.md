@@ -210,3 +210,12 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Correction UX Evenements vehicule : retrait du menu Evenements vehicules de la sidebar, car les evenements se consultent uniquement depuis le traceur ou vehicule selectionne.
 - La route `/events` exige maintenant un traceur via `?device=...`; sans contexte elle redirige vers la page Traceurs avec un message.
 - La liste complete des evenements affiche uniquement les evenements du vehicule associe au traceur selectionne, et ne melange plus les evenements des autres vehicules.
+
+- Correction Carte : stabilisation de l animation Google Maps des vehicules en mouvement. L icone anime maintenant uniquement entre l ancienne position GPS reelle et la nouvelle position GPS reelle.
+- La trace progressive est reconstruite derriere l icone pendant l animation afin d eviter les zigzags et les retours incoherents causes par le recalage Google Roads entre deux rafraichissements.
+
+- Amelioration globale de la pagination des tableaux : remplacement de l affichage de toutes les pages par un rendu type DataTables avec 5 pages visibles, points de suspension et derniere page.
+- Centralisation de la pagination dans `resources/views/partials/datatable-pagination.blade.php` pour les tableaux utilisateurs, flottes, vehicules, traceurs, alertes et evenements vehicule.
+- Application du meme comportement au modal historique de connexion genere en JavaScript, avec rendu compatible dark mode.
+
+- Amelioration du modal Details traceur : largeur legerement reduite, padding compacte, cartes plus modernes, liste des evenements contenue avec scroll interne discret et rendu dark mode ajuste.

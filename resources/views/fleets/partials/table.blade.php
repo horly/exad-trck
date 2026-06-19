@@ -138,36 +138,14 @@
     </div>
 </section>
 
-<div class="datatable-footer" data-datatable-pagination>
-    <p>
-        {{ __('fleets.pagination_summary', [
-            'first' => $fleets->firstItem() ?? 0,
-            'last' => $fleets->lastItem() ?? 0,
-            'total' => $fleets->total(),
-        ]) }}
-    </p>
-
-    @if ($fleets->hasPages())
-        <nav class="datatable-pagination" aria-label="{{ __('fleets.pagination') }}">
-            @if ($fleets->onFirstPage())
-                <span class="disabled">{{ __('fleets.previous') }}</span>
-            @else
-                <a href="{{ $fleets->previousPageUrl() }}" rel="prev">{{ __('fleets.previous') }}</a>
-            @endif
-
-            @foreach ($fleets->getUrlRange(1, $fleets->lastPage()) as $page => $url)
-                @if ($page === $fleets->currentPage())
-                    <span class="active">{{ $page }}</span>
-                @else
-                    <a href="{{ $url }}">{{ $page }}</a>
-                @endif
-            @endforeach
-
-            @if ($fleets->hasMorePages())
-                <a href="{{ $fleets->nextPageUrl() }}" rel="next">{{ __('fleets.next') }}</a>
-            @else
-                <span class="disabled">{{ __('fleets.next') }}</span>
-            @endif
-        </nav>
-    @endif
-</div>
+@include('partials.datatable-pagination', [
+    'paginator' => $fleets,
+    'summary' => __('fleets.pagination_summary', [
+        'first' => $fleets->firstItem() ?? 0,
+        'last' => $fleets->lastItem() ?? 0,
+        'total' => $fleets->total(),
+    ]),
+    'ariaLabel' => __('fleets.pagination'),
+    'previousLabel' => __('fleets.previous'),
+    'nextLabel' => __('fleets.next'),
+])

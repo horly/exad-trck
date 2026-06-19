@@ -116,36 +116,14 @@
     </div>
 </section>
 
-<div class="datatable-footer" data-datatable-pagination>
-    <p>
-        {{ __('events.showing', [
-            'from' => $events->firstItem() ?? 0,
-            'to' => $events->lastItem() ?? 0,
-            'total' => $events->total(),
-        ]) }}
-    </p>
-
-    @if ($events->hasPages())
-        <nav class="datatable-pagination" aria-label="{{ __('events.title') }}">
-            @if ($events->onFirstPage())
-                <span class="disabled">{{ __('events.previous') }}</span>
-            @else
-                <a href="{{ $events->previousPageUrl() }}" rel="prev">{{ __('events.previous') }}</a>
-            @endif
-
-            @foreach ($events->getUrlRange(1, $events->lastPage()) as $page => $url)
-                @if ($page === $events->currentPage())
-                    <span class="active">{{ $page }}</span>
-                @else
-                    <a href="{{ $url }}">{{ $page }}</a>
-                @endif
-            @endforeach
-
-            @if ($events->hasMorePages())
-                <a href="{{ $events->nextPageUrl() }}" rel="next">{{ __('events.next') }}</a>
-            @else
-                <span class="disabled">{{ __('events.next') }}</span>
-            @endif
-        </nav>
-    @endif
-</div>
+@include('partials.datatable-pagination', [
+    'paginator' => $events,
+    'summary' => __('events.showing', [
+        'from' => $events->firstItem() ?? 0,
+        'to' => $events->lastItem() ?? 0,
+        'total' => $events->total(),
+    ]),
+    'ariaLabel' => __('events.title'),
+    'previousLabel' => __('events.previous'),
+    'nextLabel' => __('events.next'),
+])

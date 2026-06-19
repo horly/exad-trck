@@ -461,10 +461,28 @@
                 </tr>
             `).join('');
 
-            const pages = Array.from({ length: lastPage }, (_, index) => index + 1);
+            const visiblePages = 5;
+            let pages = [];
+
+            if (lastPage <= visiblePages + 2) {
+                pages = Array.from({ length: lastPage }, (_, index) => index + 1);
+            } else if (historyPage <= visiblePages) {
+                pages = [...Array.from({ length: visiblePages }, (_, index) => index + 1), 'ellipsis-right', lastPage];
+            } else if (historyPage >= lastPage - (visiblePages - 2)) {
+                pages = [1, 'ellipsis-left', ...Array.from({ length: visiblePages }, (_, index) => lastPage - (visiblePages - 1) + index)];
+            } else {
+                pages = [1, 'ellipsis-left', historyPage - 1, historyPage, historyPage + 1, 'ellipsis-right', lastPage];
+            }
+
             historyPagination.innerHTML = `
                 <button type="button" ${historyPage === 1 ? 'disabled' : ''} data-history-page="${historyPage - 1}">{{ __('users.previous') }}</button>
-                ${pages.map((page) => `<button type="button" class="${page === historyPage ? 'active' : ''}" data-history-page="${page}">${page}</button>`).join('')}
+                ${pages.map((page) => {
+                    if (typeof page === 'string') {
+                        return '<span class="datatable-pagination-ellipsis" aria-hidden="true">...</span>';
+                    }
+
+                    return `<button type="button" class="${page === historyPage ? 'active' : ''}" data-history-page="${page}">${page}</button>`;
+                }).join('')}
                 <button type="button" ${historyPage === lastPage ? 'disabled' : ''} data-history-page="${historyPage + 1}">{{ __('users.next') }}</button>
             `;
         };

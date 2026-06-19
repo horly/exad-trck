@@ -165,36 +165,14 @@
     </div>
 </section>
 
-<div class="datatable-footer" data-datatable-pagination>
-    <p>
-        {{ __('vehicles.pagination_summary', [
-            'first' => $vehicles->firstItem() ?? 0,
-            'last' => $vehicles->lastItem() ?? 0,
-            'total' => $vehicles->total(),
-        ]) }}
-    </p>
-
-    @if ($vehicles->hasPages())
-        <nav class="datatable-pagination" aria-label="{{ __('vehicles.pagination') }}">
-            @if ($vehicles->onFirstPage())
-                <span class="disabled">{{ __('vehicles.previous') }}</span>
-            @else
-                <a href="{{ $vehicles->previousPageUrl() }}" rel="prev">{{ __('vehicles.previous') }}</a>
-            @endif
-
-            @foreach ($vehicles->getUrlRange(1, $vehicles->lastPage()) as $page => $url)
-                @if ($page === $vehicles->currentPage())
-                    <span class="active">{{ $page }}</span>
-                @else
-                    <a href="{{ $url }}">{{ $page }}</a>
-                @endif
-            @endforeach
-
-            @if ($vehicles->hasMorePages())
-                <a href="{{ $vehicles->nextPageUrl() }}" rel="next">{{ __('vehicles.next') }}</a>
-            @else
-                <span class="disabled">{{ __('vehicles.next') }}</span>
-            @endif
-        </nav>
-    @endif
-</div>
+@include('partials.datatable-pagination', [
+    'paginator' => $vehicles,
+    'summary' => __('vehicles.pagination_summary', [
+        'first' => $vehicles->firstItem() ?? 0,
+        'last' => $vehicles->lastItem() ?? 0,
+        'total' => $vehicles->total(),
+    ]),
+    'ariaLabel' => __('vehicles.pagination'),
+    'previousLabel' => __('vehicles.previous'),
+    'nextLabel' => __('vehicles.next'),
+])

@@ -144,36 +144,14 @@
     </div>
 </section>
 
-<div class="datatable-footer" data-datatable-pagination>
-    <p>
-        {{ __('users.pagination_summary', [
-            'first' => $users->firstItem() ?? 0,
-            'last' => $users->lastItem() ?? 0,
-            'total' => $users->total(),
-        ]) }}
-    </p>
-
-    @if ($users->hasPages())
-        <nav class="datatable-pagination" aria-label="{{ __('users.pagination') }}">
-            @if ($users->onFirstPage())
-                <span class="disabled">{{ __('users.previous') }}</span>
-            @else
-                <a href="{{ $users->previousPageUrl() }}" rel="prev">{{ __('users.previous') }}</a>
-            @endif
-
-            @foreach ($users->getUrlRange(1, $users->lastPage()) as $page => $url)
-                @if ($page === $users->currentPage())
-                    <span class="active">{{ $page }}</span>
-                @else
-                    <a href="{{ $url }}">{{ $page }}</a>
-                @endif
-            @endforeach
-
-            @if ($users->hasMorePages())
-                <a href="{{ $users->nextPageUrl() }}" rel="next">{{ __('users.next') }}</a>
-            @else
-                <span class="disabled">{{ __('users.next') }}</span>
-            @endif
-        </nav>
-    @endif
-</div>
+@include('partials.datatable-pagination', [
+    'paginator' => $users,
+    'summary' => __('users.pagination_summary', [
+        'first' => $users->firstItem() ?? 0,
+        'last' => $users->lastItem() ?? 0,
+        'total' => $users->total(),
+    ]),
+    'ariaLabel' => __('users.pagination'),
+    'previousLabel' => __('users.previous'),
+    'nextLabel' => __('users.next'),
+])

@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260602-tracker-trips-shared">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260619-tracker-details-compact">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">

@@ -128,36 +128,14 @@
     </div>
 </section>
 
-<div class="datatable-footer" data-datatable-pagination>
-    <p>
-        {{ __('alerts.showing', [
-            'from' => $alerts->firstItem() ?? 0,
-            'to' => $alerts->lastItem() ?? 0,
-            'total' => $alerts->total(),
-        ]) }}
-    </p>
-
-    @if ($alerts->hasPages())
-        <nav class="datatable-pagination" aria-label="{{ __('alerts.title') }}">
-            @if ($alerts->onFirstPage())
-                <span class="disabled">{{ __('alerts.previous') }}</span>
-            @else
-                <a href="{{ $alerts->previousPageUrl() }}" rel="prev">{{ __('alerts.previous') }}</a>
-            @endif
-
-            @foreach ($alerts->getUrlRange(1, $alerts->lastPage()) as $page => $url)
-                @if ($page === $alerts->currentPage())
-                    <span class="active">{{ $page }}</span>
-                @else
-                    <a href="{{ $url }}">{{ $page }}</a>
-                @endif
-            @endforeach
-
-            @if ($alerts->hasMorePages())
-                <a href="{{ $alerts->nextPageUrl() }}" rel="next">{{ __('alerts.next') }}</a>
-            @else
-                <span class="disabled">{{ __('alerts.next') }}</span>
-            @endif
-        </nav>
-    @endif
-</div>
+@include('partials.datatable-pagination', [
+    'paginator' => $alerts,
+    'summary' => __('alerts.showing', [
+        'from' => $alerts->firstItem() ?? 0,
+        'to' => $alerts->lastItem() ?? 0,
+        'total' => $alerts->total(),
+    ]),
+    'ariaLabel' => __('alerts.title'),
+    'previousLabel' => __('alerts.previous'),
+    'nextLabel' => __('alerts.next'),
+])

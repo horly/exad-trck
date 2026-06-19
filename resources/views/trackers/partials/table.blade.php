@@ -192,36 +192,14 @@
     </div>
 </section>
 
-<div class="datatable-footer" data-datatable-pagination>
-    <p>
-        {{ __('trackers.pagination_summary', [
-            'first' => $devices->firstItem() ?? 0,
-            'last' => $devices->lastItem() ?? 0,
-            'total' => $devices->total(),
-        ]) }}
-    </p>
-
-    @if ($devices->hasPages())
-        <nav class="datatable-pagination" aria-label="{{ __('trackers.pagination') }}">
-            @if ($devices->onFirstPage())
-                <span class="disabled">{{ __('trackers.previous') }}</span>
-            @else
-                <a href="{{ $devices->previousPageUrl() }}" rel="prev">{{ __('trackers.previous') }}</a>
-            @endif
-
-            @foreach ($devices->getUrlRange(1, $devices->lastPage()) as $page => $url)
-                @if ($page === $devices->currentPage())
-                    <span class="active">{{ $page }}</span>
-                @else
-                    <a href="{{ $url }}">{{ $page }}</a>
-                @endif
-            @endforeach
-
-            @if ($devices->hasMorePages())
-                <a href="{{ $devices->nextPageUrl() }}" rel="next">{{ __('trackers.next') }}</a>
-            @else
-                <span class="disabled">{{ __('trackers.next') }}</span>
-            @endif
-        </nav>
-    @endif
-</div>
+@include('partials.datatable-pagination', [
+    'paginator' => $devices,
+    'summary' => __('trackers.pagination_summary', [
+        'first' => $devices->firstItem() ?? 0,
+        'last' => $devices->lastItem() ?? 0,
+        'total' => $devices->total(),
+    ]),
+    'ariaLabel' => __('trackers.pagination'),
+    'previousLabel' => __('trackers.previous'),
+    'nextLabel' => __('trackers.next'),
+])

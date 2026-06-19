@@ -230,12 +230,6 @@
         first.lng() - second.lng(),
     );
 
-    const closestPathIndex = (path, position) => path.reduce((closest, point, index) => {
-        const distance = latLngDistance(point, position);
-
-        return distance < closest.distance ? { index, distance } : closest;
-    }, { index: 0, distance: Number.POSITIVE_INFINITY }).index;
-
     const interpolatePath = (path, progress) => {
         if (!Array.isArray(path) || path.length < 2) {
             return {
@@ -290,32 +284,21 @@
     const movementTrailContext = (coordinates = [], currentPosition, targetPosition, hasExistingMarker) => {
         const serverPath = coordinatePathToLatLng(coordinates);
 
-        if (serverPath.length < 2) {
-            return null;
-        }
-
         if (!hasExistingMarker) {
+            if (serverPath.length < 2) {
+                return null;
+            }
+
             return {
                 basePath: serverPath,
                 animationPath: [targetPosition],
             };
         }
 
-        const closestIndex = closestPathIndex(serverPath, currentPosition);
-        const basePath = serverPath.slice(0, closestIndex + 1);
-        basePath[basePath.length - 1] = currentPosition;
-
-        if (basePath.length < 2) {
-            basePath.push(currentPosition);
-        }
-
-        const animationPath = [currentPosition, ...serverPath.slice(closestIndex + 1)];
-
-        if (animationPath.length < 2 || !sameLatLng(animationPath[animationPath.length - 1], targetPosition)) {
-            animationPath.push(targetPosition);
-        }
-
-        return { basePath, animationPath };
+        return {
+            basePath: [currentPosition, targetPosition],
+            animationPath: [currentPosition, targetPosition],
+        };
     };
 
     const progressiveTrailPath = (basePath, animationPath, progress) => {
@@ -324,12 +307,7 @@
         }
 
         const interpolated = interpolatePath(animationPath, progress);
-        const path = [...basePath];
-        interpolated.passedPoints.slice(1).forEach((point) => {
-            if (!sameLatLng(path[path.length - 1], point)) {
-                path.push(point);
-            }
-        });
+        const path = [basePath[0]];
 
         if (interpolated.position && !sameLatLng(path[path.length - 1], interpolated.position)) {
             path.push(interpolated.position);
