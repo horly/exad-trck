@@ -222,7 +222,13 @@ class MapController extends Controller
                         ->values()
                 );
 
-                return count($snapped) > 1 ? $snapped : $coordinates;
+                if (count($snapped) > 1) {
+                    $snapped[array_key_last($snapped)] = $current;
+
+                    return $snapped;
+                }
+
+                return $coordinates;
             })
             ->filter(fn (array $coordinates): bool => count($coordinates) > 1)
             ->all();

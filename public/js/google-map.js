@@ -28,13 +28,14 @@
     let infoWindow;
     let refreshTimer;
     let searchTimer;
-    let markers = [];
+    let markerRegistry = new Map();
     let trailPolylines = [];
     let tripPolyline = null;
     let selectedDeviceId = null;
     let serverGeojson = { type: 'FeatureCollection', features: [] };
     let latestGeojson = { type: 'FeatureCollection', features: [] };
     let VehicleOverlay;
+    const MARKER_ANIMATION_MS = 5000;
 
     const statusColors = {
         online: '#10b981',
@@ -192,10 +193,28 @@
     `;
 
     const clearMarkers = () => {
-        markers.forEach((marker) => marker.setMap(null));
-        markers = [];
+        markerRegistry.forEach((marker) => marker.setMap(null));
+        markerRegistry = new Map();
         trailPolylines.forEach((polyline) => polyline.setMap(null));
         trailPolylines = [];
+    };
+
+    const clearTrails = () => {
+        trailPolylines.forEach((polyline) => polyline.setMap(null));
+        trailPolylines = [];
+    };
+
+    const sameLatLng = (first, second) => Math.abs(first.lat() - second.lat()) < 0.0000001
+        && Math.abs(first.lng() - second.lng()) < 0.0000001;
+
+    const easeInOut = (progress) => progress < 0.5
+        ? 2 * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+    const keepPositionVisible = (position) => {
+        if (!map?.getBounds()?.contains(position)) {
+            map.panTo(position);
+        }
     };
 
     const drawMovementTrail = (coordinates = []) => {
@@ -228,6 +247,7 @@
                 this.isSelected = isSelected;
                 this.onClick = onClick;
                 this.element = null;
+                this.animationFrame = null;
             }
 
             onAdd() {
@@ -248,7 +268,60 @@
                 this.element.style.top = `${point.y}px`;
             }
 
+            refresh(properties, isSelected, onClick) {
+                this.properties = properties;
+                this.isSelected = isSelected;
+                this.element?.removeEventListener('click', this.onClick);
+                this.onClick = onClick;
+                if (this.element) {
+                    this.element.innerHTML = vehicleMarkerHtml(this.properties, this.isSelected);
+                    this.element.addEventListener('click', this.onClick);
+                }
+            }
+
+            setPosition(position, animate = false, onFrame = null) {
+                if (this.animationFrame) {
+                    cancelAnimationFrame(this.animationFrame);
+                    this.animationFrame = null;
+                }
+
+                if (!animate || !this.element || sameLatLng(this.position, position)) {
+                    this.position = position;
+                    this.draw();
+                    onFrame?.(position);
+                    return;
+                }
+
+                const start = this.position;
+                const startedAt = performance.now();
+
+                const step = (now) => {
+                    const progress = Math.min((now - startedAt) / MARKER_ANIMATION_MS, 1);
+                    const eased = easeInOut(progress);
+                    const lat = start.lat() + ((position.lat() - start.lat()) * eased);
+                    const lng = start.lng() + ((position.lng() - start.lng()) * eased);
+
+                    this.position = new google.maps.LatLng(lat, lng);
+                    this.draw();
+                    onFrame?.(this.position);
+
+                    if (progress < 1) {
+                        this.animationFrame = requestAnimationFrame(step);
+                        return;
+                    }
+
+                    this.animationFrame = null;
+                };
+
+                this.animationFrame = requestAnimationFrame(step);
+            }
+
             onRemove() {
+                if (this.animationFrame) {
+                    cancelAnimationFrame(this.animationFrame);
+                    this.animationFrame = null;
+                }
+
                 if (this.element) {
                     this.element.removeEventListener('click', this.onClick);
                     this.element.remove();
@@ -327,32 +400,59 @@
     };
 
     const renderMarkers = (geojson) => {
-        clearMarkers();
+        clearTrails();
         latestGeojson = geojson || { type: 'FeatureCollection', features: [] };
+        const visibleIds = new Set(latestGeojson.features.map((feature) => String(feature.properties.id)));
+
+        markerRegistry.forEach((marker, id) => {
+            if (!visibleIds.has(id)) {
+                marker.setMap(null);
+                markerRegistry.delete(id);
+            }
+        });
 
         latestGeojson.features.forEach((feature) => {
             if (feature.properties.is_moving) {
                 drawMovementTrail(feature.properties.trail);
             }
 
+            const id = String(feature.properties.id);
             const latLng = coordinatesToLatLng(feature.geometry.coordinates);
             const position = new google.maps.LatLng(latLng.lat, latLng.lng);
-            const marker = new VehicleOverlay(
-                position,
-                feature.properties,
-                String(feature.properties.id) === String(selectedDeviceId),
-                () => {
-                    selectedDeviceId = feature.properties.id;
-                    renderMarkers(displayedGeojson());
-                    renderSearchResults(serverGeojson);
-                    infoWindow.setContent(popupHtml(feature.properties));
-                    infoWindow.setPosition(position);
-                    infoWindow.open({ map });
-                }
-            );
+            const isSelected = id === String(selectedDeviceId);
+            const onClick = () => {
+                selectedDeviceId = feature.properties.id;
+                renderMarkers(displayedGeojson());
+                renderSearchResults(serverGeojson);
+                infoWindow.setContent(popupHtml(feature.properties));
+                infoWindow.setPosition(markerRegistry.get(id)?.position || position);
+                infoWindow.open({ map });
+                keepPositionVisible(markerRegistry.get(id)?.position || position);
+            };
+            const onFrame = (currentPosition) => {
+                if (isSelected) {
+                    keepPositionVisible(currentPosition);
 
+                    if (infoWindow.getMap()) {
+                        infoWindow.setPosition(currentPosition);
+                    }
+                }
+            };
+
+            if (markerRegistry.has(id)) {
+                const marker = markerRegistry.get(id);
+                marker.refresh(feature.properties, isSelected, onClick);
+                marker.setPosition(position, feature.properties.is_moving, onFrame);
+                return;
+            }
+
+            const marker = new VehicleOverlay(position, feature.properties, isSelected, onClick);
             marker.setMap(map);
-            markers.push(marker);
+            markerRegistry.set(id, marker);
+
+            if (isSelected) {
+                keepPositionVisible(position);
+            }
         });
 
         const hasIntentionalDisplay = showAllInput.checked || selectedDeviceId !== null;

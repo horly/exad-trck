@@ -185,3 +185,5 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Modernisation du panneau de filtres de la page Carte : largeur réduite, rendu glass plus premium, cartes statistiques compactes, boutons en pastilles, champs affinés, focus plus propre et compatibilité dark mode.
 - Ajout d'icônes Font Awesome dans le panneau de filtres Carte et extension de la carte pour occuper toute la zone disponible de la page, avec un panneau flottant au-dessus de la carte.
 - Décalage vers le bas du bouton flottant d'affichage des filtres Carte pour éviter la superposition avec les contrôles natifs Google Maps.
+- Correction de la trace des véhicules en mouvement : la ligne se termine maintenant sur la position GPS exacte de l'icône, même lorsque le reste du trajet est recalé par Google Roads.
+- Ajout d'une animation progressive de 5 secondes sur les marqueurs Google Maps pour éviter l'effet de saut entre deux actualisations et garder le véhicule sélectionné visible pendant son déplacement.

@@ -193,7 +193,7 @@
     <script src="{{ asset('js/tracker-details.js') }}?v=20260602-details-shared"></script>
     <script src="{{ asset('js/tracker-trips.js') }}?v=20260602-trips-shared"></script>
     @if ($mapProvider === 'google')
-        <script src="{{ asset('js/google-map.js') }}?v=20260605-google-maps-selective-display"></script>
+        <script src="{{ asset('js/google-map.js') }}?v=20260619-google-marker-animation"></script>
         @if ($googleMapsApiKey !== '')
             <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ urlencode($googleMapsApiKey) }}&callback=initExadGoogleMap"></script>
         @endif

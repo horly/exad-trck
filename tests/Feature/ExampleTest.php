@@ -1157,7 +1157,7 @@ test('map device marker keeps the exact gps position while movement trail can be
         ->toBe([
             [15.3, -4.3],
             [15.301, -4.301],
-            [15.302, -4.302],
+            [15.333, -4.333],
         ]);
 
     Http::assertNotSent(fn ($request): bool => str_contains((string) $request->url(), 'nearestRoads'));
