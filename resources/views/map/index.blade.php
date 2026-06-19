@@ -12,7 +12,7 @@
     @endif
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260602-tracker-trips-shared">
-    <link rel="stylesheet" href="{{ asset('css/map.css') }}?v=20260605-map-selective-display">
+    <link rel="stylesheet" href="{{ asset('css/map.css') }}?v=20260619-map-filter-toggle-offset">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -39,7 +39,10 @@
                     <div class="map-panel-header">
                         <div>
                             <span>{{ __('map.filters') }}</span>
-                            <strong>{{ __('map.title') }}</strong>
+                            <strong>
+                                <i class="fa-solid fa-map-location-dot"></i>
+                                {{ __('map.title') }}
+                            </strong>
                         </div>
                         <div class="map-panel-tools">
                             <button type="button" class="icon-action" aria-label="{{ __('map.refresh') }}" data-map-refresh>
@@ -53,31 +56,36 @@
 
                     <div class="map-stats">
                         <div class="map-stat">
-                            <span>{{ __('map.total') }}</span>
+                            <span class="map-stat-icon"><i class="fa-solid fa-satellite-dish"></i></span>
+                            <span class="map-stat-label">{{ __('map.total') }}</span>
                             <strong data-map-count="total">{{ $summary['total'] }}</strong>
                         </div>
                         <div class="map-stat">
-                            <span>{{ __('map.positioned') }}</span>
+                            <span class="map-stat-icon"><i class="fa-solid fa-location-dot"></i></span>
+                            <span class="map-stat-label">{{ __('map.positioned') }}</span>
                             <strong data-map-count="positioned">{{ $summary['positioned'] }}</strong>
                         </div>
                         <div class="map-stat is-online">
-                            <span>{{ __('map.online') }}</span>
+                            <span class="map-stat-icon"><i class="fa-solid fa-signal"></i></span>
+                            <span class="map-stat-label">{{ __('map.online') }}</span>
                             <strong data-map-count="online">{{ $summary['online'] }}</strong>
                         </div>
                         <div class="map-stat is-inactive">
-                            <span>{{ __('map.inactive') }}</span>
+                            <span class="map-stat-icon"><i class="fa-solid fa-circle-xmark"></i></span>
+                            <span class="map-stat-label">{{ __('map.inactive') }}</span>
                             <strong data-map-count="inactive">{{ $summary['inactive'] }}</strong>
                         </div>
                     </div>
 
                     <label class="map-visibility-toggle">
                         <input type="checkbox" data-map-show-all>
+                        <i class="fa-solid fa-car-side"></i>
                         <span>{{ __('map.show_all_vehicles') }}</span>
                     </label>
 
                     <div class="map-filter-grid">
                         <label class="map-filter">
-                            <span>{{ __('trackers.status') }}</span>
+                            <span><i class="fa-solid fa-tower-broadcast"></i>{{ __('trackers.status') }}</span>
                             <select class="form-select" data-map-status>
                                 <option value="">{{ __('map.all_statuses') }}</option>
                                 <option value="online">{{ __('trackers.status_online') }}</option>
@@ -88,7 +96,7 @@
                         </label>
 
                         <label class="map-filter">
-                            <span>{{ __('trackers.fleet') }}</span>
+                            <span><i class="fa-solid fa-layer-group"></i>{{ __('trackers.fleet') }}</span>
                             <select class="form-select" data-map-fleet>
                                 <option value="">{{ __('map.all_fleets') }}</option>
                                 @foreach ($fleets as $fleet)
@@ -98,7 +106,7 @@
                         </label>
 
                         <label class="map-filter map-filter-full">
-                            <span>{{ __('trackers.search') }}</span>
+                            <span><i class="fa-solid fa-magnifying-glass-location"></i>{{ __('trackers.search') }}</span>
                             <div class="map-search">
                                 <i class="fa-solid fa-magnifying-glass"></i>
                                 <input type="search" class="form-control" placeholder="{{ __('map.search') }}" data-map-search>
@@ -121,11 +129,13 @@
                         </button>
                         <label class="map-auto-toggle">
                             <input type="checkbox" checked data-map-auto>
+                            <i class="fa-solid fa-arrows-rotate"></i>
                             <span>{{ __('map.live_refresh') }}</span>
                         </label>
                     </div>
 
                     <p class="map-last-update">
+                        <i class="fa-regular fa-clock"></i>
                         {{ __('map.last_update') }} :
                         <strong data-map-last-update>{{ __('map.never') }}</strong>
                     </p>

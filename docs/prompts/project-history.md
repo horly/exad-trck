@@ -180,5 +180,8 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - La fiche détails traceur affiche maintenant la dernière adresse d'arrêt/parking connue plutôt que l'adresse courante du serveur si le véhicule est déjà reparti.
 - Correction des marqueurs de la carte : flèche directionnelle bleue sans cercle pour les véhicules en mouvement, `P` bleu pour le parking et carré bleu pour un véhicule arrêté moteur allumé.
 - Le label du véhicule est maintenant ancré à droite du marqueur sans déplacer visuellement la position GPS du véhicule.
-- Le recalage Google Roads est aussi utilisé pour la position affichée sur la carte lorsque possible, afin de réduire les écarts visuels par rapport à la route.
+- La position courante du véhicule affichée sur la carte utilise maintenant strictement les coordonnées GPS brutes du traceur, sans recalage Google Roads, afin de respecter les cas où le véhicule se trouve dans une parcelle ou hors macadam.
 - Les micro-segments de trajet sans distance réelle sont filtrés pour éviter les lignes parasites à `0.00 km` dans l'historique.
+- Modernisation du panneau de filtres de la page Carte : largeur réduite, rendu glass plus premium, cartes statistiques compactes, boutons en pastilles, champs affinés, focus plus propre et compatibilité dark mode.
+- Ajout d'icônes Font Awesome dans le panneau de filtres Carte et extension de la carte pour occuper toute la zone disponible de la page, avec un panneau flottant au-dessus de la carte.
+- Décalage vers le bas du bouton flottant d'affichage des filtres Carte pour éviter la superposition avec les contrôles natifs Google Maps.

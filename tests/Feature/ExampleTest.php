@@ -1090,6 +1090,79 @@ test('map devices endpoint returns geojson for every positioned tracker to super
         ->and($response->json('geojson.features.0.properties.trips_url'))->toContain('/trackers/');
 });
 
+test('map device marker keeps the exact gps position while movement trail can be snapped to roads', function () {
+    config([
+        'services.google_maps.api_key' => 'AIza-test-key',
+        'services.google_maps.roads_enabled' => true,
+    ]);
+
+    Http::fake([
+        'roads.googleapis.com/v1/snapToRoads*' => Http::response([
+            'snappedPoints' => [
+                ['location' => ['latitude' => -4.3000, 'longitude' => 15.3000]],
+                ['location' => ['latitude' => -4.3010, 'longitude' => 15.3010]],
+                ['location' => ['latitude' => -4.3020, 'longitude' => 15.3020]],
+            ],
+        ]),
+        'roads.googleapis.com/v1/nearestRoads*' => Http::response([
+            'snappedPoints' => [
+                ['location' => ['latitude' => -4.3020, 'longitude' => 15.3020]],
+            ],
+        ]),
+    ]);
+
+    $superadmin = User::factory()->superadmin()->create();
+    $fleet = Fleet::factory()->create(['name' => 'Flotte precision']);
+    $vehicle = Vehicle::factory()->create([
+        'fleet_id' => $fleet->id,
+        'name' => 'Toyota Land Cruiser',
+        'registration_number' => '2058AG10',
+    ]);
+    $device = Device::factory()->create([
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $vehicle->id,
+        'status' => 'online',
+        'last_latitude' => -4.3330,
+        'last_longitude' => 15.3330,
+        'last_speed' => 24,
+        'last_movement' => true,
+        'last_ignition' => true,
+        'last_seen_at' => now(),
+    ]);
+
+    Position::factory()->forDevice($device)->create([
+        'latitude' => -4.3310,
+        'longitude' => 15.3310,
+        'speed' => 20,
+        'movement' => true,
+        'server_time' => now()->subMinutes(2),
+    ]);
+    Position::factory()->forDevice($device)->create([
+        'latitude' => -4.3320,
+        'longitude' => 15.3320,
+        'speed' => 22,
+        'movement' => true,
+        'server_time' => now()->subMinute(),
+    ]);
+
+    $response = $this->actingAs($superadmin)
+        ->getJson(route('map.devices'))
+        ->assertSuccessful();
+
+    $feature = $response->json('geojson.features.0');
+
+    expect($feature['geometry']['coordinates'])
+        ->toBe([15.333, -4.333])
+        ->and($feature['properties']['trail'])
+        ->toBe([
+            [15.3, -4.3],
+            [15.301, -4.301],
+            [15.302, -4.302],
+        ]);
+
+    Http::assertNotSent(fn ($request): bool => str_contains((string) $request->url(), 'nearestRoads'));
+});
+
 test('superadmin can view alerts page with local realtime client and datatable', function () {
     $superadmin = User::factory()->superadmin()->create();
     $fleet = Fleet::factory()->create(['name' => 'Flotte alertes']);

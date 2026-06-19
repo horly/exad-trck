@@ -49,14 +49,14 @@ class MapController extends Controller
             'summary' => $this->summary($request),
             'geojson' => [
                 'type' => 'FeatureCollection',
-                'features' => $devices->map(function (Device $device) use ($trails, $googleRoads): array {
+                'features' => $devices->map(function (Device $device) use ($trails): array {
                     $trail = $trails[$device->id] ?? [];
 
                     return [
                         'type' => 'Feature',
                         'geometry' => [
                             'type' => 'Point',
-                            'coordinates' => $this->deviceCoordinates($device, $trail, $googleRoads),
+                            'coordinates' => $this->deviceCoordinates($device),
                         ],
                         'properties' => [
                             'id' => $device->id,
@@ -228,26 +228,12 @@ class MapController extends Controller
             ->all();
     }
 
-    /**
-     * @param  list<array{0: float, 1: float}>  $trail
-     * @return array{0: float, 1: float}
-     */
-    private function deviceCoordinates(Device $device, array $trail, GoogleRoadsService $googleRoads): array
+    private function deviceCoordinates(Device $device): array
     {
-        if ($trail !== []) {
-            $last = end($trail);
-
-            if (is_array($last) && count($last) >= 2) {
-                return [(float) $last[0], (float) $last[1]];
-            }
-        }
-
-        $raw = [
+        return [
             (float) $device->last_longitude,
             (float) $device->last_latitude,
         ];
-
-        return $googleRoads->nearest((float) $device->last_latitude, (float) $device->last_longitude) ?? $raw;
     }
 
     private function mapProvider(): string
