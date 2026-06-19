@@ -187,3 +187,6 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Décalage vers le bas du bouton flottant d'affichage des filtres Carte pour éviter la superposition avec les contrôles natifs Google Maps.
 - Correction de la trace des véhicules en mouvement : la ligne se termine maintenant sur la position GPS exacte de l'icône, même lorsque le reste du trajet est recalé par Google Roads.
 - Ajout d'une animation progressive de 5 secondes sur les marqueurs Google Maps pour éviter l'effet de saut entre deux actualisations et garder le véhicule sélectionné visible pendant son déplacement.
+- Correction Carte : le dernier segment de la trace suit maintenant l'icône pendant l'animation, afin que la ligne reste toujours derrière le véhicule en mouvement.
+- Correction Carte : moteur coupé force le parking `P`, moteur allumé sans mouvement affiche le carré, et l'état mouvement n'est possible que si le moteur n'est pas coupé.
+- Correction Carte : r�tablissement de l'affichage Google Maps apr�s une erreur de syntaxe JavaScript caus�e par un nom de variable dupliqu� dans la gestion des marqueurs anim�s.

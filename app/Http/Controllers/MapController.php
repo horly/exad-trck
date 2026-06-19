@@ -144,9 +144,11 @@ class MapController extends Controller
             return false;
         }
 
-        return $device->last_movement !== null
-            ? $device->last_movement
-            : (int) $device->last_speed > 0;
+        if ($device->last_ignition === false) {
+            return false;
+        }
+
+        return $this->hasMovement($device);
     }
 
     private function isParking(Device $device): bool
@@ -165,9 +167,18 @@ class MapController extends Controller
             return false;
         }
 
+        if ($device->last_ignition === false) {
+            return true;
+        }
+
+        return ! $this->hasMovement($device);
+    }
+
+    private function hasMovement(Device $device): bool
+    {
         return $device->last_movement !== null
-            ? ! $device->last_movement
-            : (int) $device->last_speed === 0;
+            ? (bool) $device->last_movement
+            : (int) $device->last_speed > 0;
     }
 
     private function movementTrails($devices, GoogleRoadsService $googleRoads): array

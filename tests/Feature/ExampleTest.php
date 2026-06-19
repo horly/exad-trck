@@ -1163,6 +1163,51 @@ test('map device marker keeps the exact gps position while movement trail can be
     Http::assertNotSent(fn ($request): bool => str_contains((string) $request->url(), 'nearestRoads'));
 });
 
+test('map marker state gives priority to ignition off parking over stale movement data', function () {
+    config(['services.google_maps.api_key' => '']);
+
+    $superadmin = User::factory()->superadmin()->create();
+    $fleet = Fleet::factory()->create(['name' => 'Flotte parking']);
+    $vehicle = Vehicle::factory()->create([
+        'fleet_id' => $fleet->id,
+        'name' => 'Suzuki Horly',
+        'registration_number' => '5062BE01',
+    ]);
+    $device = Device::factory()->create([
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $vehicle->id,
+        'status' => 'online',
+        'last_latitude' => -4.3330,
+        'last_longitude' => 15.3330,
+        'last_speed' => 24,
+        'last_movement' => true,
+        'last_ignition' => false,
+        'last_seen_at' => now(),
+    ]);
+
+    Position::factory()->forDevice($device)->create([
+        'latitude' => -4.3310,
+        'longitude' => 15.3310,
+        'speed' => 20,
+        'movement' => true,
+        'server_time' => now()->subMinute(),
+    ]);
+
+    $feature = $this->actingAs($superadmin)
+        ->getJson(route('map.devices'))
+        ->assertSuccessful()
+        ->json('geojson.features.0');
+
+    expect($feature['properties']['is_parking'])
+        ->toBeTrue()
+        ->and($feature['properties']['is_moving'])
+        ->toBeFalse()
+        ->and($feature['properties']['is_stationary_running'])
+        ->toBeFalse()
+        ->and($feature['properties']['trail'])
+        ->toBe([]);
+});
+
 test('superadmin can view alerts page with local realtime client and datatable', function () {
     $superadmin = User::factory()->superadmin()->create();
     $fleet = Fleet::factory()->create(['name' => 'Flotte alertes']);

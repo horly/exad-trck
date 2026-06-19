@@ -217,14 +217,27 @@
         }
     };
 
-    const drawMovementTrail = (coordinates = []) => {
+    const positionToCoordinates = (position) => [
+        Number(position.lng()),
+        Number(position.lat()),
+    ];
+
+    const drawMovementTrail = (coordinates = [], currentPosition = null) => {
         if (!Array.isArray(coordinates) || coordinates.length < 2) {
-            return;
+            return [];
         }
 
-        coordinates.slice(1).forEach((coordinate, index) => {
-            const previous = coordinates[index];
-            const progress = (index + 1) / (coordinates.length - 1);
+        const visibleCoordinates = [...coordinates];
+
+        if (currentPosition) {
+            visibleCoordinates[visibleCoordinates.length - 1] = positionToCoordinates(currentPosition);
+        }
+
+        const segments = [];
+
+        visibleCoordinates.slice(1).forEach((coordinate, index) => {
+            const previous = visibleCoordinates[index];
+            const progress = (index + 1) / (visibleCoordinates.length - 1);
             const polyline = new google.maps.Polyline({
                 map,
                 path: [coordinatesToLatLng(previous), coordinatesToLatLng(coordinate)],
@@ -235,7 +248,24 @@
             });
 
             trailPolylines.push(polyline);
+            segments.push(polyline);
         });
+
+        return segments;
+    };
+
+    const updateTrailEndpoint = (segments, position) => {
+        const lastSegment = segments[segments.length - 1];
+
+        if (!lastSegment) {
+            return;
+        }
+
+        const path = lastSegment.getPath();
+
+        if (path.getLength() >= 2) {
+            path.setAt(path.getLength() - 1, position);
+        }
     };
 
     const defineVehicleOverlay = () => {
@@ -412,14 +442,15 @@
         });
 
         latestGeojson.features.forEach((feature) => {
-            if (feature.properties.is_moving) {
-                drawMovementTrail(feature.properties.trail);
-            }
-
             const id = String(feature.properties.id);
             const latLng = coordinatesToLatLng(feature.geometry.coordinates);
             const position = new google.maps.LatLng(latLng.lat, latLng.lng);
             const isSelected = id === String(selectedDeviceId);
+            const marker = markerRegistry.get(id);
+            const trailPosition = marker?.position || position;
+            const trailSegments = feature.properties.is_moving
+                ? drawMovementTrail(feature.properties.trail, trailPosition)
+                : [];
             const onClick = () => {
                 selectedDeviceId = feature.properties.id;
                 renderMarkers(displayedGeojson());
@@ -430,6 +461,10 @@
                 keepPositionVisible(markerRegistry.get(id)?.position || position);
             };
             const onFrame = (currentPosition) => {
+                if (feature.properties.is_moving) {
+                    updateTrailEndpoint(trailSegments, currentPosition);
+                }
+
                 if (isSelected) {
                     keepPositionVisible(currentPosition);
 
@@ -439,16 +474,15 @@
                 }
             };
 
-            if (markerRegistry.has(id)) {
-                const marker = markerRegistry.get(id);
+            if (marker) {
                 marker.refresh(feature.properties, isSelected, onClick);
                 marker.setPosition(position, feature.properties.is_moving, onFrame);
                 return;
             }
 
-            const marker = new VehicleOverlay(position, feature.properties, isSelected, onClick);
-            marker.setMap(map);
-            markerRegistry.set(id, marker);
+            const vehicleMarker = new VehicleOverlay(position, feature.properties, isSelected, onClick);
+            vehicleMarker.setMap(map);
+            markerRegistry.set(id, vehicleMarker);
 
             if (isSelected) {
                 keepPositionVisible(position);
