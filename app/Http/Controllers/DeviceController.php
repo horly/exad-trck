@@ -339,6 +339,7 @@ class DeviceController extends Controller
             'fleet:id,name,code',
             'vehicle:id,fleet_id,name,registration_number',
             'trackerEvents' => fn ($query) => $query
+                ->vehicleEvents()
                 ->with('position:id,latitude,longitude')
                 ->latest('started_at')
                 ->latest('id')
@@ -350,8 +351,8 @@ class DeviceController extends Controller
             ->whereNotNull('longitude')
             ->latest('server_time')
             ->latest('id')
-            ->first(['id', 'device_id', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'movement', 'ignition']);
-        $locationPosition = Position::query()
+            ->first(['id', 'device_id', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition']);
+        $latestStoppedPosition = Position::query()
             ->where('device_id', $device->id)
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
@@ -363,8 +364,11 @@ class DeviceController extends Controller
             })
             ->latest('server_time')
             ->latest('id')
-            ->first(['id', 'device_id', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'movement', 'ignition'])
-            ?: $latestPosition;
+            ->first(['id', 'device_id', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition']);
+        $parkingStartPosition = $this->parkingStartPosition($device);
+        $locationPosition = $parkingStartPosition ?: ($latestStoppedPosition ?: $latestPosition);
+        $locationUpdatedAt = $locationPosition?->server_time ?: ($device->last_seen_at ?: $device->last_position_at);
+        $parkingStartedAt = $parkingStartPosition?->server_time;
 
         $this->refreshReadableAddress(
             $device,
@@ -378,7 +382,9 @@ class DeviceController extends Controller
                 'device' => $device,
                 'latestPosition' => $locationPosition,
                 'gpsQuality' => $this->gpsQuality($device),
-                'direction' => $this->directionLabel((int) $device->last_angle),
+                'direction' => $this->directionLabel((int) ($locationPosition?->angle ?? $device->last_angle)),
+                'locationUpdatedAt' => $locationUpdatedAt,
+                'parkingDuration' => $parkingStartedAt?->diffForHumans(null, true),
             ])->render(),
         ]);
     }
@@ -456,6 +462,41 @@ class DeviceController extends Controller
             $device->forceFill(['last_address' => $resolvedAddress])->save();
             $device->last_address = $resolvedAddress;
         }
+    }
+
+    private function parkingStartPosition(Device $device): ?Position
+    {
+        if ($device->last_ignition !== false) {
+            return null;
+        }
+
+        $positions = Position::query()
+            ->where('device_id', $device->id)
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->latest('server_time')
+            ->latest('id')
+            ->limit(250)
+            ->get(['id', 'device_id', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition']);
+
+        $parkingStart = null;
+
+        foreach ($positions as $position) {
+            if ($position->ignition !== false) {
+                break;
+            }
+
+            $parkingStart = $position;
+        }
+
+        return $parkingStart ?: Position::query()
+            ->where('device_id', $device->id)
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->where('ignition', false)
+            ->latest('server_time')
+            ->latest('id')
+            ->first(['id', 'device_id', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition']);
     }
 
     /**

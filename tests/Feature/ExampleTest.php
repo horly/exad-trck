@@ -9,6 +9,7 @@ use App\Models\TrackerEvent;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
@@ -451,11 +452,15 @@ test('local gps listener commands update registered trackers only', function () 
             'speed' => 42,
             'angle' => 90,
             'satellites' => 12,
-            'gsm_signal' => 80,
+            'gsm_signal' => 4,
             'battery_level' => 92,
             'external_voltage' => 12.4,
             'battery_voltage' => 4.1,
             'address' => 'Kinsuka Pecheur, Ngaliema, Kinshasa',
+            'events' => [
+                ['type' => 'door_open'],
+                ['type' => 'harsh_braking'],
+            ],
         ]),
     ]);
 
@@ -489,7 +494,7 @@ test('local gps listener commands update registered trackers only', function () 
         'severity' => 'medium',
     ]);
 
-    $this->assertDatabaseHas('tracker_events', [
+    $this->assertDatabaseMissing('tracker_events', [
         'device_id' => $device->id,
         'type' => 'signal_restored',
     ]);
@@ -497,6 +502,16 @@ test('local gps listener commands update registered trackers only', function () 
     $this->assertDatabaseHas('tracker_events', [
         'device_id' => $device->id,
         'type' => 'movement_started',
+    ]);
+
+    $this->assertDatabaseHas('tracker_events', [
+        'device_id' => $device->id,
+        'type' => 'door_open',
+    ]);
+
+    $this->assertDatabaseHas('tracker_events', [
+        'device_id' => $device->id,
+        'type' => 'harsh_braking',
     ]);
 
     $secondCode = Artisan::call('gps:ingest-position', [
@@ -552,10 +567,93 @@ test('local gps stale command marks silent online trackers offline', function ()
         'severity' => 'high',
     ]);
 
-    $this->assertDatabaseHas('tracker_events', [
+    $this->assertDatabaseMissing('tracker_events', [
         'device_id' => $device->id,
         'type' => 'signal_lost',
     ]);
+});
+
+test('superadmin can browse tracker events with ajax datatable', function () {
+    $superadmin = User::factory()->superadmin()->create();
+    $fleet = Fleet::factory()->create(['name' => 'EXAD CARS']);
+    $vehicle = Vehicle::factory()->create([
+        'fleet_id' => $fleet->id,
+        'name' => 'Palisade',
+        'registration_number' => '0943BL01',
+    ]);
+    $device = Device::factory()->create([
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $vehicle->id,
+        'name' => 'Tracker Palisade',
+        'imei' => '353201355315547',
+    ]);
+    $otherVehicle = Vehicle::factory()->create([
+        'fleet_id' => $fleet->id,
+        'name' => 'Toyota Land Cruiser',
+        'registration_number' => '2058AG10',
+    ]);
+    $otherDevice = Device::factory()->create([
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $otherVehicle->id,
+        'name' => 'Tracker Land Cruiser',
+        'imei' => '865456047193582',
+    ]);
+
+    TrackerEvent::query()->create([
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $vehicle->id,
+        'device_id' => $device->id,
+        'type' => 'door_open',
+        'title' => __('trackers.event_door_open_title'),
+        'message' => __('trackers.event_door_open_message', ['vehicle' => $vehicle->name]),
+        'started_at' => now(),
+        'metadata' => [
+            'translation' => [
+                'title_key' => 'trackers.event_door_open_title',
+                'message_key' => 'trackers.event_door_open_message',
+                'replace' => ['vehicle' => $vehicle->name],
+            ],
+        ],
+    ]);
+    TrackerEvent::query()->create([
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $vehicle->id,
+        'device_id' => $device->id,
+        'type' => 'signal_restored',
+        'title' => 'Signal restored technical',
+        'message' => 'This technical device alert must not appear as a vehicle event.',
+        'started_at' => now()->subMinute(),
+    ]);
+    TrackerEvent::query()->create([
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $otherVehicle->id,
+        'device_id' => $otherDevice->id,
+        'type' => 'ignition_on',
+        'title' => __('trackers.event_ignition_on_title'),
+        'message' => __('trackers.event_ignition_on_message', ['vehicle' => $otherVehicle->name]),
+        'started_at' => now(),
+    ]);
+
+    $this->actingAs($superadmin)
+        ->get(route('events.index'))
+        ->assertRedirect(route('trackers.index'))
+        ->assertSessionHas('status', __('events.select_tracker'));
+
+    $this->actingAs($superadmin)
+        ->get(route('events.index', ['device' => $device->id]))
+        ->assertSuccessful()
+        ->assertSee(__('events.title'))
+        ->assertSee('Palisade')
+        ->assertSee(__('trackers.event_door_open_title'))
+        ->assertDontSee('Signal restored technical')
+        ->assertDontSee('Toyota Land Cruiser');
+
+    $this->actingAs($superadmin)
+        ->withHeader('X-Requested-With', 'XMLHttpRequest')
+        ->getJson(route('events.index', ['device' => $device->id, 'search' => '0943BL01', 'sort' => 'vehicle', 'direction' => 'asc']))
+        ->assertSuccessful()
+        ->assertJsonStructure(['html'])
+        ->assertSee('0943BL01');
 });
 
 test('superadmin can open tracker details with fleet and latest events', function () {
@@ -673,6 +771,75 @@ test('tracker details show the latest stopped or parked address', function () {
         ->not->toContain('Position courante en mouvement');
 
     expect($device->refresh()->last_address)->toBe('Adresse de position courante');
+});
+
+test('tracker details use the current parking start position for location data', function () {
+    config(['services.google_maps.api_key' => '', 'services.mapbox.public_token' => '']);
+    Carbon::setTestNow(Carbon::parse('2026-06-19 10:00:00', config('app.timezone')));
+    $this->beforeApplicationDestroyed(fn () => Carbon::setTestNow());
+
+    $superadmin = User::factory()->superadmin()->create();
+    $fleet = Fleet::factory()->create(['name' => 'EXAD CARS']);
+    $vehicle = Vehicle::factory()->create([
+        'fleet_id' => $fleet->id,
+        'name' => 'Palisade',
+    ]);
+    $device = Device::factory()->create([
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $vehicle->id,
+        'last_address' => 'Dernier ping parking',
+        'last_seen_at' => now()->subMinute(),
+        'last_position_at' => now()->subMinute(),
+        'last_ignition' => false,
+        'last_movement' => false,
+        'last_angle' => 90,
+    ]);
+
+    Position::factory()->forDevice($device)->create([
+        'server_time' => now()->subMinutes(12),
+        'latitude' => -4.349,
+        'longitude' => 15.309,
+        'address' => 'Position avant parking',
+        'movement' => true,
+        'speed' => 24,
+        'ignition' => true,
+        'angle' => 45,
+    ]);
+    Position::factory()->forDevice($device)->create([
+        'server_time' => now()->subMinutes(8),
+        'latitude' => -4.350066,
+        'longitude' => 15.3106833,
+        'altitude' => 297,
+        'address' => '32 Rue De Sandoa, Kasa-Vubu, Kinshasa',
+        'movement' => false,
+        'speed' => 0,
+        'ignition' => false,
+        'angle' => 180,
+    ]);
+    Position::factory()->forDevice($device)->create([
+        'server_time' => now()->subMinute(),
+        'latitude' => -4.350500,
+        'longitude' => 15.311000,
+        'address' => 'Dernier ping parking',
+        'movement' => false,
+        'speed' => 0,
+        'ignition' => false,
+        'angle' => 90,
+    ]);
+
+    $response = $this->actingAs($superadmin)
+        ->withHeader('X-Requested-With', 'XMLHttpRequest')
+        ->getJson(route('trackers.details', $device))
+        ->assertSuccessful();
+
+    expect($response->json('html'))
+        ->toContain('32 Rue De Sandoa')
+        ->toContain('Latitude : -4.3500660, Longitude : 15.3106833')
+        ->toContain('altitude : 297')
+        ->toContain('Direction : S')
+        ->toContain('Parking')
+        ->toContain('8 minutes')
+        ->not->toContain('Dernier ping parking');
 });
 
 test('superadmin can display tracker trips as html and geojson', function () {

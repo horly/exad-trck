@@ -87,6 +87,12 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
     $previousMovement = $device->last_movement;
     $previousIgnition = $device->last_ignition;
     $movement = (bool) ($validated['movement'] ?? ($speed > 0));
+    $gsmSignal = $device->last_gsm_signal;
+
+    if (array_key_exists('gsm_signal', $validated)) {
+        $rawGsmSignal = max(0, (int) $validated['gsm_signal']);
+        $gsmSignal = min(100, $rawGsmSignal <= 5 ? $rawGsmSignal * 20 : $rawGsmSignal);
+    }
 
     $position = Position::query()->create([
         'device_id' => $device->id,
@@ -122,7 +128,7 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         'last_ignition' => $validated['ignition'] ?? $previousIgnition,
         'last_movement' => $movement,
         'last_satellites' => $validated['satellites'] ?? $device->last_satellites,
-        'last_gsm_signal' => $validated['gsm_signal'] ?? $device->last_gsm_signal,
+        'last_gsm_signal' => $gsmSignal,
         'last_battery_level' => $validated['battery_level'] ?? $device->last_battery_level,
         'last_external_voltage' => $validated['external_voltage'] ?? $device->last_external_voltage,
         'last_battery_voltage' => $validated['battery_voltage'] ?? $device->last_battery_voltage,
@@ -136,7 +142,6 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
     app(TrackerEventService::class)->recordPosition(
         $device,
         $position,
-        $previousStatus,
         $previousMovement,
         $previousIgnition,
     );
@@ -156,7 +161,6 @@ Artisan::command('gps:mark-stale {--minutes=5 : Minutes without signal before a 
     $minutes = max(1, (int) $this->option('minutes'));
     $threshold = now()->subMinutes($minutes);
     $alertService = app(AlertService::class);
-    $trackerEventService = app(TrackerEventService::class);
 
     $devices = Device::query()
         ->where('status', 'online')
@@ -164,7 +168,7 @@ Artisan::command('gps:mark-stale {--minutes=5 : Minutes without signal before a 
         ->where('last_seen_at', '<', $threshold)
         ->get();
 
-    $devices->each(function (Device $device) use ($alertService, $trackerEventService): void {
+    $devices->each(function (Device $device) use ($alertService): void {
         $device->forceFill(['status' => 'offline'])->save();
 
         $alreadyAlerted = Alert::query()
@@ -175,7 +179,6 @@ Artisan::command('gps:mark-stale {--minutes=5 : Minutes without signal before a 
 
         if (! $alreadyAlerted) {
             $alertService->createNoSignalAlert($device);
-            $trackerEventService->createSignalLost($device);
         }
     });
 

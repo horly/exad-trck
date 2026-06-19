@@ -64,6 +64,24 @@ Champs optionnels :
 - `address`
 - `ignition`
 - `movement`
+- `events` : tableau d'événements détectés par le traceur ou le décodeur.
+
+Exemple avec événements :
+
+```json
+{"imei":"356307042441013","lat":-4.325,"lng":15.312,"speed":0,"ignition":true,"events":[{"type":"door_open"},{"type":"harsh_braking"}]}
+```
+
+Types déjà traduits côté Laravel :
+
+- `door_open`
+- `door_closed`
+- `harsh_braking`
+- `harsh_acceleration`
+- `sharp_turn`
+- `towing`
+- `crash_detected`
+- `sos`
 
 ## Simuler un traceur
 

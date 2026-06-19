@@ -5,11 +5,14 @@
     $updatedAt = $device->last_seen_at ?: $device->last_position_at;
     $modelLabel = trim(($device->brand ? __('trackers.brand_' . $device->brand) : '') . ' ' . (string) $device->model);
     $formatVoltage = fn ($value) => $value !== null ? rtrim(rtrim(number_format((float) $value, 2, '.', ''), '0'), '.') : null;
-    $parkingDuration = $device->last_position_at ? $device->last_position_at->diffForHumans(null, true) : null;
+    $parkingDuration = $parkingDuration ?? ($device->last_position_at ? $device->last_position_at->diffForHumans(null, true) : null);
+    $locationUpdatedAt = $locationUpdatedAt ?? $updatedAt;
     $locationAddress = $latestPosition?->address ?: $device->last_address;
     $locationLatitude = $latestPosition?->latitude ?? $device->last_latitude;
     $locationLongitude = $latestPosition?->longitude ?? $device->last_longitude;
     $locationAltitude = $latestPosition?->altitude;
+    $gsmSignal = $device->last_gsm_signal;
+    $gsmSignal = $gsmSignal !== null && $gsmSignal <= 5 ? min(100, $gsmSignal * 20) : $gsmSignal;
 @endphp
 
 <div class="tracker-details-grid">
@@ -63,7 +66,11 @@
             <div>
                 <dt><i class="fa-solid fa-square-parking"></i></dt>
                 <dd>
-                    @if ($device->last_movement)
+                    @if ($device->last_ignition === false && $parkingDuration)
+                        {{ __('trackers.parking_value', ['duration' => $parkingDuration]) }}
+                    @elseif ($device->last_ignition === false)
+                        {{ __('trackers.parking_unknown') }}
+                    @elseif ($device->last_movement)
                         {{ __('trackers.moving_now') }}
                     @elseif ($parkingDuration)
                         {{ __('trackers.parking_value', ['duration' => $parkingDuration]) }}
@@ -92,7 +99,7 @@
             </div>
         </dl>
 
-        <p class="tracker-details-time">{{ $updatedAt ? $updatedAt->diffForHumans() : __('trackers.no_signal') }}</p>
+        <p class="tracker-details-time">{{ $locationUpdatedAt ? $locationUpdatedAt->diffForHumans() : __('trackers.no_signal') }}</p>
     </article>
 
     <article class="tracker-details-card">
@@ -144,7 +151,7 @@
         <dl class="tracker-details-list">
             <div>
                 <dt><i class="fa-solid fa-signal"></i></dt>
-                <dd>{{ $device->last_gsm_signal !== null ? __('trackers.percent_value', ['value' => $device->last_gsm_signal]) : __('trackers.unknown_value') }}</dd>
+                <dd>{{ $gsmSignal !== null ? __('trackers.percent_value', ['value' => $gsmSignal]) : __('trackers.unknown_value') }}</dd>
             </div>
             <div>
                 <dt><i class="fa-solid fa-tower-cell"></i></dt>
@@ -158,6 +165,9 @@
     <article class="tracker-details-card tracker-details-card-wide">
         <div class="tracker-details-card-header">
             <h3>{{ __('trackers.latest_events_title') }}</h3>
+            <a href="{{ route('events.index', ['device' => $device->id]) }}" class="tracker-details-link">
+                {{ __('trackers.view_all_events') }}
+            </a>
         </div>
 
         <div class="tracker-events-list">

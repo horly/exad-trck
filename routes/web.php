@@ -8,6 +8,7 @@ use App\Http\Controllers\FleetController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\ServerLogController;
 use App\Http\Controllers\ServerMonitoringController;
+use App\Http\Controllers\TrackerEventController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VehicleController;
 use Illuminate\Http\RedirectResponse;
@@ -43,6 +44,7 @@ Route::middleware(['auth', 'superadmin'])->group(function () {
     Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
     Route::get('/alerts/recent', [AlertController::class, 'recent'])->name('alerts.recent');
     Route::patch('/alerts/{alert}/acknowledge', [AlertController::class, 'acknowledge'])->name('alerts.acknowledge');
+    Route::get('/events', [TrackerEventController::class, 'index'])->name('events.index');
     Route::get('/server-logs', [ServerLogController::class, 'index'])->name('server-logs.index');
     Route::get('/server-logs/content', [ServerLogController::class, 'content'])->name('server-logs.content');
     Route::get('/server-monitoring', [ServerMonitoringController::class, 'index'])->name('server-monitoring.index');

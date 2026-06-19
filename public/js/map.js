@@ -171,7 +171,7 @@
     const popupHtml = (properties) => `
         <div class="map-popup">
             <div class="map-popup-header">
-                <span class="map-popup-dot status-${escapeHtml(markerState(properties))}"></span>
+                <span class="map-popup-dot status-${escapeHtml(properties.status || markerState(properties))}"></span>
                 <div>
                     <strong class="map-popup-title">${escapeHtml(properties.vehicle)}</strong>
                     <span class="map-popup-subtitle">${escapeHtml(properties.status_label)} · ${escapeHtml(properties.imei)}</span>

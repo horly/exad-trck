@@ -191,3 +191,22 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Correction Carte : moteur coupÃ© force le parking `P`, moteur allumÃ© sans mouvement affiche le carrÃ©, et l'Ã©tat mouvement n'est possible que si le moteur n'est pas coupÃ©.
 - Correction Carte : rétablissement de l'affichage Google Maps après une erreur de syntaxe JavaScript causée par un nom de variable dupliqué dans la gestion des marqueurs animés.
 - Correction Carte : l'animation du véhicule suit maintenant le même chemin que la trace, et la trace progressive ne contient plus de points futurs devant l'icône.
+- Correction Carte : la popup Google Maps est plus compacte en haut et le point de statut affiche toujours le vrai statut du traceur, avec 'En ligne' en vert.
+- Correction Carte : suppression de l'espace supérieur ajouté par l'en-tête natif Google InfoWindow afin d'équilibrer le padding haut/bas de la popup véhicule.
+- Correction Carte : équilibrage du padding gauche/droite dans la popup véhicule Google Maps, avec réserve uniquement sur l'en-tête pour le bouton fermer.
+- Correction Carte : application complète du mode sombre à la popup véhicule Google Maps, incluant fond, pointe, bouton fermer et bouton secondaire.
+- Correction Details traceur : la carte Emplacement utilise maintenant le debut reel de la session parking actuelle lorsque le moteur est coupe.
+- Le temps Parking, l'adresse, les coordonnees, l'altitude, la direction et le temps relatif affiches dans Emplacement sont bases sur le premier point de la sequence continue ignition=false, et non sur le dernier ping d'actualisation.
+- Ajout d'un test de regression pour garantir qu'un traceur deja en parking conserve l'adresse et la direction du moment ou le vehicule s'est mis en parking.
+- Correction GSM : les valeurs de signal envoyees en barres 0-5 par certains traceurs sont normalisees en pourcentage 0-100 lors de l'ingestion GPS, et l'affichage corrige aussi les anciennes valeurs deja stockees.
+- Ajout de la page superadmin `/events` pour consulter tous les evenements collectes par les traceurs, avec recherche, tri AJAX et pagination 5 lignes comme les autres tableaux.
+- Ajout du menu Evenements dans la sidebar et d'un lien depuis les details traceur vers l'historique complet filtre par traceur.
+- Extension de la collecte des evenements GPS : le payload peut maintenant contenir `events` pour enregistrer des evenements comme porte ouverte, freinage brusque, acceleration brusque, virage brusque, remorquage, collision ou SOS.
+
+- Clarification métier : les alertes et les événements véhicule sont désormais séparés. Les pertes et retours de signal restent uniquement dans les alertes équipement/connexion.
+- Correction de la collecte GPS : `signal_lost` et `signal_restored` ne sont plus créés dans `tracker_events`; les événements véhicule restent réservés aux faits véhicule comme moteur allumé/coupé, déplacement, arrêt, porte ouverte, freinage brusque, etc.
+- Ajout du filtre `vehicleEvents()` pour masquer les anciens événements techniques dans le modal détails traceur et sur la page `/events`, renommée en Événements véhicules.
+
+- Correction UX Evenements vehicule : retrait du menu Evenements vehicules de la sidebar, car les evenements se consultent uniquement depuis le traceur ou vehicule selectionne.
+- La route `/events` exige maintenant un traceur via `?device=...`; sans contexte elle redirige vers la page Traceurs avec un message.
+- La liste complete des evenements affiche uniquement les evenements du vehicule associe au traceur selectionne, et ne melange plus les evenements des autres vehicules.

@@ -1972,6 +1972,21 @@ body.theme-dark .alert-summary-card small {
     font-size: 0.9rem;
 }
 
+.tracker-details-link {
+    align-items: center;
+    color: var(--exad-primary);
+    display: inline-flex;
+    font-size: 0.74rem;
+    font-weight: 850;
+    gap: 6px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.tracker-details-link:hover {
+    color: #2563eb;
+}
+
 .tracker-details-list {
     display: grid;
     gap: 12px;

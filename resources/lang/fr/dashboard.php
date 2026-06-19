@@ -17,6 +17,7 @@ return [
     'trackers' => 'Traceurs',
     'map' => 'Carte',
     'alerts' => 'Alertes',
+    'events' => 'Événements véhicules',
     'server_logs' => 'Logs serveur',
     'server_monitoring' => 'Monitoring',
     'devices' => 'Traceurs',

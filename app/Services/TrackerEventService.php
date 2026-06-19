@@ -34,15 +34,10 @@ class TrackerEventService
     public function recordPosition(
         Device $device,
         Position $position,
-        string $previousStatus,
         ?bool $previousMovement,
         ?bool $previousIgnition
     ): void {
         $device->loadMissing(['fleet:id,name,code', 'vehicle:id,name,registration_number']);
-
-        if ($previousStatus !== 'online') {
-            $this->createSignalRestored($device, $position, $previousStatus);
-        }
 
         if ($position->movement !== null) {
             $this->recordMovementChange($device, $position, $previousMovement);
@@ -51,64 +46,8 @@ class TrackerEventService
         if ($position->ignition !== null) {
             $this->recordIgnitionChange($device, $position, $previousIgnition);
         }
-    }
 
-    public function createSignalLost(Device $device): TrackerEvent
-    {
-        $device->loadMissing(['fleet:id,name,code', 'vehicle:id,name,registration_number']);
-        $vehicle = $this->vehicleName($device);
-        $tracker = $this->trackerName($device);
-
-        return $this->create([
-            'fleet_id' => $device->fleet_id,
-            'vehicle_id' => $device->vehicle_id,
-            'device_id' => $device->id,
-            'type' => 'signal_lost',
-            'title' => __('trackers.event_signal_lost_title'),
-            'message' => __('trackers.event_signal_lost_message', [
-                'tracker' => $tracker,
-                'vehicle' => $vehicle,
-            ]),
-            'latitude' => $device->last_latitude,
-            'longitude' => $device->last_longitude,
-            'metadata' => [
-                'imei' => $device->imei,
-                'translation' => $this->translation('trackers.event_signal_lost_title', 'trackers.event_signal_lost_message', [
-                    'tracker' => $tracker,
-                    'vehicle' => $vehicle,
-                ]),
-            ],
-        ]);
-    }
-
-    private function createSignalRestored(Device $device, Position $position, string $previousStatus): TrackerEvent
-    {
-        $vehicle = $this->vehicleName($device);
-        $tracker = $this->trackerName($device);
-
-        return $this->create([
-            'fleet_id' => $device->fleet_id,
-            'vehicle_id' => $device->vehicle_id,
-            'device_id' => $device->id,
-            'position_id' => $position->id,
-            'type' => 'signal_restored',
-            'title' => __('trackers.event_signal_restored_title'),
-            'message' => __('trackers.event_signal_restored_message', [
-                'tracker' => $tracker,
-                'vehicle' => $vehicle,
-            ]),
-            'started_at' => $position->server_time,
-            'latitude' => $position->latitude,
-            'longitude' => $position->longitude,
-            'metadata' => [
-                'imei' => $device->imei,
-                'previous_status' => $previousStatus,
-                'translation' => $this->translation('trackers.event_signal_restored_title', 'trackers.event_signal_restored_message', [
-                    'tracker' => $tracker,
-                    'vehicle' => $vehicle,
-                ]),
-            ],
-        ]);
+        $this->recordTelemetryEvents($device, $position);
     }
 
     private function recordMovementChange(Device $device, Position $position, ?bool $previousMovement): void
@@ -228,9 +167,79 @@ class TrackerEventService
         ]);
     }
 
-    private function trackerName(Device $device): string
+    private function recordTelemetryEvents(Device $device, Position $position): void
     {
-        return $device->name ?: $device->imei;
+        $events = data_get($position->raw_data, 'payload.events', []);
+
+        if (! is_array($events)) {
+            return;
+        }
+
+        foreach ($events as $event) {
+            $type = is_string($event)
+                ? $event
+                : (is_array($event) ? (string) ($event['type'] ?? '') : '');
+
+            $type = $this->normalizeEventType($type);
+
+            if ($type === '' || in_array($type, ['movement_started', 'movement_stopped', 'ignition_on', 'ignition_off'], true)) {
+                continue;
+            }
+
+            $this->createTelemetryEvent($device, $position, $type, is_array($event) ? $event : []);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function createTelemetryEvent(Device $device, Position $position, string $type, array $payload): TrackerEvent
+    {
+        $vehicle = $this->vehicleName($device);
+        $titleKey = "trackers.event_{$type}_title";
+        $messageKey = "trackers.event_{$type}_message";
+        $title = __($titleKey);
+        $message = __($messageKey, ['vehicle' => $vehicle]);
+
+        if ($title === $titleKey) {
+            $title = (string) ($payload['title'] ?? str($type)->replace('_', ' ')->title());
+        }
+
+        if ($message === $messageKey) {
+            $message = (string) ($payload['message'] ?? __('trackers.event_generic_message', [
+                'vehicle' => $vehicle,
+                'event' => $title,
+            ]));
+        }
+
+        return $this->create([
+            'fleet_id' => $device->fleet_id,
+            'vehicle_id' => $device->vehicle_id,
+            'device_id' => $device->id,
+            'position_id' => $position->id,
+            'type' => $type,
+            'title' => $title,
+            'message' => $message,
+            'started_at' => $position->server_time,
+            'latitude' => $position->latitude,
+            'longitude' => $position->longitude,
+            'metadata' => [
+                'telemetry' => $payload,
+                'translation' => $this->translation($titleKey, $messageKey, [
+                    'vehicle' => $vehicle,
+                ]),
+            ],
+        ]);
+    }
+
+    private function normalizeEventType(string $type): string
+    {
+        return str($type)
+            ->lower()
+            ->replace(['-', ' '], '_')
+            ->replaceMatches('/[^a-z0-9_]/', '')
+            ->squish()
+            ->toString();
     }
 
     private function vehicleName(Device $device): string

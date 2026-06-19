@@ -12,7 +12,7 @@
     @endif
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260602-tracker-trips-shared">
-    <link rel="stylesheet" href="{{ asset('css/map.css') }}?v=20260619-map-filter-toggle-offset">
+    <link rel="stylesheet" href="{{ asset('css/map.css') }}?v=20260619-map-popup-dark">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -193,12 +193,12 @@
     <script src="{{ asset('js/tracker-details.js') }}?v=20260602-details-shared"></script>
     <script src="{{ asset('js/tracker-trips.js') }}?v=20260602-trips-shared"></script>
     @if ($mapProvider === 'google')
-        <script src="{{ asset('js/google-map.js') }}?v=20260619-google-path-locked-trail"></script>
+        <script src="{{ asset('js/google-map.js') }}?v=20260619-google-popup-status"></script>
         @if ($googleMapsApiKey !== '')
             <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ urlencode($googleMapsApiKey) }}&callback=initExadGoogleMap"></script>
         @endif
     @else
-        <script src="{{ asset('js/map.js') }}?v=20260605-mapbox-selective-display"></script>
+        <script src="{{ asset('js/map.js') }}?v=20260619-mapbox-popup-status"></script>
     @endif
 </body>
 </html>

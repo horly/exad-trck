@@ -13,6 +13,16 @@ class TrackerEvent extends Model
     use HasFactory;
 
     /**
+     * These are technical device events. They belong to alerts, not vehicle history.
+     *
+     * @var list<string>
+     */
+    public const EQUIPMENT_EVENT_TYPES = [
+        'signal_lost',
+        'signal_restored',
+    ];
+
+    /**
      * @var list<string>
      */
     protected $fillable = [
@@ -149,5 +159,10 @@ class TrackerEvent extends Model
                 ->orWhereHas('vehicle', fn (Builder $query): Builder => $query->visibleTo($user))
                 ->orWhereHas('device', fn (Builder $query): Builder => $query->visibleTo($user));
         });
+    }
+
+    public function scopeVehicleEvents(Builder $query): Builder
+    {
+        return $query->whereNotIn('type', self::EQUIPMENT_EVENT_TYPES);
     }
 }
