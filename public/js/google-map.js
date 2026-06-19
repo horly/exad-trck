@@ -217,55 +217,144 @@
         }
     };
 
-    const positionToCoordinates = (position) => [
-        Number(position.lng()),
-        Number(position.lat()),
-    ];
+    const coordinatePathToLatLng = (coordinates = []) => coordinates
+        .filter((coordinate) => Array.isArray(coordinate) && coordinate.length >= 2)
+        .map((coordinate) => {
+            const latLng = coordinatesToLatLng(coordinate);
 
-    const drawMovementTrail = (coordinates = [], currentPosition = null) => {
-        if (!Array.isArray(coordinates) || coordinates.length < 2) {
-            return [];
-        }
-
-        const visibleCoordinates = [...coordinates];
-
-        if (currentPosition) {
-            visibleCoordinates[visibleCoordinates.length - 1] = positionToCoordinates(currentPosition);
-        }
-
-        const segments = [];
-
-        visibleCoordinates.slice(1).forEach((coordinate, index) => {
-            const previous = visibleCoordinates[index];
-            const progress = (index + 1) / (visibleCoordinates.length - 1);
-            const polyline = new google.maps.Polyline({
-                map,
-                path: [coordinatesToLatLng(previous), coordinatesToLatLng(coordinate)],
-                geodesic: true,
-                strokeColor: '#229bd8',
-                strokeOpacity: 0.14 + (progress * 0.66),
-                strokeWeight: 5,
-            });
-
-            trailPolylines.push(polyline);
-            segments.push(polyline);
+            return new google.maps.LatLng(latLng.lat, latLng.lng);
         });
 
-        return segments;
+    const latLngDistance = (first, second) => Math.hypot(
+        first.lat() - second.lat(),
+        first.lng() - second.lng(),
+    );
+
+    const closestPathIndex = (path, position) => path.reduce((closest, point, index) => {
+        const distance = latLngDistance(point, position);
+
+        return distance < closest.distance ? { index, distance } : closest;
+    }, { index: 0, distance: Number.POSITIVE_INFINITY }).index;
+
+    const interpolatePath = (path, progress) => {
+        if (!Array.isArray(path) || path.length < 2) {
+            return {
+                position: path?.[0] || null,
+                passedPoints: path ? [...path] : [],
+            };
+        }
+
+        const distances = path.slice(1).map((point, index) => latLngDistance(path[index], point));
+        const totalDistance = distances.reduce((total, distance) => total + distance, 0);
+
+        if (totalDistance === 0) {
+            return {
+                position: path[path.length - 1],
+                passedPoints: [...path],
+            };
+        }
+
+        const targetDistance = totalDistance * Math.min(Math.max(progress, 0), 1);
+        let traversedDistance = 0;
+        const passedPoints = [path[0]];
+
+        for (let index = 1; index < path.length; index += 1) {
+            const segmentDistance = distances[index - 1];
+
+            if (traversedDistance + segmentDistance < targetDistance) {
+                passedPoints.push(path[index]);
+                traversedDistance += segmentDistance;
+                continue;
+            }
+
+            const segmentProgress = segmentDistance === 0
+                ? 1
+                : (targetDistance - traversedDistance) / segmentDistance;
+            const previous = path[index - 1];
+            const next = path[index];
+            const lat = previous.lat() + ((next.lat() - previous.lat()) * segmentProgress);
+            const lng = previous.lng() + ((next.lng() - previous.lng()) * segmentProgress);
+
+            return {
+                position: new google.maps.LatLng(lat, lng),
+                passedPoints,
+            };
+        }
+
+        return {
+            position: path[path.length - 1],
+            passedPoints: path.slice(0, -1),
+        };
     };
 
-    const updateTrailEndpoint = (segments, position) => {
-        const lastSegment = segments[segments.length - 1];
+    const movementTrailContext = (coordinates = [], currentPosition, targetPosition, hasExistingMarker) => {
+        const serverPath = coordinatePathToLatLng(coordinates);
 
-        if (!lastSegment) {
-            return;
+        if (serverPath.length < 2) {
+            return null;
         }
 
-        const path = lastSegment.getPath();
-
-        if (path.getLength() >= 2) {
-            path.setAt(path.getLength() - 1, position);
+        if (!hasExistingMarker) {
+            return {
+                basePath: serverPath,
+                animationPath: [targetPosition],
+            };
         }
+
+        const closestIndex = closestPathIndex(serverPath, currentPosition);
+        const basePath = serverPath.slice(0, closestIndex + 1);
+        basePath[basePath.length - 1] = currentPosition;
+
+        if (basePath.length < 2) {
+            basePath.push(currentPosition);
+        }
+
+        const animationPath = [currentPosition, ...serverPath.slice(closestIndex + 1)];
+
+        if (animationPath.length < 2 || !sameLatLng(animationPath[animationPath.length - 1], targetPosition)) {
+            animationPath.push(targetPosition);
+        }
+
+        return { basePath, animationPath };
+    };
+
+    const progressiveTrailPath = (basePath, animationPath, progress) => {
+        if (!animationPath || animationPath.length < 2) {
+            return basePath;
+        }
+
+        const interpolated = interpolatePath(animationPath, progress);
+        const path = [...basePath];
+        interpolated.passedPoints.slice(1).forEach((point) => {
+            if (!sameLatLng(path[path.length - 1], point)) {
+                path.push(point);
+            }
+        });
+
+        if (interpolated.position && !sameLatLng(path[path.length - 1], interpolated.position)) {
+            path.push(interpolated.position);
+        }
+
+        return path;
+    };
+
+    const drawMovementTrail = (path = []) => {
+        if (!Array.isArray(path) || path.length < 2) {
+            return null;
+        }
+
+        const polyline = new google.maps.Polyline({
+            map,
+            path,
+            geodesic: true,
+            strokeColor: '#229bd8',
+            strokeOpacity: 0.72,
+            strokeWeight: 5,
+        });
+
+        trailPolylines.push(polyline);
+
+        return polyline;
     };
 
     const defineVehicleOverlay = () => {
@@ -309,7 +398,7 @@
                 }
             }
 
-            setPosition(position, animate = false, onFrame = null) {
+            setPosition(position, animate = false, onFrame = null, animationPath = null) {
                 if (this.animationFrame) {
                     cancelAnimationFrame(this.animationFrame);
                     this.animationFrame = null;
@@ -324,16 +413,18 @@
 
                 const start = this.position;
                 const startedAt = performance.now();
+                const path = Array.isArray(animationPath) && animationPath.length > 1
+                    ? animationPath
+                    : [start, position];
 
                 const step = (now) => {
                     const progress = Math.min((now - startedAt) / MARKER_ANIMATION_MS, 1);
                     const eased = easeInOut(progress);
-                    const lat = start.lat() + ((position.lat() - start.lat()) * eased);
-                    const lng = start.lng() + ((position.lng() - start.lng()) * eased);
+                    const interpolated = interpolatePath(path, eased);
 
-                    this.position = new google.maps.LatLng(lat, lng);
+                    this.position = interpolated.position || position;
                     this.draw();
-                    onFrame?.(this.position);
+                    onFrame?.(this.position, eased);
 
                     if (progress < 1) {
                         this.animationFrame = requestAnimationFrame(step);
@@ -447,10 +538,10 @@
             const position = new google.maps.LatLng(latLng.lat, latLng.lng);
             const isSelected = id === String(selectedDeviceId);
             const marker = markerRegistry.get(id);
-            const trailPosition = marker?.position || position;
-            const trailSegments = feature.properties.is_moving
-                ? drawMovementTrail(feature.properties.trail, trailPosition)
-                : [];
+            const trailContext = feature.properties.is_moving
+                ? movementTrailContext(feature.properties.trail, marker?.position || position, position, Boolean(marker))
+                : null;
+            const trailPolyline = trailContext ? drawMovementTrail(trailContext.basePath) : null;
             const onClick = () => {
                 selectedDeviceId = feature.properties.id;
                 renderMarkers(displayedGeojson());
@@ -460,9 +551,13 @@
                 infoWindow.open({ map });
                 keepPositionVisible(markerRegistry.get(id)?.position || position);
             };
-            const onFrame = (currentPosition) => {
-                if (feature.properties.is_moving) {
-                    updateTrailEndpoint(trailSegments, currentPosition);
+            const onFrame = (currentPosition, progress = 1) => {
+                if (feature.properties.is_moving && trailPolyline && trailContext) {
+                    trailPolyline.setPath(progressiveTrailPath(
+                        trailContext.basePath,
+                        trailContext.animationPath,
+                        progress,
+                    ));
                 }
 
                 if (isSelected) {
@@ -476,7 +571,7 @@
 
             if (marker) {
                 marker.refresh(feature.properties, isSelected, onClick);
-                marker.setPosition(position, feature.properties.is_moving, onFrame);
+                marker.setPosition(position, feature.properties.is_moving, onFrame, trailContext?.animationPath || null);
                 return;
             }
 

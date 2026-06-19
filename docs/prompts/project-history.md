@@ -190,3 +190,4 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Correction Carte : le dernier segment de la trace suit maintenant l'icÃ´ne pendant l'animation, afin que la ligne reste toujours derriÃ¨re le vÃ©hicule en mouvement.
 - Correction Carte : moteur coupÃ© force le parking `P`, moteur allumÃ© sans mouvement affiche le carrÃ©, et l'Ã©tat mouvement n'est possible que si le moteur n'est pas coupÃ©.
 - Correction Carte : rétablissement de l'affichage Google Maps après une erreur de syntaxe JavaScript causée par un nom de variable dupliqué dans la gestion des marqueurs animés.
+- Correction Carte : l'animation du véhicule suit maintenant le même chemin que la trace, et la trace progressive ne contient plus de points futurs devant l'icône.
