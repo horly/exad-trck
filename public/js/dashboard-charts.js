@@ -80,6 +80,34 @@
     let worldMapInstance = null;
     let worldMapResizeHandler = null;
 
+    const normalizePlaceName = (value) => {
+        const textValue = String(value || '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        if (!textValue) {
+            return '';
+        }
+
+        const compactedLetters = textValue
+            .split(' ')
+            .every((part) => part.length <= 1)
+            ? textValue.replace(/\s+/g, '')
+            : textValue;
+
+        return compactedLetters
+            .toLocaleLowerCase('fr-FR')
+            .split(/([\s'-]+)/)
+            .map((part) => {
+                if (!part || /^[\s'-]+$/.test(part)) {
+                    return part;
+                }
+
+                return part.charAt(0).toLocaleUpperCase('fr-FR') + part.slice(1);
+            })
+            .join('');
+    };
+
     const renderWorldMap = () => {
         const container = document.querySelector('[data-dashboard-world-map]');
         const canvas = container ? container.querySelector('.world-map-canvas') : null;
@@ -103,9 +131,10 @@
         const colors = palette();
         const bubbles = clusters.map((cluster) => {
             const total = Number(cluster.total || 0);
+            const cityName = normalizePlaceName(cluster.label);
 
             return {
-                name: cluster.label,
+                name: cityName || cluster.label,
                 country: cluster.country,
                 latitude: Number(cluster.latitude),
                 longitude: Number(cluster.longitude),

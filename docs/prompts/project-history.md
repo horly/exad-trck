@@ -329,3 +329,9 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Isolation des règles `flex/order` sur la page tableau de bord via la classe dédiée `dashboard-home-main` au lieu de les appliquer globalement à `.dashboard-main`.
 - Mise à jour du cache-busting `dashboard.css` en `20260708-dashboard-order-scope` sur les vues superadmin.
 - Vérifications : `php -l` sur les vues dashboard/users/map et `php artisan test --filter=dashboard`.
+
+## 2026-07-08 - Tooltip ville carte mondiale
+- Normalisation du nom de ville au survol du point bleu Datamaps : première lettre en majuscule, reste en minuscule.
+- Correction des noms dont les lettres arrivent espacées afin d'afficher un nom compact, par exemple Kinshasa.
+- Suppression de l'espacement typographique dans le tooltip de la carte mondiale.
+- Vérifications : `node --check public\js\dashboard-charts.js`, `php -l resources\views\dashboard.blade.php`.

@@ -1324,8 +1324,10 @@
     color: var(--exad-ink);
     font-size: 0.76rem;
     font-weight: 750;
+    letter-spacing: 0;
     padding: 12px 14px;
     min-width: 190px;
+    text-transform: none;
 }
 
 .world-map-hover strong,

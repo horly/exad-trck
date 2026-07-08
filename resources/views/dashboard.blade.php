@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260708-dashboard-order-scope">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260708-dashboard-city-tooltip">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -259,6 +259,6 @@
     <script src="{{ asset('vendor/topojson/topojson.min.js') }}"></script>
     <script src="{{ asset('vendor/datamaps/datamaps.world.min.js') }}"></script>
     <script id="dashboardChartData" type="application/json">@json($dashboardCharts)</script>
-    <script src="{{ asset('js/dashboard-charts.js') }}?v=20260626-dashboard-map-polish"></script>
+    <script src="{{ asset('js/dashboard-charts.js') }}?v=20260708-dashboard-city-tooltip"></script>
 </body>
 </html>
