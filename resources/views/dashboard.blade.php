@@ -259,6 +259,6 @@
     <script src="{{ asset('vendor/topojson/topojson.min.js') }}"></script>
     <script src="{{ asset('vendor/datamaps/datamaps.world.min.js') }}"></script>
     <script id="dashboardChartData" type="application/json">@json($dashboardCharts)</script>
-    <script src="{{ asset('js/dashboard-charts.js') }}?v=20260708-dashboard-city-tooltip"></script>
+    <script src="{{ asset('js/dashboard-charts.js') }}?v=20260708-dashboard-city-search-link"></script>
 </body>
 </html>

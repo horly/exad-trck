@@ -8,6 +8,7 @@ use App\Models\Position;
 use App\Services\GoogleRoadsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class MapController extends Controller
@@ -89,7 +90,7 @@ class MapController extends Controller
     private function filteredDevices(Request $request)
     {
         $user = $request->user();
-        $search = trim((string) $request->query('search', ''));
+        $search = $this->normalizedSearchTerm((string) $request->query('search', ''));
         $status = (string) $request->query('status', '');
         $fleetId = (string) $request->query('fleet_id', '');
         $visibleFleetIds = Fleet::query()->visibleTo($user)->pluck('id')->map(fn (int $id): string => (string) $id);
@@ -120,6 +121,23 @@ class MapController extends Controller
             })
             ->latest('devices.last_seen_at')
             ->latest('devices.id');
+    }
+
+    private function normalizedSearchTerm(string $value): string
+    {
+        $search = Str::of($value)->squish()->toString();
+
+        if ($search === '') {
+            return '';
+        }
+
+        $parts = explode(' ', $search);
+
+        if (count($parts) > 1 && collect($parts)->every(fn (string $part): bool => Str::length($part) === 1)) {
+            return implode('', $parts);
+        }
+
+        return $search;
     }
 
     /**

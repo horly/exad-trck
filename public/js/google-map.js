@@ -54,6 +54,33 @@
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 
+    const normalizeSearchValue = (value) => {
+        const textValue = String(value || '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        if (!textValue) {
+            return '';
+        }
+
+        const parts = textValue.split(' ');
+        const compactedLetters = parts.length > 1 && parts.every((part) => part.length === 1)
+            ? parts.join('')
+            : textValue;
+
+        return compactedLetters
+            .toLocaleLowerCase('fr-FR')
+            .split(/([\s'-]+)/)
+            .map((part) => {
+                if (!part || /^[\s'-]+$/.test(part)) {
+                    return part;
+                }
+
+                return part.charAt(0).toLocaleUpperCase('fr-FR') + part.slice(1);
+            })
+            .join('');
+    };
+
     const coordinatesToLatLng = (coordinates) => ({
         lat: Number(coordinates?.[1] || 0),
         lng: Number(coordinates?.[0] || 0),
@@ -88,8 +115,10 @@
             params.set('fleet_id', fleetFilter.value);
         }
 
-        if (searchInput.value.trim()) {
-            params.set('search', searchInput.value.trim());
+        const searchValue = normalizeSearchValue(searchInput.value);
+
+        if (searchValue) {
+            params.set('search', searchValue);
         }
 
         return params.toString();
@@ -107,7 +136,7 @@
         }
 
         if (params.has('search')) {
-            searchInput.value = params.get('search') || '';
+            searchInput.value = normalizeSearchValue(params.get('search') || '');
         }
 
         if (params.get('show') === '1' || searchInput.value.trim() !== '') {

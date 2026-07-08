@@ -312,23 +312,41 @@ class DashboardController extends Controller
     {
         $parts = collect(explode(',', (string) $address))
             ->map(fn (string $part): string => trim($part))
+            ->map(fn (string $part): string => $this->formattedPlaceLabel($part))
             ->filter();
 
         foreach (['kinshasa', 'brazzaville', 'lubumbashi', 'matadi'] as $city) {
             $match = $parts->first(fn (string $part): bool => Str::contains(Str::lower($part), $city));
 
             if ($match !== null) {
-                return Str::headline($match);
+                return $match;
             }
         }
 
         foreach ($parts as $part) {
             if (Str::contains(Str::lower($part), ['gombe', 'ngaliema'])) {
-                return Str::headline($part);
+                return $part;
             }
         }
 
         return $parts->first() ?: __('dashboard.unknown_area');
+    }
+
+    private function formattedPlaceLabel(string $value): string
+    {
+        $label = Str::of($value)->squish()->toString();
+
+        if ($label === '') {
+            return '';
+        }
+
+        $parts = explode(' ', $label);
+
+        if (count($parts) > 1 && collect($parts)->every(fn (string $part): bool => Str::length($part) === 1)) {
+            $label = implode('', $parts);
+        }
+
+        return Str::headline(Str::lower($label));
     }
 
     private function countryLabel(?string $address): string

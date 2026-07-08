@@ -12,7 +12,7 @@
     @endif
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260708-dashboard-order-scope">
-    <link rel="stylesheet" href="{{ asset('css/map.css') }}?v=20260708-map-marker-size">
+    <link rel="stylesheet" href="{{ asset('css/map.css') }}?v=20260708-map-search-normalized">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -194,7 +194,7 @@
     <script src="{{ asset('js/tracker-details.js') }}?v=20260602-details-shared"></script>
     <script src="{{ asset('js/tracker-trips.js') }}?v=20260602-trips-shared"></script>
     @if ($mapProvider === 'google')
-        <script src="{{ asset('js/google-map.js') }}?v=20260626-dashboard-city-filter"></script>
+        <script src="{{ asset('js/google-map.js') }}?v=20260708-map-search-normalized"></script>
         @if ($googleMapsApiKey !== '')
             <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ urlencode($googleMapsApiKey) }}&callback=initExadGoogleMap"></script>
         @endif

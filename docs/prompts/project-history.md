@@ -335,3 +335,10 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Correction des noms dont les lettres arrivent espacées afin d'afficher un nom compact, par exemple Kinshasa.
 - Suppression de l'espacement typographique dans le tooltip de la carte mondiale.
 - Vérifications : `node --check public\js\dashboard-charts.js`, `php -l resources\views\dashboard.blade.php`.
+
+## 2026-07-08 - Recherche ville carte depuis dashboard
+- Correction de la recherche carte lorsqu'un point bleu du dashboard envoie une ville avec lettres espacées, par exemple `K I N S H A S A`.
+- Normalisation du champ recherche carte : affichage en casse propre (`Kinshasa`) et suppression de l'espacement typographique.
+- Normalisation backend dans `MapController` pour accepter les villes espacées dans le paramètre `search`.
+- Normalisation des libellés de ville côté dashboard avant génération du lien vers la carte.
+- Vérifications : `node --check public\js\google-map.js`, `node --check public\js\dashboard-charts.js`, `php -l app\Http\Controllers\MapController.php`, `php -l app\Http\Controllers\DashboardController.php`.

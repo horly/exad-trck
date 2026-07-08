@@ -142,7 +142,9 @@
                 total,
                 online: Number(cluster.online || 0),
                 moving: Number(cluster.moving || 0),
-                url: cluster.url || '',
+                url: cluster.url
+                    ? cluster.url.replace(/([?&]search=)[^&]*/, (match, prefix) => `${prefix}${encodeURIComponent(cityName || cluster.label)}`)
+                    : '',
                 fillKey: Number(cluster.moving || 0) > 0
                     ? 'moving'
                     : (Number(cluster.online || 0) > 0 ? 'online' : 'offline'),
