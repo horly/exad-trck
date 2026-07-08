@@ -105,6 +105,7 @@ class MapController extends Controller
                         ->where('devices.name', 'like', "%{$search}%")
                         ->orWhere('devices.imei', 'like', "%{$search}%")
                         ->orWhere('devices.model', 'like', "%{$search}%")
+                        ->orWhere('devices.last_address', 'like', "%{$search}%")
                         ->orWhereHas('vehicle', function ($query) use ($search): void {
                             $query
                                 ->where('name', 'like', "%{$search}%")

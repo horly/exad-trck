@@ -149,6 +149,26 @@
         return params.toString();
     };
 
+    const hydrateFiltersFromUrl = () => {
+        const params = new URLSearchParams(window.location.search);
+
+        if (params.has('status')) {
+            statusFilter.value = params.get('status') || '';
+        }
+
+        if (params.has('fleet_id')) {
+            fleetFilter.value = params.get('fleet_id') || '';
+        }
+
+        if (params.has('search')) {
+            searchInput.value = params.get('search') || '';
+        }
+
+        if (params.get('show') === '1' || searchInput.value.trim() !== '') {
+            showAllInput.checked = true;
+        }
+    };
+
     const fitToFeatures = () => {
         if (!latestGeojson.features.length || !map) {
             return;
@@ -486,10 +506,10 @@
                 ['!=', ['get', 'is_moving'], true],
             ],
             paint: {
-                'circle-radius': 7,
+                'circle-radius': 6,
                 'circle-color': statusColorExpression,
                 'circle-stroke-color': '#ffffff',
-                'circle-stroke-width': 3,
+                'circle-stroke-width': 2.5,
             },
         });
 
@@ -501,7 +521,7 @@
             layout: {
                 'text-field': 'P',
                 'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-                'text-size': 12,
+                'text-size': 10,
                 'text-allow-overlap': true,
                 'text-ignore-placement': true,
             },
@@ -518,7 +538,7 @@
             layout: {
                 'text-field': '■',
                 'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-                'text-size': 22,
+                'text-size': 19,
                 'text-allow-overlap': true,
                 'text-ignore-placement': true,
             },
@@ -537,7 +557,7 @@
             layout: {
                 'text-field': '▲',
                 'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-                'text-size': 24,
+                'text-size': 21,
                 'text-rotate': ['get', 'angle'],
                 'text-rotation-alignment': 'map',
                 'text-allow-overlap': true,
@@ -635,6 +655,8 @@
         refreshTimer = setInterval(() => loadDevices(), 10000);
     };
 
+    hydrateFiltersFromUrl();
+
     mapboxgl.accessToken = config.token;
     map = new mapboxgl.Map({
         container: mapElement,
@@ -652,7 +674,7 @@
 
     map.on('load', () => {
         addLayers();
-        loadDevices();
+        loadDevices({ fit: showAllInput.checked });
         scheduleAutoRefresh();
     });
 

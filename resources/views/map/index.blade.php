@@ -11,8 +11,8 @@
         <link rel="stylesheet" href="{{ asset('vendor/mapbox/mapbox-gl.css') }}">
     @endif
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260619-tracker-details-compact">
-    <link rel="stylesheet" href="{{ asset('css/map.css') }}?v=20260619-map-popup-dark">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260708-dashboard-order-scope">
+    <link rel="stylesheet" href="{{ asset('css/map.css') }}?v=20260708-map-marker-size">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -20,6 +20,7 @@
 
         <main class="dashboard-main map-main">
             <header class="dashboard-topbar map-topbar">
+                @include('partials.sidebar-toggle')
                 <div>
                     <p class="eyebrow mb-1">{{ __('map.eyebrow') }}</p>
                     <h1>{{ __('map.title') }}</h1>
@@ -187,18 +188,18 @@
     @if ($mapProvider === 'mapbox')
         <script src="{{ asset('vendor/mapbox/mapbox-gl.js') }}"></script>
     @endif
-    <script src="{{ asset('js/dashboard-sidebar.js') }}?v=20260528-sidebar-toggle"></script>
+    <script src="{{ asset('js/dashboard-sidebar.js') }}?v=20260626-responsive-sidebar-default"></script>
     <script src="{{ asset('js/dashboard-controls.js') }}?v=20260529-shared-controls"></script>
     @include('partials.realtime-alerts')
     <script src="{{ asset('js/tracker-details.js') }}?v=20260602-details-shared"></script>
     <script src="{{ asset('js/tracker-trips.js') }}?v=20260602-trips-shared"></script>
     @if ($mapProvider === 'google')
-        <script src="{{ asset('js/google-map.js') }}?v=20260619-stable-marker-animation"></script>
+        <script src="{{ asset('js/google-map.js') }}?v=20260626-dashboard-city-filter"></script>
         @if ($googleMapsApiKey !== '')
             <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ urlencode($googleMapsApiKey) }}&callback=initExadGoogleMap"></script>
         @endif
     @else
-        <script src="{{ asset('js/map.js') }}?v=20260619-mapbox-popup-status"></script>
+        <script src="{{ asset('js/map.js') }}?v=20260708-map-marker-size"></script>
     @endif
 </body>
 </html>

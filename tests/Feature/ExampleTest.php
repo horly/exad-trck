@@ -81,8 +81,12 @@ test('authenticated users can view dashboard metrics', function () {
         ->assertSee('Camion Kin 01')
         ->assertSee('Pick-up Gombe')
         ->assertSee('Traceurs')
-        ->assertSee('Positions du jour')
-        ->assertSee('Évolution des positions');
+        ->assertSee('Positions période')
+        ->assertSee('Carte mondiale des traceurs')
+        ->assertSee('Évolution des positions')
+        ->assertSee('vendor/d3/d3.min.js', false)
+        ->assertSee('vendor/topojson/topojson.min.js', false)
+        ->assertSee('vendor/datamaps/datamaps.world.min.js', false);
 });
 
 test('superadmin console pages load realtime alert toasts globally', function () {
@@ -1255,6 +1259,36 @@ test('map devices endpoint returns geojson for every positioned tracker to super
         ->toHaveCount(3)
         ->and($response->json('geojson.features.0.properties.details_url'))->toContain('/trackers/')
         ->and($response->json('geojson.features.0.properties.trips_url'))->toContain('/trackers/');
+});
+
+test('map devices endpoint can filter positioned trackers by address city', function () {
+    $superadmin = User::factory()->superadmin()->create();
+
+    $kinshasaDevice = Device::factory()->create([
+        'name' => 'Traceur Kin',
+        'status' => 'online',
+        'last_latitude' => -4.335,
+        'last_longitude' => 15.225,
+        'last_address' => 'Avenue Du Kwango, Gombe, Kinshasa, Republique democratique du Congo',
+    ]);
+
+    Device::factory()->create([
+        'name' => 'Traceur Matadi',
+        'status' => 'online',
+        'last_latitude' => -5.81,
+        'last_longitude' => 13.45,
+        'last_address' => 'Avenue du Port, Matadi, Republique democratique du Congo',
+    ]);
+
+    $response = $this->actingAs($superadmin)
+        ->getJson(route('map.devices', ['search' => 'Kinshasa']))
+        ->assertSuccessful()
+        ->assertJsonPath('summary.total', 1)
+        ->assertJsonPath('summary.positioned', 1);
+
+    expect($response->json('geojson.features'))
+        ->toHaveCount(1)
+        ->and($response->json('geojson.features.0.properties.id'))->toBe($kinshasaDevice->id);
 });
 
 test('map device marker keeps the exact gps position while movement trail can be snapped to roads', function () {

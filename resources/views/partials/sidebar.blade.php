@@ -15,10 +15,6 @@
         </div>
     </div>
 
-    <button class="sidebar-toggle" type="button" aria-label="{{ __('dashboard.sidebar_toggle') }}" data-sidebar-toggle>
-        <i class="fa-solid fa-chevron-left" data-sidebar-toggle-icon></i>
-    </button>
-
     <nav class="nav flex-column dashboard-nav" aria-label="{{ __('dashboard.main_navigation') }}">
         @if ($user->isSuperadmin())
             <a class="nav-link {{ $active === 'dashboard' ? 'active' : '' }}" href="{{ route('dashboard') }}">

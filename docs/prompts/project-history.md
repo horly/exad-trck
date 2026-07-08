@@ -77,7 +77,7 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Rendre les titres et messages d'alertes multilingues : les clÃ©s et paramÃ¨tres sont stockÃ©s en `metadata`, puis traduits selon la langue active de la session pour le tableau, l'endpoint AJAX et les toasts.
 - Traduire aussi les anciennes alertes GPS systÃ¨me dÃ©jÃ  stockÃ©es en anglais (`No signal`, `Signal restored`) et forcer le rafraÃ®chissement live du tableau Alertes sur l'ordre par dÃ©faut, derniÃ¨re alerte en premier.
 - Modifier l'ordre du tableau Alertes pour placer systÃ©matiquement les alertes traitÃ©es/rÃ©solues en derniÃ¨re position, mÃªme lorsqu'un tri AJAX est appliquÃ©.
-- Ajouter un bouton cloche dans la topbar superadmin, juste avant le mode sombre, avec compteur rouge des nouvelles alertes et mise Ã  jour automatique lors des toasts live.
+- Ajouter un bouton cloche dans la topbar superadmin, juste avant le mode sombre, avec compteur rouge des nouvelles alertes et Mise à jour automatique lors des toasts live.
 - RÃ©ordonner les actions de la topbar superadmin : plein Ã©cran, mode sombre, cloche alertes, langue, profil.
 - Mettre Ã  jour le footer de la sidebar partagÃ©e pour afficher `EXAD Tracking - v.1.0` partout, via les traductions dashboard.
 - Activer la page Personnalisation superadmin avec la sidebar partagÃ©e, afin que Carte, Alertes et Personnalisation affichent toutes le footer `EXAD Tracking - v.1.0`.
@@ -90,7 +90,7 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Remplacer le message vide de la page Carte par une formulation professionnelle compatible production, sans mention de serveur GPS local ni de simulation.
 
 - IntÃ©grer Mapbox localement pour la page Carte : assets `public/vendor/mapbox`, token `MAPBOX_PUBLIC_TOKEN`, route `/map`, endpoint GeoJSON `/map/devices`, layers clusterisÃ©s par statut, filtres, statistiques, popups et actualisation automatique.
-- Enrichir la gestion des traceurs avec une table `tracker_events`, des Ã©tats live dÃ©taillÃ©s sur `devices`, la gÃ©nÃ©ration automatique des Ã©vÃ©nements GPS (signal, mouvement, contact), une modale de dÃ©tails Traceur affichant Flotte, emplacement, GSM et derniers Ã©vÃ©nements, ainsi que la mise Ã  jour du simulateur local.
+- Enrichir la gestion des traceurs avec une table `tracker_events`, des Ã©tats live dÃ©taillÃ©s sur `devices`, la gÃ©nÃ©ration automatique des Ã©vÃ©nements GPS (signal, mouvement, contact), une modale de dÃ©tails Traceur affichant Flotte, emplacement, GSM et derniers Ã©vÃ©nements, ainsi que la Mise à jour du simulateur local.
 - Ajouter la section Alimentation dans les dÃ©tails Traceur avec tension externe, batterie interne, niveau de batterie et contact, puis clarifier la ligne `P` comme information de parking.
 - Ajouter lâ€™historique des trajets dâ€™un Ã©quipement sur les pages Traceurs et Carte : endpoint partagÃ© `/trackers/{device}/trips`, choix de pÃ©riode, rendu timeline, rÃ©sumÃ© distance/durÃ©e et GeoJSON de tracÃ© Mapbox.
 - Remplacer les coordonnÃ©es brutes des trajets par des adresses lisibles via Mapbox Reverse Geocoding quand `positions.address` est vide, avec mÃ©morisation de lâ€™adresse trouvÃ©e en base.
@@ -219,3 +219,113 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Application du meme comportement au modal historique de connexion genere en JavaScript, avec rendu compatible dark mode.
 
 - Amelioration du modal Details traceur : largeur legerement reduite, padding compacte, cartes plus modernes, liste des evenements contenue avec scroll interne discret et rendu dark mode ajuste.
+
+- Amelioration UI Details traceur : icones colorees professionnellement par section, statut traceur colore, pastilles discretes et rendu dark mode ajuste.
+
+- Correction UI Details traceur : le statut hors ligne/en ligne n'utilise plus les styles globaux de badge tableau et s'affiche en pastille compacte dans le modal.
+
+- Amelioration du tableau de bord superadmin : ajout de graphiques ApexCharts locaux plus professionnels pour l'activite GPS, la repartition des statuts, la sante des signaux et la repartition des traceurs par flotte, avec dark mode et traductions.
+
+## 2026-06-26 - Amelioration du panneau derniers traceurs actifs
+- Refonte du bloc dashboard "Derniers traceurs actifs" avec un rendu plus professionnel et compact.
+- Ajout des informations vehicule/flotte, badges statut courts, vitesse et dernier signal avec icones.
+- Harmonisation du rendu clair/sombre et correction du statut qui s'etirait trop dans le tableau.
+- Ajout des traductions FR/EN associees.
+- Verification: php -l sur la vue et les traductions, puis php artisan test --compact (58 tests OK).
+
+## 2026-06-26 - Widgets dashboard modernes et carte mondiale
+- Modernisation des widgets du tableau de bord avec details, progression visuelle et prise en compte des filtres Semaine, Mois et Annee.
+- Ajout d'une carte mondiale SVG/JS locale qui regroupe les traceurs positionnes par zone et affiche les volumes, les traceurs en ligne et les traceurs en mouvement.
+- Adaptation des graphiques du dashboard a la periode selectionnee et ajout des donnees de carte dans le payload JavaScript.
+- Ajout des traductions FR/EN associees et mise a jour du test dashboard.
+- Verification: php -l, node --check et php artisan test --compact (58 tests OK).
+
+## 2026-06-26 - Carte mondiale dashboard avec Datamaps
+- Remplacement de la carte mondiale SVG maison du tableau de bord par Datamaps.js avec D3 et TopoJSON servis localement depuis public/vendor.
+- Ajout des bulles proportionnelles par zone pour les traceurs positionnes, avec couleur selon l'etat dominant et popup de details.
+- Harmonisation du panneau carte mondiale avec le mode clair/sombre et suppression de la dependance a un CDN au runtime.
+- Verification : php -l resources/views/dashboard.blade.php, node --check public/js/dashboard-charts.js, php artisan test --compact (58 tests OK).
+
+## 2026-06-26 - Ajustements Datamaps et widgets dashboard
+- Correction du rendu Datamaps : carte plus visible des le chargement, pays colores uniquement au survol, puis retour automatique a la couleur initiale.
+- Desactivation du highlight interne Datamaps pour eviter les pays qui restent marques apres passage du curseur.
+- Reorganisation des widgets dashboard en grille 3 + 3 sur desktop, avec plus d'espace et un rendu plus professionnel.
+- Verification : php -l resources/views/dashboard.blade.php, node --check public/js/dashboard-charts.js, php artisan test --compact (58 tests OK).
+
+## 2026-06-26 - Dashboard premium et bulles carte cliquables
+- Refonte visuelle des widgets dashboard : cartes plus modernes, accents colores par indicateur, hover subtil, progressions plus lisibles et compatibilite dark mode.
+- Amelioration du rendu Datamaps : carte mondiale plus claire et plus nette, pays visibles des le chargement et hover limite au remplissage du pays sans bordure coloree.
+- Ajout d'une navigation depuis les bulles de ville du dashboard vers la page Carte, avec filtre de recherche pre-rempli et affichage automatique des traceurs de la ville selectionnee.
+- Extension de la recherche Carte pour inclure l'adresse courante du traceur, afin que les recherches par ville comme Kinshasa filtrent correctement les vehicules positionnes.
+- Ajout d'un test de regression pour garantir que map.devices filtre les traceurs positionnes par ville presente dans l'adresse.
+- Verification : php -l, node --check et php artisan test --compact (59 tests OK).
+
+## 2026-06-26 - Correction dark mode derniers traceurs actifs
+- Correction du mode sombre sur le bloc dashboard Derniers traceurs actifs : en-tete transparent, lignes sombres, bordures harmonisees, chips vitesse/signal adaptees et hover coherent.
+- Mise a jour de la version CSS chargee par la vue dashboard pour eviter le cache navigateur.
+- Verification : php -l resources/views/dashboard.blade.php et php artisan test --filter "authenticated users can view dashboard metrics".
+
+## 2026-06-26 - Modernisation globale de la sidebar
+- Refonte visuelle de la sidebar superadmin : fond premium en bleu du theme, accents lumineux discrets, liens plus modernes, icones mieux integrees et etat actif plus professionnel.
+- Harmonisation des etats hover/active en mode complet, compact et tablette, avec scrollbar masquee mais sidebar toujours scrollable.
+- Mise a jour du cache-buster dashboard.css sur les pages superadmin pour appliquer le nouveau rendu globalement.
+- Verification : php -l resources/views/partials/sidebar.blade.php et php artisan test --filter=dashboard (3 tests OK).
+
+## 2026-06-26 - Bouton responsive de reduction sidebar
+- Repositionnement du bouton reduction/agrandissement comme une poignee flottante sur la sidebar, independante du flux du menu.
+- Le bouton reste visible et fonctionnel en desktop, tablette, mobile, sidebar ouverte et sidebar reduite.
+- Amelioration du script sidebar : etat accessible aria-expanded et ouverture/reduction adaptee aux petites resolutions.
+- Mise a jour des cache-busters CSS/JS dashboard-sidebar sur les vues superadmin.
+- Verification : serveur local confirme sur http://127.0.0.1:8002/ et php artisan test --filter=dashboard (3 tests OK).
+
+## 2026-06-26 - Bouton sidebar suspendu hors menu
+- Repositionnement du bouton de reduction/agrandissement hors de la sidebar, comme une action suspendue cote contenu, juste au-dessus de la ligne du topbar.
+- Le bouton suit automatiquement la largeur actuelle de la sidebar ouverte ou reduite via une variable CSS responsive.
+- Ajout du rendu dark mode du bouton et nettoyage des anciennes positions responsive qui le remettaient dans la sidebar.
+- Mise a jour du cache-buster dashboard.css sur les vues superadmin.
+- Verification : node --check dashboard-sidebar.js, php -l sidebar.blade.php et php artisan test --filter=dashboard (3 tests OK).
+
+## 2026-06-26 - Repositionnement bouton sidebar en poignee laterale
+- Deplacement du bouton de reduction/agrandissement en poignee accrochee au bord droit de la sidebar, a moitie dehors, pour eviter les collisions avec les contenus comme le panneau Carte.
+- Conservation du comportement responsive et du suivi de largeur sidebar ouverte/reduite.
+- Mise a jour du cache-buster dashboard.css sur les vues superadmin.
+- Verification : php -l sidebar.blade.php, node --check dashboard-sidebar.js et php artisan test --filter=dashboard (3 tests OK).
+
+## 2026-06-26 - Repositionnement du bouton de sidebar
+- Déplacement du bouton réduire/agrandir hors de la sidebar vers le topbar des pages principales, juste avant le titre.
+- Création du partial `resources/views/partials/sidebar-toggle.blade.php` pour réutiliser le même contrôle partout.
+- Ajustement du CSS pour supprimer le positionnement fixe du bouton, espacer le titre et préserver l’alignement des actions à droite.
+- Mise à jour du cache-busting CSS/JS en `20260626-topbar-sidebar-toggle`.
+- Vérifications : `php -l` sur les vues modifiées, `node --check public/js/dashboard-sidebar.js`, `php artisan test --filter=dashboard`.
+
+## 2026-06-26 - Ajustement espacement bouton sidebar topbar
+- Réduction du padding gauche du topbar pour rapprocher le bouton réduire/agrandir de la sidebar.
+- Augmentation de l’espace entre le bouton et le titre de page afin que l’air soit placé au bon endroit.
+- Mise à jour du cache-busting CSS/JS en `20260626-topbar-sidebar-spacing` sur les vues superadmin.
+- Vérifications : `php -l resources/views/dashboard.blade.php`, `php -l resources/views/map/index.blade.php`, `node --check public/js/dashboard-sidebar.js`, `php artisan test --filter=dashboard`.
+
+## 2026-06-26 - Sidebar réduite par défaut sur tablette et mobile
+- Ajustement du script sidebar pour forcer l’état réduit au chargement dès que la résolution est inférieure ou égale à 1366px, même si un ancien état agrandi était sauvegardé.
+- Conservation du bouton réduire/agrandir : l’utilisateur peut toujours ouvrir la sidebar manuellement sur tablette ou mobile.
+- Correction CSS de l’état tablette : les textes du menu ne s’affichent que lorsque la sidebar est réellement agrandie, et restent masqués en mode réduit.
+- Mise à jour du cache-busting CSS/JS en `20260626-responsive-sidebar-default` sur les vues superadmin.
+- Vérifications : `node --check public/js/dashboard-sidebar.js`, `php -l resources/views/dashboard.blade.php`, `php -l resources/views/map/index.blade.php`, `php artisan test --filter=dashboard`.
+
+## 2026-07-07 - Dashboard corporate widgets et ordre Suivi flotte
+- Réorganisation visuelle du tableau de bord : le bloc `Suivi flotte / Derniers traceurs actifs` s’affiche maintenant juste après les widgets KPI.
+- Amélioration corporate des widgets : accent vertical par tonalité, fond premium plus sobre, hiérarchie valeur/libellé/détail renforcée, barre de progression plus nette et compatibilité dark mode.
+- Ajustement responsive des widgets : 3 colonnes sur desktop, 2 sur tablette et 1 sur mobile.
+- Mise à jour du cache CSS dashboard vers `20260707-dashboard-corporate-widgets`.
+- Vérifications : `php artisan test --filter=dashboard` et `php -l app\Http\Controllers\DashboardController.php`.
+
+## 2026-07-08 - Ajustement taille marqueurs carte
+- Réduction légère des marqueurs de carte : flèche de déplacement, icône `P` parking et carré d’arrêt moteur allumé.
+- Harmonisation des tailles Google Maps et Mapbox pour garder un rendu cohérent entre fournisseurs.
+- Mise à jour du cache-busting de `map.css` et `map.js` en `20260708-map-marker-size`.
+- Vérifications : `node --check public\js\map.js` et `php -l resources\views\map\index.blade.php`.
+
+## 2026-07-08 - Correction ordre topbar pages superadmin
+- Correction du bug où le topbar/navigation descendait en bas des pages Utilisateurs et Carte après la réorganisation du dashboard.
+- Isolation des règles `flex/order` sur la page tableau de bord via la classe dédiée `dashboard-home-main` au lieu de les appliquer globalement à `.dashboard-main`.
+- Mise à jour du cache-busting `dashboard.css` en `20260708-dashboard-order-scope` sur les vues superadmin.
+- Vérifications : `php -l` sur les vues dashboard/users/map et `php artisan test --filter=dashboard`.

@@ -714,10 +714,10 @@
 .map-vehicle-marker {
     align-items: center;
     display: block;
-    height: 34px;
+    height: 30px;
     pointer-events: auto;
     position: relative;
-    width: 34px;
+    width: 30px;
     white-space: nowrap;
 }
 
@@ -734,16 +734,16 @@
     box-shadow: 0 10px 22px rgba(15, 35, 75, 0.2);
     color: #fff;
     display: inline-flex;
-    font-size: 0.72rem;
+    font-size: 0.66rem;
     font-weight: 900;
-    height: 28px;
+    height: 24px;
     justify-content: center;
     line-height: 1;
     left: 50%;
     position: absolute;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: 28px;
+    width: 24px;
 }
 
 .map-vehicle-marker.state-moving .map-vehicle-marker__icon {
@@ -752,9 +752,9 @@
     border-radius: 0;
     box-shadow: none;
     filter: drop-shadow(0 8px 10px rgba(15, 35, 75, 0.28));
-    height: 40px;
+    height: 34px;
     transform: translate(-50%, -50%) rotate(var(--marker-angle, 0deg));
-    width: 40px;
+    width: 34px;
 }
 
 .map-vehicle-marker.state-moving .map-vehicle-marker__icon::before {
@@ -762,8 +762,8 @@
     clip-path: polygon(50% 0, 12% 100%, 50% 76%, 88% 100%);
     content: "";
     display: block;
-    height: 40px;
-    width: 40px;
+    height: 34px;
+    width: 34px;
 }
 
 .map-vehicle-marker.state-parking .map-vehicle-marker__icon {
@@ -773,8 +773,8 @@
 .map-vehicle-marker.state-stationary-running .map-vehicle-marker__icon {
     background: #229bd8;
     border-radius: 4px;
-    height: 28px;
-    width: 28px;
+    height: 24px;
+    width: 24px;
 }
 
 .map-vehicle-marker.state-inactive .map-vehicle-marker__icon {
@@ -799,7 +799,7 @@
     font-weight: 850;
     line-height: 1;
     padding: 7px 9px;
-    left: 39px;
+    left: 34px;
     position: absolute;
     top: 50%;
     transform: translateY(-50%);

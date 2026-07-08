@@ -1,6 +1,7 @@
 const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
 const sidebarToggleIcon = document.querySelector('[data-sidebar-toggle-icon]');
 const sidebarState = localStorage.getItem('exad-sidebar');
+const compactSidebarQuery = window.matchMedia('(max-width: 1366px)');
 
 function applySidebarState(state) {
     const collapsed = state === 'collapsed';
@@ -11,11 +12,29 @@ function applySidebarState(state) {
         sidebarToggleIcon.className = collapsed ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-left';
     }
 
+    if (sidebarToggle) {
+        sidebarToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    }
+
     localStorage.setItem('exad-sidebar', collapsed ? 'collapsed' : 'expanded');
 }
 
-applySidebarState(sidebarState === 'collapsed' ? 'collapsed' : 'expanded');
+function getInitialSidebarState() {
+    if (compactSidebarQuery.matches) {
+        return 'collapsed';
+    }
+
+    return sidebarState || 'expanded';
+}
+
+applySidebarState(getInitialSidebarState());
 
 sidebarToggle?.addEventListener('click', () => {
     applySidebarState(document.body.classList.contains('sidebar-collapsed') ? 'expanded' : 'collapsed');
+});
+
+compactSidebarQuery.addEventListener?.('change', (event) => {
+    if (event.matches) {
+        applySidebarState('collapsed');
+    }
 });

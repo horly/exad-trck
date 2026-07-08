@@ -37,7 +37,7 @@
             </div>
             <div>
                 <dt><span class="tracker-status-dot status-{{ $device->status }}"></span></dt>
-                <dd>{{ __('trackers.status_' . $device->status) }}</dd>
+                <dd class="tracker-status-text status-{{ $device->status }}">{{ __('trackers.status_' . $device->status) }}</dd>
             </div>
         </dl>
     </article>

@@ -95,6 +95,26 @@
         return params.toString();
     };
 
+    const hydrateFiltersFromUrl = () => {
+        const params = new URLSearchParams(window.location.search);
+
+        if (params.has('status')) {
+            statusFilter.value = params.get('status') || '';
+        }
+
+        if (params.has('fleet_id')) {
+            fleetFilter.value = params.get('fleet_id') || '';
+        }
+
+        if (params.has('search')) {
+            searchInput.value = params.get('search') || '';
+        }
+
+        if (params.get('show') === '1' || searchInput.value.trim() !== '') {
+            showAllInput.checked = true;
+        }
+    };
+
     const markerState = (properties) => {
         if (properties.is_moving) {
             return 'moving';
@@ -645,6 +665,8 @@
         map.fitBounds(bounds, 80);
     };
 
+    hydrateFiltersFromUrl();
+
     window.initExadGoogleMap = () => {
         if (!window.google?.maps) {
             showMapMessage(messages.googleUnavailable || 'Google Maps JavaScript API is not loaded.');
@@ -667,7 +689,7 @@
         defineVehicleOverlay();
         infoWindow = new google.maps.InfoWindow({ maxWidth: 340 });
 
-        loadDevices();
+        loadDevices({ fit: showAllInput.checked });
         scheduleAutoRefresh();
     };
 
