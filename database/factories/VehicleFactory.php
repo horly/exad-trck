@@ -49,7 +49,7 @@ class VehicleFactory extends Factory
                 'tow_truck',
                 'trailer',
             ]),
-            'subscription_plan' => fake()->randomElement(['basic', 'premium']),
+            'subscription_plan' => fake()->randomElement(['basic', 'standard', 'premium']),
             'status' => 'active',
         ];
     }

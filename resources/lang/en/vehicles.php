@@ -80,6 +80,7 @@ return [
     'type_electric_hybrid' => 'Car',
     'type_other' => 'Ambulance',
     'plan_basic' => 'Basic',
+    'plan_standard' => 'Standard',
     'plan_premium' => 'Premium',
     'status_active' => 'Active',
     'status_inactive' => 'Inactive',

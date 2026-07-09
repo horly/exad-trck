@@ -8,6 +8,7 @@ use App\Http\Controllers\FleetController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\ServerLogController;
 use App\Http\Controllers\ServerMonitoringController;
+use App\Http\Controllers\SubscriptionPlanController;
 use App\Http\Controllers\TrackerEventController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VehicleController;
@@ -33,6 +34,8 @@ Route::get('/lang/{locale}', function (string $locale): RedirectResponse {
 Route::middleware(['auth', 'superadmin'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::resource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::get('/subscriptions', [SubscriptionPlanController::class, 'index'])->name('subscriptions.index');
+    Route::patch('/subscriptions', [SubscriptionPlanController::class, 'update'])->name('subscriptions.update');
     Route::resource('fleets', FleetController::class)->except(['show']);
     Route::resource('vehicles', VehicleController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::get('/trackers/{device}/details', [DeviceController::class, 'details'])->name('trackers.details');

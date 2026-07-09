@@ -19,6 +19,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call(VehicleSubscriptionFeatureSeeder::class);
+        $this->call(VehicleSubscriptionPlanSeeder::class);
+
         $adminSubscription = Subscription::query()->updateOrCreate(
             ['slug' => 'admin-subscription'],
             [

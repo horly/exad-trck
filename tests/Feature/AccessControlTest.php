@@ -146,9 +146,9 @@ test('superadmin can view and create users without subscription fields', functio
         ->assertDontSee(route('users.destroy', $superadmin), false)
         ->assertDontSee('aria-label="Modifier"', false)
         ->assertDontSee('aria-label="Supprimer"', false)
-        ->assertDontSee('Abonnement')
-        ->assertDontSee('Grade')
-        ->assertDontSee('Statut');
+        ->assertDontSee('name="subscription_id"', false)
+        ->assertDontSee('name="grade"', false)
+        ->assertDontSee('name="status"', false);
 
     $this->actingAs($superadmin)
         ->post(route('users.store'), [

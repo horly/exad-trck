@@ -342,3 +342,38 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Normalisation backend dans `MapController` pour accepter les villes espacées dans le paramètre `search`.
 - Normalisation des libellés de ville côté dashboard avant génération du lien vers la carte.
 - Vérifications : `node --check public\js\google-map.js`, `node --check public\js\dashboard-charts.js`, `php -l app\Http\Controllers\MapController.php`, `php -l app\Http\Controllers\DashboardController.php`.
+## 2026-07-08 - Gestion des abonnements véhicules
+- Création de la page superadmin `Abonnements`, accessible depuis la sidebar après `Utilisateurs`, pour gérer les plans Basique, Standard et Premium.
+- Ajout de la table `vehicle_subscription_plans` avec les fonctionnalités configurables en JSON, l’état actif, la couleur et l’ordre d’affichage.
+- Préenregistrement des plans par défaut : Basique, Standard et Premium, avec la matrice de fonctionnalités demandée.
+- Intégration des plans dans le formulaire Véhicules : le champ abonnement utilise désormais les plans actifs au lieu de valeurs codées en dur.
+- Mise à jour des flottes pour afficher les compteurs Basique, Standard et Premium.
+- Ajout des traductions françaises et anglaises de la page, des fonctionnalités et des messages.
+- Ajustement du test utilisateurs pour accepter le nouveau menu `Abonnements` tout en vérifiant que le formulaire utilisateur ne contient toujours pas de champs abonnement, grade ou statut.
+- Commandes exécutées : `php artisan migrate`, `php artisan db:seed --class=VehicleSubscriptionPlanSeeder`, `php artisan route:list --path=subscriptions`, `php artisan test --stop-on-failure`.
+- Vérifications : `php -l` sur les contrôleurs, le modèle, la migration et le seeder concernés ; suite complète OK avec 59 tests passés.
+
+## 2026-07-08 - Ajout abonnement via modal uniquement
+- Retrait de la carte inline de creation d'abonnement sur la page `Abonnements`.
+- Ajout d'un bouton `Nouvel abonnement` qui ouvre un modal dedie, au format des autres formulaires de l'application.
+- Conservation de la creation d'abonnement avec nom, couleur, description et choix des fonctionnalites existantes.
+- Suppression de la possibilite d'ajouter ou modifier les fonctionnalites depuis cette page : seules les affectations des fonctionnalites existantes aux abonnements restent disponibles.
+- Ajout des traductions FR/EN du bouton, du titre modal et des actions creer/annuler.
+- Nettoyage du CSS lie a l'ancienne carte inline et ajout du style modal.
+- Verifications : `php -l` sur le controleur, la vue et le test ; `php artisan test --stop-on-failure` OK avec 60 tests et 471 assertions.
+
+## 2026-07-08 - Bouton matrice fonctionnalités en bas
+- Déplacement du bouton de sauvegarde de la matrice des abonnements sous le tableau des fonctionnalités.
+- Renommage du libellé en `Enregistrer les fonctionnalités` côté français et `Save features` côté anglais.
+- Ajout d'un alignement bas à droite dédié via `.subscription-matrix-actions`.
+- Vérifications : `php -l resources\views\subscriptions\index.blade.php`, `php -l resources\lang\fr\subscriptions.php`, `php -l resources\lang\en\subscriptions.php`.
+
+## 2026-07-09 - Libellé sauvegarde abonnements
+- Rétablissement du libellé du bouton de matrice en `Enregistrer les abonnements` côté français et `Save subscriptions` côté anglais.
+- Vérifications : `php -l resources\lang\fr\subscriptions.php`, `php -l resources\lang\en\subscriptions.php`.
+
+## 2026-07-09 - Taille checks matrice abonnements
+- Réduction des pastilles de validation de la matrice des abonnements pour un rendu plus discret.
+- Ajustement de la taille d'icône et de l'ombre portée des checks actifs.
+- Mise à jour du cache-busting CSS en `20260709-subscription-check-size`.
+- Vérification : `php -l resources\views\subscriptions\index.blade.php`.

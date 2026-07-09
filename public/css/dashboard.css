@@ -11,6 +11,390 @@
     --exad-page: #f3f6fb;
 }
 
+/* Subscription plans */
+.subscriptions-page {
+    display: grid;
+    gap: 1.5rem;
+    padding: 2rem;
+}
+
+.subscription-plan-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.subscription-plan-card,
+.subscription-matrix-card {
+    background:
+        radial-gradient(circle at 94% 0%, color-mix(in srgb, var(--plan-color, #171064) 12%, transparent), transparent 34%),
+        rgba(255, 255, 255, 0.94);
+    border: 1px solid rgba(191, 209, 236, 0.78);
+    border-radius: 22px;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.07);
+}
+
+.subscription-plan-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: start;
+    padding: 1.25rem;
+}
+
+.subscription-plan-icon {
+    display: grid;
+    width: 54px;
+    height: 54px;
+    place-items: center;
+    color: var(--plan-color, #171064);
+    background: color-mix(in srgb, var(--plan-color, #171064) 14%, white);
+    border-radius: 16px;
+    box-shadow: 0 16px 34px color-mix(in srgb, var(--plan-color, #171064) 16%, transparent);
+}
+
+.subscription-plan-copy {
+    min-width: 0;
+}
+
+.subscription-plan-label {
+    display: block;
+    margin-bottom: 0.45rem;
+    color: var(--exad-muted);
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.subscription-plan-card .form-control {
+    min-height: 48px;
+    border-radius: 14px;
+    border-color: rgba(191, 209, 236, 0.9);
+    color: var(--exad-ink);
+    font-weight: 800;
+}
+
+.subscription-plan-description {
+    grid-column: 1 / -1;
+}
+
+.subscription-plan-description textarea {
+    resize: vertical;
+}
+
+.subscription-color-field {
+    display: grid;
+    gap: 0.45rem;
+    justify-items: end;
+}
+
+.subscription-color-field input {
+    width: 54px;
+    height: 42px;
+    padding: 0.25rem;
+    border: 1px solid rgba(191, 209, 236, 0.82);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.86);
+}
+
+.subscription-new-plan-features {
+    display: grid;
+    grid-column: 1 / -1;
+    gap: 0.75rem;
+    padding-top: 0.35rem;
+}
+
+.subscription-new-plan-features > strong,
+.subscription-count-pill {
+    color: var(--exad-muted);
+    font-size: 0.74rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.subscription-new-plan-features > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+}
+
+.subscription-new-plan-features label {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+    color: var(--exad-ink);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.subscription-new-plan-features input {
+    accent-color: var(--exad-primary);
+}
+
+.subscription-page-actions {
+    padding: 2rem 2rem 0;
+}
+
+.subscription-modal-color-field {
+    justify-items: stretch;
+}
+
+.subscription-modal-color-field input {
+    width: 100%;
+}
+
+.subscription-modal-features {
+    padding: 1rem;
+    border: 1px solid rgba(191, 209, 236, 0.82);
+    border-radius: 16px;
+    background: rgba(248, 251, 255, 0.82);
+}
+
+.feature-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.6rem 0.85rem;
+    border: 1px solid rgba(191, 209, 236, 0.82);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.82);
+    color: var(--exad-primary-dark);
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.feature-switch input,
+.feature-check input {
+    accent-color: var(--exad-primary-dark);
+}
+
+.subscription-matrix-card {
+    padding: 1.4rem;
+}
+
+.subscription-section-heading {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.subscription-section-heading h2 {
+    margin: 0;
+    color: var(--exad-ink);
+    font-size: 1.15rem;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+}
+
+.subscription-matrix {
+    overflow: hidden;
+    border: 1px solid rgba(191, 209, 236, 0.76);
+    border-radius: 18px;
+}
+
+.subscription-matrix-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 1.25rem;
+}
+
+.subscription-matrix-row {
+    display: grid;
+    grid-template-columns: minmax(280px, 1.4fr) repeat(var(--plans-count, 3), minmax(110px, 0.55fr));
+    min-height: 74px;
+    border-bottom: 1px solid rgba(219, 227, 239, 0.92);
+}
+
+.subscription-matrix-row.is-muted {
+    opacity: 0.58;
+}
+
+.subscription-matrix-row:last-child {
+    border-bottom: 0;
+}
+
+.subscription-matrix-row > div,
+.subscription-matrix-row > label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.subscription-matrix-row > :first-child {
+    justify-content: flex-start;
+}
+
+.subscription-matrix-head {
+    min-height: 62px;
+    background: rgba(248, 250, 252, 0.92);
+    color: var(--exad-muted);
+    font-size: 0.74rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.plan-column-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 108px;
+    padding: 0.68rem 1rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--plan-color, #171064) 12%, white);
+    color: var(--plan-color, #171064);
+    font-weight: 900;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.subscription-feature-copy {
+    display: grid;
+    gap: 0.28rem;
+}
+
+.subscription-feature-copy strong {
+    color: var(--exad-ink);
+    font-size: 0.92rem;
+    font-weight: 900;
+}
+
+.subscription-feature-copy span {
+    color: var(--exad-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.45;
+}
+
+.feature-check {
+    cursor: pointer;
+}
+
+.feature-check span {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border: 1px solid rgba(191, 209, 236, 0.95);
+    border-radius: 50%;
+    background: #f8fafc;
+    color: transparent;
+    font-size: 0.72rem;
+    transition: 160ms ease;
+}
+
+.feature-check input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.feature-check input:checked + span {
+    border-color: rgba(25, 154, 91, 0.45);
+    background: #219653;
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(33, 150, 83, 0.16);
+}
+
+.feature-check:hover span {
+    transform: translateY(-1px);
+    border-color: rgba(23, 16, 100, 0.3);
+}
+
+.dashboard-dark .subscription-plan-card,
+.dashboard-dark .subscription-matrix-card {
+    background:
+        radial-gradient(circle at 94% 0%, color-mix(in srgb, var(--plan-color, #2f67e8) 20%, transparent), transparent 34%),
+        rgba(15, 30, 52, 0.94);
+    border-color: rgba(71, 100, 144, 0.72);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-dark .subscription-plan-card .form-control,
+.dashboard-dark .subscription-plan-card textarea {
+    background: rgba(8, 21, 38, 0.72);
+    border-color: rgba(71, 100, 144, 0.84);
+    color: #eaf2ff;
+}
+
+.dashboard-dark .feature-switch,
+.dashboard-dark .subscription-matrix-head {
+    background: rgba(8, 21, 38, 0.72);
+    border-color: rgba(71, 100, 144, 0.72);
+    color: #eaf2ff;
+}
+
+.dashboard-dark .subscription-matrix {
+    border-color: rgba(71, 100, 144, 0.72);
+}
+
+.dashboard-dark .subscription-matrix-row {
+    border-color: rgba(71, 100, 144, 0.54);
+}
+
+.dashboard-dark .subscription-section-heading h2,
+.dashboard-dark .subscription-feature-copy strong {
+    color: #f8fbff;
+}
+
+.dashboard-dark .subscription-feature-copy span,
+.dashboard-dark .subscription-plan-label,
+.dashboard-dark .subscription-new-plan-features > strong,
+.dashboard-dark .subscription-count-pill {
+    color: #9fb0ca;
+}
+
+.dashboard-dark .subscription-new-plan-features label {
+    color: #eaf2ff;
+}
+
+.dashboard-dark .subscription-modal-features {
+    background: rgba(8, 21, 38, 0.58);
+    border-color: rgba(71, 100, 144, 0.84);
+}
+
+.dashboard-dark .feature-check span {
+    background: rgba(8, 21, 38, 0.78);
+    border-color: rgba(71, 100, 144, 0.84);
+}
+
+@media (max-width: 1180px) {
+    .subscription-plan-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .subscription-matrix {
+        overflow-x: auto;
+    }
+
+    .subscription-matrix-row {
+        min-width: 760px;
+    }
+
+}
+
+@media (max-width: 768px) {
+    .subscriptions-page {
+        padding: 1rem;
+    }
+
+    .subscription-section-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .subscription-new-plan-features > div {
+        grid-template-columns: 1fr;
+    }
+}
+
 .dashboard-body {
     --sidebar-current-width: 278px;
     min-height: 100vh;
@@ -2226,6 +2610,21 @@ body.theme-dark .alert-summary-card small {
 .role-user {
     background: #f1f5f9;
     color: #334155;
+}
+
+.role-basic {
+    background: #eef2ff;
+    color: #171064;
+}
+
+.role-standard {
+    background: #d8f4f0;
+    color: #137f86;
+}
+
+.role-premium {
+    background: #fff0bd;
+    color: #b45309;
 }
 
 .status-badge.is-active {

@@ -25,6 +25,10 @@
                 <i class="fa-solid fa-users"></i>
                 <span>{{ __('dashboard.users') }}</span>
             </a>
+            <a class="nav-link {{ $active === 'subscriptions' ? 'active' : '' }}" href="{{ route('subscriptions.index') }}">
+                <i class="fa-solid fa-layer-group"></i>
+                <span>{{ __('dashboard.subscriptions') }}</span>
+            </a>
         @endif
 
         <a class="nav-link {{ $active === 'fleets' ? 'active' : '' }}" href="{{ route('fleets.index') }}">

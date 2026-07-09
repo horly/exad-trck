@@ -147,8 +147,9 @@
                                 <div>
                                     <label for="vehicle_subscription_plan" class="form-label">{{ __('vehicles.subscription_plan') }} *</label>
                                     <select id="vehicle_subscription_plan" name="subscription_plan" class="form-select @error('subscription_plan') is-invalid @enderror" required data-vehicle-plan>
-                                        <option value="basic" @selected(old('subscription_plan', 'basic') === 'basic')>{{ __('vehicles.plan_basic') }}</option>
-                                        <option value="premium" @selected(old('subscription_plan') === 'premium')>{{ __('vehicles.plan_premium') }}</option>
+                                        @foreach ($subscriptionPlans as $plan)
+                                            <option value="{{ $plan->code }}" @selected(old('subscription_plan', 'basic') === $plan->code)>{{ $plan->name }}</option>
+                                        @endforeach
                                     </select>
                                     @error('subscription_plan')
                                         <div class="invalid-feedback d-block">{{ $message }}</div>

@@ -315,3 +315,10 @@ The battery voltage field must not be greater than 100.
   - verifier l'affichage carte
   - verifier les alertes temps reel
   - stabiliser ensuite UDP et les futurs decodeurs EDT/generic
+
+## 2026-07-09 - Déploiement page Abonnements
+- Déploiement ciblé vers `/var/www/exadtracking.app` avec l'utilisateur `exad-tracking`.
+- Première archive ZIP refusée fonctionnellement car les chemins avaient été aplatis à l'extraction ; correction via archive `tar.gz` conservant l'arborescence.
+- Nettoyage ciblé des fichiers mal placés à la racine du projet distant.
+- Exécution côté VPS : `composer dump-autoload --optimize`, `php artisan optimize:clear`, `php artisan migrate --force`, seeders `VehicleSubscriptionFeatureSeeder` et `VehicleSubscriptionPlanSeeder`, puis `php artisan optimize`.
+- Vérification distante : routes `GET subscriptions` et `PATCH subscriptions` disponibles.

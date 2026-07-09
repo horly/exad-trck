@@ -35,6 +35,7 @@ class FleetController extends Controller
             ->withCount([
                 'vehicles',
                 'vehicles as premium_vehicles_count' => fn ($query) => $query->where('subscription_plan', 'premium'),
+                'vehicles as standard_vehicles_count' => fn ($query) => $query->where('subscription_plan', 'standard'),
                 'vehicles as basic_vehicles_count' => fn ($query) => $query->where('subscription_plan', 'basic'),
             ])
             ->when($search !== '', function ($query) use ($search): void {

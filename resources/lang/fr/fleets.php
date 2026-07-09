@@ -18,6 +18,7 @@ return [
     'choose_admin' => 'Choisir un admin',
     'initial_admin_hint' => 'Cet admin gérera ensuite les autres utilisateurs de la flotte.',
     'premium' => 'Premium',
+    'standard' => 'Standard',
     'basic' => 'Basique',
     'actions' => 'Actions',
     'search' => 'Rechercher...',

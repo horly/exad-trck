@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Fleet;
 use App\Models\Vehicle;
+use App\Models\VehicleSubscriptionPlan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -91,6 +92,7 @@ class VehicleController extends Controller
             'direction' => $direction,
             'canManageVehicles' => $canManageVehicles,
             'manageableFleets' => $this->manageableFleets($request),
+            'subscriptionPlans' => $this->subscriptionPlansForForm(),
             'vehicleTypes' => self::VEHICLE_TYPES,
         ];
 
@@ -190,9 +192,38 @@ class VehicleController extends Controller
             'color' => ['nullable', 'string', 'max:50'],
             'year' => ['nullable', 'integer', 'min:1950', 'max:2100'],
             'vehicle_type' => ['required', Rule::in(self::VEHICLE_TYPES)],
-            'subscription_plan' => ['required', Rule::in(['basic', 'premium'])],
+            'subscription_plan' => ['required', Rule::in($this->activeSubscriptionPlanCodes())],
             'status' => ['required', Rule::in(['active', 'inactive', 'maintenance'])],
         ]);
+    }
+
+    private function subscriptionPlansForForm()
+    {
+        $plans = VehicleSubscriptionPlan::query()->active()->ordered()->get(['code', 'name']);
+
+        if ($plans->isNotEmpty()) {
+            return $plans;
+        }
+
+        return collect(VehicleSubscriptionPlan::defaultPlans())
+            ->map(fn (array $plan, string $code): VehicleSubscriptionPlan => new VehicleSubscriptionPlan([
+                'code' => $code,
+                'name' => $plan['name'],
+            ]))
+            ->values();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function activeSubscriptionPlanCodes(): array
+    {
+        $codes = VehicleSubscriptionPlan::query()
+            ->active()
+            ->pluck('code')
+            ->all();
+
+        return $codes !== [] ? $codes : array_keys(VehicleSubscriptionPlan::defaultPlans());
     }
 
     private function manageableFleets(Request $request)

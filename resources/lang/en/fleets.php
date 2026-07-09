@@ -18,6 +18,7 @@ return [
     'choose_admin' => 'Choose an admin',
     'initial_admin_hint' => 'This admin will manage the other users of the fleet later.',
     'premium' => 'Premium',
+    'standard' => 'Standard',
     'basic' => 'Basic',
     'actions' => 'Actions',
     'search' => 'Search...',

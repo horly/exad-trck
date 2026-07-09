@@ -8,6 +8,10 @@ use App\Models\Subscription;
 use App\Models\TrackerEvent;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Models\VehicleSubscriptionFeature;
+use App\Models\VehicleSubscriptionPlan;
+use Database\Seeders\VehicleSubscriptionFeatureSeeder;
+use Database\Seeders\VehicleSubscriptionPlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -87,6 +91,42 @@ test('authenticated users can view dashboard metrics', function () {
         ->assertSee('vendor/d3/d3.min.js', false)
         ->assertSee('vendor/topojson/topojson.min.js', false)
         ->assertSee('vendor/datamaps/datamaps.world.min.js', false);
+});
+
+test('superadmin can add subscription plans from a modal with existing features', function () {
+    $this->seed(VehicleSubscriptionFeatureSeeder::class);
+    $this->seed(VehicleSubscriptionPlanSeeder::class);
+
+    $superadmin = User::factory()->superadmin()->create();
+
+    $this->actingAs($superadmin)
+        ->withSession(['locale' => 'fr'])
+        ->get(route('subscriptions.index'))
+        ->assertSuccessful()
+        ->assertSee('Nouvel abonnement')
+        ->assertSee('data-bs-target="#subscriptionPlanModal"', false)
+        ->assertSee('subscriptionPlanModal', false)
+        ->assertSee('Matrice');
+
+    $features = VehicleSubscriptionFeature::query()->pluck('code')->take(3)->all();
+
+    $this->actingAs($superadmin)
+        ->withSession(['locale' => 'fr'])
+        ->patch(route('subscriptions.update'), [
+            'new_plan' => [
+                'name' => 'Entreprise',
+                'description' => 'Plan personnalise pour flotte avancee.',
+                'color' => '#1f4ed8',
+                'features' => $features,
+            ],
+        ])
+        ->assertRedirect(route('subscriptions.index'))
+        ->assertSessionHas('status');
+
+    $plan = VehicleSubscriptionPlan::query()->where('code', 'entreprise')->first();
+
+    expect($plan)->not->toBeNull()
+        ->and($plan->features)->toBe($features);
 });
 
 test('superadmin console pages load realtime alert toasts globally', function () {
