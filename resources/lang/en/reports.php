@@ -30,7 +30,7 @@ return [
     'search' => 'Search report...',
     'apply_filters' => 'Filter',
     'export_csv' => 'Excel export',
-    'export_print' => 'PDF / Print',
+    'export_print' => 'Download PDF',
     'rows_count' => ':shown / :total rows',
     'number' => '#',
     'event' => 'Event',

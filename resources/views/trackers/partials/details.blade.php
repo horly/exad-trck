@@ -26,10 +26,37 @@
 
     $sensorCount = is_array($device->last_sensors) ? count($device->last_sensors) : 0;
     $ioCount = is_array($device->last_io) ? count($device->last_io) : 0;
-    $rawPayload = $device->last_raw_payload ?: ($latestPosition?->raw_data ?? null);
-    $rawPayloadJson = $rawPayload
-        ? json_encode($rawPayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
-        : null;
+    $ioData = is_array($device->last_io) ? $device->last_io : [];
+    $sensorData = is_array($device->last_sensors) ? $device->last_sensors : [];
+    $payloadData = is_array($device->last_raw_payload) ? $device->last_raw_payload : [];
+    $metricValue = function (array $keys) use ($ioData, $sensorData, $payloadData) {
+        foreach ($keys as $key) {
+            foreach ([$ioData, $sensorData, $payloadData] as $source) {
+                $value = data_get($source, $key);
+
+                if ($value !== null && $value !== '') {
+                    return $value;
+                }
+            }
+        }
+
+        return null;
+    };
+    $obdRpm = $metricValue(['rpm', 'engine_rpm', 'obd.rpm', 'can.rpm', 'engine.rpm']);
+    $obdFuel = $metricValue(['fuel', 'fuel_level', 'obd.fuel', 'obd.fuel_level', 'can.fuel', 'can.fuel_level', 'fuel.level']);
+    $obdTemperature = $metricValue(['engine_temperature', 'coolant_temperature', 'obd.coolant_temperature', 'can.engine_temperature', 'temperature.engine']);
+
+    if ($obdFuel !== null && is_numeric($obdFuel) && (float) $obdFuel <= 1) {
+        $obdFuel = (float) $obdFuel * 100;
+    }
+
+    $obdHasData = $device->last_odometer_km !== null
+        || $engineLabel
+        || $obdRpm !== null
+        || $obdFuel !== null
+        || $obdTemperature !== null
+        || $ioCount > 0
+        || $sensorCount > 0;
 @endphp
 
 <div class="tracker-details-grid">
@@ -220,15 +247,69 @@
             </div>
         </dl>
 
-        @if ($rawPayloadJson)
-            <details class="tracker-raw-data">
-                <summary>
-                    <i class="fa-solid fa-file-code"></i>
-                    {{ __('trackers.raw_data_title') }}
-                </summary>
-                <pre>{{ $rawPayloadJson }}</pre>
-            </details>
+    </article>
+
+    <article class="tracker-details-card tracker-details-obd-card">
+        <div class="tracker-details-card-header">
+            <h3>{{ __('trackers.obd_can_title') }}</h3>
+            <i class="fa-solid fa-car-battery"></i>
+        </div>
+
+        @if ($obdHasData)
+            <dl class="tracker-details-list">
+                <div>
+                    <dt><i class="fa-solid fa-road"></i></dt>
+                    <dd>
+                        {{ $device->last_odometer_km !== null
+                            ? __('trackers.odometer_value', ['value' => number_format((float) $device->last_odometer_km, 2, ',', ' ')])
+                            : __('trackers.obd_metric_unavailable', ['metric' => __('trackers.obd_odometer_label')]) }}
+                    </dd>
+                </div>
+                <div>
+                    <dt><i class="fa-solid fa-clock-rotate-left"></i></dt>
+                    <dd>
+                        {{ $engineLabel
+                            ? __('trackers.engine_hours_value', ['value' => $engineLabel])
+                            : __('trackers.obd_metric_unavailable', ['metric' => __('trackers.obd_engine_hours_label')]) }}
+                    </dd>
+                </div>
+                <div>
+                    <dt><i class="fa-solid fa-gauge-high"></i></dt>
+                    <dd>
+                        {{ $obdRpm !== null && is_numeric($obdRpm)
+                            ? __('trackers.obd_rpm_value', ['value' => number_format((float) $obdRpm, 0, ',', ' ')])
+                            : __('trackers.obd_metric_unavailable', ['metric' => __('trackers.obd_rpm_label')]) }}
+                    </dd>
+                </div>
+                <div>
+                    <dt><i class="fa-solid fa-gas-pump"></i></dt>
+                    <dd>
+                        {{ $obdFuel !== null && is_numeric($obdFuel)
+                            ? __('trackers.obd_fuel_value', ['value' => number_format((float) $obdFuel, 0, ',', ' ')])
+                            : __('trackers.obd_metric_unavailable', ['metric' => __('trackers.obd_fuel_label')]) }}
+                    </dd>
+                </div>
+                <div>
+                    <dt><i class="fa-solid fa-temperature-half"></i></dt>
+                    <dd>
+                        {{ $obdTemperature !== null && is_numeric($obdTemperature)
+                            ? __('trackers.obd_temperature_value', ['value' => number_format((float) $obdTemperature, 0, ',', ' ')])
+                            : __('trackers.obd_metric_unavailable', ['metric' => __('trackers.obd_temperature_label')]) }}
+                    </dd>
+                </div>
+                <div>
+                    <dt><i class="fa-solid fa-diagram-project"></i></dt>
+                    <dd>{{ __('trackers.obd_protocol_value', ['value' => $device->protocol ? strtoupper($device->protocol) : __('trackers.unknown_value')]) }}</dd>
+                </div>
+            </dl>
+        @else
+            <div class="tracker-obd-empty">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>{{ __('trackers.obd_no_data') }}</span>
+            </div>
         @endif
+
+        <p class="tracker-details-time">{{ $updatedAt ? $updatedAt->diffForHumans() : __('trackers.no_signal') }}</p>
     </article>
 
     <article class="tracker-details-card tracker-details-card-wide">

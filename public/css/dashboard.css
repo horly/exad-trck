@@ -3197,6 +3197,10 @@ body.theme-dark .alert-summary-card small {
 }
 
 .tracker-details-card:nth-child(6)::before {
+    background: rgba(20, 184, 166, 0.72);
+}
+
+.tracker-details-card:nth-child(7)::before {
     background: rgba(31, 78, 216, 0.72);
 }
 
@@ -3309,6 +3313,12 @@ body.theme-dark .alert-summary-card small {
     color: #6d28d9;
 }
 
+.tracker-details-card:nth-child(6) .tracker-details-list dt {
+    background: rgba(20, 184, 166, 0.12);
+    border-color: rgba(20, 184, 166, 0.18);
+    color: #0f766e;
+}
+
 .tracker-details-list dt:has(.tracker-status-dot) {
     background: transparent;
     border-color: transparent;
@@ -3390,6 +3400,30 @@ body.theme-dark .alert-summary-card small {
     font-weight: 760;
     margin: 12px 0 0;
     text-align: right;
+}
+
+.tracker-obd-empty {
+    align-items: center;
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.09), rgba(31, 78, 216, 0.06));
+    border: 1px dashed rgba(20, 184, 166, 0.28);
+    border-radius: 12px;
+    color: #58708d;
+    display: flex;
+    font-size: 0.76rem;
+    font-weight: 780;
+    gap: 9px;
+    padding: 14px;
+}
+
+.tracker-obd-empty i {
+    align-items: center;
+    background: rgba(20, 184, 166, 0.14);
+    border-radius: 9px;
+    color: #0f766e;
+    display: inline-flex;
+    height: 28px;
+    justify-content: center;
+    width: 28px;
 }
 
 .tracker-raw-data {
@@ -4178,6 +4212,12 @@ body.theme-dark .alert-summary-card small {
     color: #c4b5fd;
 }
 
+.dashboard-dark .tracker-details-card:nth-child(6) .tracker-details-list dt {
+    background: rgba(45, 212, 191, 0.14);
+    border-color: rgba(45, 212, 191, 0.22);
+    color: #5eead4;
+}
+
 .dashboard-dark .tracker-details-list dt:has(.tracker-status-dot) {
     background: transparent;
     border-color: transparent;
@@ -4206,6 +4246,17 @@ body.theme-dark .alert-summary-card small {
 
 .dashboard-dark .tracker-event-icon i {
     color: #c4b5fd;
+}
+
+.dashboard-dark .tracker-obd-empty {
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.1), rgba(79, 125, 243, 0.08));
+    border-color: rgba(45, 212, 191, 0.28);
+    color: #9bb4d8;
+}
+
+.dashboard-dark .tracker-obd-empty i {
+    background: rgba(45, 212, 191, 0.14);
+    color: #5eead4;
 }
 
 .dashboard-dark .tracker-event-item + .tracker-event-item {

@@ -441,3 +441,8 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Correction de l'animation du vehicule : la ligne de suivi reste derriere l'icone et s'appuie sur le segment courant du trajet pour eviter les retours visuels.
 - Ajustement du test carte pour verifier que la trace suit les points GPS enregistres.
 - Verifications : `php -l app\\Http\\Controllers\\MapController.php`, `php -l tests\\Feature\\ExampleTest.php`, `node --check public/js/google-map.js`, `php artisan test --filter=map`.
+
+### 2026-07-10 - Rapports PDF, carte et fiche traceur
+- Les rapports PDF Dompdf sont téléchargés directement au lieu d'être ouverts en lecture dans le navigateur.
+- Le zoom automatique de sélection d'un véhicule sur la carte Google a été réduit pour conserver davantage de contexte autour du véhicule.
+- La fiche détail traceur ne montre plus les données brutes et ajoute un bloc OBD/CAN bus avec odomètre, heures moteur, régime moteur, carburant, température et protocole lorsque ces données sont disponibles.

@@ -64,7 +64,7 @@ class ReportController extends Controller
                 'title' => $this->typeLabel($filters['type']),
             ])
                 ->setPaper('a4', 'landscape')
-                ->stream($filename);
+                ->download($filename);
         }
 
         $filename = 'exad-report-'.$filters['type'].'-'.now()->format('Ymd-His').'.csv';

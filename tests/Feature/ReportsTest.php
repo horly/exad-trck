@@ -96,9 +96,9 @@ test('superadmin can export alerts report and schedule recurring reports', funct
             'format' => 'print',
         ]));
 
-    $pdfResponse->assertSuccessful();
-    expect($pdfResponse->headers->get('content-type'))->toContain('application/pdf');
-    expect($pdfResponse->headers->get('content-disposition'))->toContain('inline');
+        $pdfResponse->assertSuccessful();
+        expect($pdfResponse->headers->get('content-type'))->toContain('application/pdf');
+        expect($pdfResponse->headers->get('content-disposition'))->toContain('attachment');
 
     $this->actingAs($superadmin)
         ->post(route('reports.schedules.store'), [

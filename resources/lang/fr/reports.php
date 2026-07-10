@@ -30,7 +30,7 @@ return [
     'search' => 'Rechercher dans le rapport...',
     'apply_filters' => 'Filtrer',
     'export_csv' => 'Export Excel',
-    'export_print' => 'PDF / Imprimer',
+    'export_print' => 'Télécharger PDF',
     'rows_count' => ':shown / :total lignes',
     'number' => '#',
     'event' => 'Événement',
