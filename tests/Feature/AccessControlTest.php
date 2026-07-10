@@ -410,6 +410,7 @@ test('non superadmin users cannot access current superadmin console pages', func
         route('map.index'),
         route('map.devices'),
         route('alerts.index'),
+        route('alert-rules.index'),
         route('customization.index'),
     ] as $url) {
         $this->actingAs($admin)

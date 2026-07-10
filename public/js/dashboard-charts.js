@@ -151,9 +151,9 @@
             };
         });
 
-        const geographyFill = isDark() ? '#10294a' : '#d7e7f7';
-        const geographyBorder = isDark() ? '#2b4c78' : '#a9c4e3';
-        const geographyHover = isDark() ? '#194979' : '#b9d5ff';
+        const geographyFill = isDark() ? '#122d52' : '#cfe0f2';
+        const geographyBorder = isDark() ? '#345b8d' : '#91afd0';
+        const geographyHover = isDark() ? '#1f5790' : '#9fcaff';
 
         worldMapInstance = new Datamap({
             element: canvas,
@@ -204,17 +204,20 @@
                 .style('fill', geographyFill)
                 .style('stroke', geographyBorder)
                 .style('stroke-width', '0.8px')
+                .style('opacity', 1)
                 .on('mouseover.exad', function () {
                     d3.select(this)
                         .style('fill', geographyHover)
                         .style('stroke', geographyBorder)
-                        .style('stroke-width', '0.8px');
+                        .style('stroke-width', '0.8px')
+                        .style('opacity', 1);
                 })
                 .on('mouseout.exad', function () {
                     d3.select(this)
                         .style('fill', geographyFill)
                         .style('stroke', geographyBorder)
-                        .style('stroke-width', '0.8px');
+                        .style('stroke-width', '0.8px')
+                        .style('opacity', 1);
                 });
 
             worldMapInstance.svg

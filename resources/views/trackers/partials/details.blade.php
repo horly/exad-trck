@@ -13,6 +13,23 @@
     $locationAltitude = $latestPosition?->altitude;
     $gsmSignal = $device->last_gsm_signal;
     $gsmSignal = $gsmSignal !== null && $gsmSignal <= 5 ? min(100, $gsmSignal * 20) : $gsmSignal;
+    $engineSeconds = $device->last_engine_seconds;
+    $engineLabel = null;
+
+    if ($engineSeconds !== null) {
+        $engineHours = intdiv((int) $engineSeconds, 3600);
+        $engineMinutes = intdiv(((int) $engineSeconds) % 3600, 60);
+        $engineLabel = $engineHours > 0
+            ? __('trackers.engine_hours_minutes_value', ['hours' => $engineHours, 'minutes' => $engineMinutes])
+            : __('trackers.engine_minutes_value', ['minutes' => $engineMinutes]);
+    }
+
+    $sensorCount = is_array($device->last_sensors) ? count($device->last_sensors) : 0;
+    $ioCount = is_array($device->last_io) ? count($device->last_io) : 0;
+    $rawPayload = $device->last_raw_payload ?: ($latestPosition?->raw_data ?? null);
+    $rawPayloadJson = $rawPayload
+        ? json_encode($rawPayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+        : null;
 @endphp
 
 <div class="tracker-details-grid">
@@ -157,9 +174,61 @@
                 <dt><i class="fa-solid fa-tower-cell"></i></dt>
                 <dd>{{ $device->operator_name ?: __('trackers.unknown_value') }}</dd>
             </div>
+            <div>
+                <dt><i class="fa-solid fa-sim-card"></i></dt>
+                <dd>{{ __('trackers.sim_value', ['sim' => $device->sim_number ?: __('trackers.unknown_value')]) }}</dd>
+            </div>
+            <div>
+                <dt><i class="fa-solid fa-network-wired"></i></dt>
+                <dd>{{ __('trackers.protocol_value', ['protocol' => $device->protocol ?: __('trackers.unknown_value')]) }}</dd>
+            </div>
+            <div>
+                <dt><i class="fa-solid fa-code"></i></dt>
+                <dd>{{ __('trackers.codec_value', ['codec' => $device->codec ?: __('trackers.unknown_value')]) }}</dd>
+            </div>
         </dl>
 
         <p class="tracker-details-time">{{ $updatedAt ? $updatedAt->diffForHumans() : __('trackers.no_signal') }}</p>
+    </article>
+
+    <article class="tracker-details-card tracker-details-advanced-card">
+        <div class="tracker-details-card-header">
+            <h3>{{ __('trackers.advanced_telemetry_title') }}</h3>
+            <i class="fa-solid fa-sliders"></i>
+        </div>
+
+        <dl class="tracker-details-list">
+            <div>
+                <dt><i class="fa-solid fa-satellite-dish"></i></dt>
+                <dd>{{ __('trackers.satellites_value', ['value' => $device->last_satellites ?? __('trackers.unknown_value')]) }}</dd>
+            </div>
+            <div>
+                <dt><i class="fa-solid fa-road"></i></dt>
+                <dd>{{ $device->last_odometer_km !== null ? __('trackers.odometer_value', ['value' => $device->last_odometer_km]) : __('trackers.odometer_unavailable') }}</dd>
+            </div>
+            <div>
+                <dt><i class="fa-solid fa-stopwatch"></i></dt>
+                <dd>{{ $engineLabel ? __('trackers.engine_hours_value', ['value' => $engineLabel]) : __('trackers.engine_hours_unavailable') }}</dd>
+            </div>
+            <div>
+                <dt><i class="fa-solid fa-toggle-on"></i></dt>
+                <dd>{{ __('trackers.io_count_value', ['count' => $ioCount]) }}</dd>
+            </div>
+            <div>
+                <dt><i class="fa-solid fa-wave-square"></i></dt>
+                <dd>{{ __('trackers.sensor_count_value', ['count' => $sensorCount]) }}</dd>
+            </div>
+        </dl>
+
+        @if ($rawPayloadJson)
+            <details class="tracker-raw-data">
+                <summary>
+                    <i class="fa-solid fa-file-code"></i>
+                    {{ __('trackers.raw_data_title') }}
+                </summary>
+                <pre>{{ $rawPayloadJson }}</pre>
+            </details>
+        @endif
     </article>
 
     <article class="tracker-details-card tracker-details-card-wide">

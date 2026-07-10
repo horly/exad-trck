@@ -51,6 +51,11 @@ class Device extends Model
         'last_battery_level',
         'last_external_voltage',
         'last_battery_voltage',
+        'last_odometer_km',
+        'last_engine_seconds',
+        'last_sensors',
+        'last_io',
+        'last_raw_payload',
         'last_address',
         'settings',
     ];
@@ -72,6 +77,11 @@ class Device extends Model
             'last_battery_level' => 'integer',
             'last_external_voltage' => 'decimal:3',
             'last_battery_voltage' => 'decimal:3',
+            'last_odometer_km' => 'decimal:2',
+            'last_engine_seconds' => 'integer',
+            'last_sensors' => 'array',
+            'last_io' => 'array',
+            'last_raw_payload' => 'array',
             'settings' => 'array',
         ];
     }

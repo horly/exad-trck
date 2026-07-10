@@ -2,10 +2,12 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AlertController;
+use App\Http\Controllers\AlertRuleController;
 use App\Http\Controllers\CustomizationController;
 use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\FleetController;
 use App\Http\Controllers\MapController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ServerLogController;
 use App\Http\Controllers\ServerMonitoringController;
 use App\Http\Controllers\SubscriptionPlanController;
@@ -47,7 +49,12 @@ Route::middleware(['auth', 'superadmin'])->group(function () {
     Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
     Route::get('/alerts/recent', [AlertController::class, 'recent'])->name('alerts.recent');
     Route::patch('/alerts/{alert}/acknowledge', [AlertController::class, 'acknowledge'])->name('alerts.acknowledge');
+    Route::resource('alert-rules', AlertRuleController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::get('/events', [TrackerEventController::class, 'index'])->name('events.index');
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
+    Route::post('/reports/schedules', [ReportController::class, 'storeSchedule'])->name('reports.schedules.store');
+    Route::delete('/reports/schedules/{scheduledReport}', [ReportController::class, 'destroySchedule'])->name('reports.schedules.destroy');
     Route::get('/server-logs', [ServerLogController::class, 'index'])->name('server-logs.index');
     Route::get('/server-logs/content', [ServerLogController::class, 'content'])->name('server-logs.content');
     Route::get('/server-monitoring', [ServerMonitoringController::class, 'index'])->name('server-monitoring.index');

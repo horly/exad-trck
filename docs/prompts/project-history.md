@@ -377,3 +377,67 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Ajustement de la taille d'icône et de l'ombre portée des checks actifs.
 - Mise à jour du cache-busting CSS en `20260709-subscription-check-size`.
 - Vérification : `php -l resources\views\subscriptions\index.blade.php`.
+
+## 2026-07-09 - Raffinement dashboard superadmin
+- Réorganisation DOM du tableau de bord : le bloc `Suivi flotte / Derniers traceurs actifs` est désormais placé directement après les widgets KPI, avant la carte mondiale et les graphiques.
+- Raffinement corporate des widgets KPI : cartes plus compactes, accents plus sobres, meilleure hiérarchie visuelle et rendu dark mode amélioré.
+- Amélioration de la carte mondiale Datamaps : pays plus lisibles par défaut, hover par remplissage intérieur sans bordure agressive, et conservation du clic sur les bulles vers la page Carte filtrée.
+- Mise à jour du cache-busting dashboard CSS/JS en `20260709-dashboard-refinement`.
+- Vérifications : `php -l app\Http\Controllers\DashboardController.php`, `php -l resources\views\dashboard.blade.php`, `node --check public\js\dashboard-charts.js`.
+## 2026-07-09 - Module règles d’alertes
+- Création du module superadmin `Règles alertes` pour configurer les règles de supervision inspirées Navixy.
+- Ajout de la table `alert_rules` avec séparation claire entre alertes équipement et événements véhicule.
+- Préconfiguration des règles par défaut : aucun signal, signal GSM faible, batterie faible, coupure alimentation externe, OBD déconnecté, brouillage GPS/GSM, excès de vitesse, ralenti prolongé, porte ouverte, freinage brusque, collision détectée et SOS.
+- Ajout du périmètre de règle : tous les actifs, flotte, véhicule ou traceur, avec seuil, unité, canaux, planning et état actif.
+- Création de la page `Règles alertes` avec tableau AJAX style DataTable, recherche, tri, pagination, badges de criticité, modal création/modification, confirmation de suppression et toast.
+- Ajout des traductions françaises et anglaises de tous les textes visibles du module.
+- Ajout du menu `Règles alertes` dans la sidebar superadmin juste après `Alertes`.
+- Commandes exécutées : `php artisan migrate`, `php artisan db:seed --class=AlertRuleSeeder`, `php artisan route:list --name=alert-rules`, `php artisan test --filter=dashboard`.
+- Vérifications : `php -l` sur le contrôleur, le modèle, la migration, le seeder et les vues du module.
+- Tests module règles alertes : php artisan test --stop-on-failure OK avec 61 tests et 492 assertions.
+
+## 2026-07-09 - Télémétrie traceur enrichie et supervision dashboard
+- Ajout d'une migration pour stocker la télémétrie avancée des traceurs : odomètre, heures moteur, capteurs, IO et payload brut.
+- Mise à jour du modèle `Device` pour caster les nouvelles données JSON et numériques.
+- Extension de la commande `gps:ingest-position` afin de sauvegarder codec, odomètre, heures moteur, capteurs, IO et données brutes envoyées par le serveur GPS.
+- Enrichissement de la fiche détail traceur : SIM, protocole, codec, satellites, odomètre, heures moteur, nombre de capteurs, nombre d'entrées/sorties et données brutes consultables.
+- Ajout de traductions FR/EN pour les nouvelles données visibles de la fiche traceur.
+- Ajout d'une supervision opérationnelle sur le tableau de bord superadmin : traceurs sans signal, vitesses élevées, ralenti moteur et batteries faibles.
+- Ajout du style responsive et dark mode pour les nouvelles cartes de supervision du dashboard.
+- Commande exécutée : `php artisan migrate`.
+- Vérifications : `php -l` sur `DashboardController`, `Device`, `routes/console.php` et fichiers de langue dashboard.
+- Tests : `php artisan test --stop-on-failure` OK avec 61 tests et 492 assertions.
+## 2026-07-09 - Module rapports superadmin
+- Création de la page superadmin `Rapports`, accessible depuis la sidebar, pour générer des rapports opérationnels.
+- Ajout des types de rapports : positions GPS, événements véhicules, alertes équipement et synthèse des flottes.
+- Ajout de filtres par période, flotte, véhicule, traceur et recherche texte, avec tableau AJAX, tri et pagination de 5 lignes.
+- Ajout des exports CSV et impression/PDF navigateur pour les rapports filtrés.
+- Ajout de la planification de rapports récurrents avec fréquence quotidienne, hebdomadaire ou mensuelle, destinataires et format.
+- Création de la table `scheduled_reports` et du modèle `ScheduledReport`.
+- Ajout des traductions françaises et anglaises du module, du modal de planification, des colonnes et des messages.
+- Ajout des styles dédiés avec support responsive et dark mode, en conservant le format visuel des autres pages superadmin.
+- Commandes exécutées : `php artisan migrate`, `php artisan route:list --name=reports`, `php artisan test tests/Feature/ReportsTest.php`, `php artisan test --stop-on-failure`.
+- Vérifications : `php -l` sur `ReportController`, `ScheduledReport`, la migration et le test.
+- Tests : `php artisan test --stop-on-failure` OK avec 65 tests et 509 assertions.
+
+## 2026-07-09 - Rapports PDF Dompdf, filtres et encodage traceur
+- Installation de `barryvdh/laravel-dompdf` pour générer les exports PDF réels des rapports.
+- Mise à jour de l'export `format=print` pour télécharger un PDF A4 paysage via Dompdf au lieu d'une page HTML imprimable.
+- Ajustement du formulaire de filtres Rapports : espacement entre recherche et boutons, bouton Filtrer au bleu du thème, exports CSV/PDF mieux séparés et responsive.
+- Correction des libellés FR double-encodés dans la fiche traceur : Odomètre, entrées/sorties, Données brutes.
+- Test renforcé : vérification que l'export PDF répond en `application/pdf`.
+- Vérifications : `php -l app/Http/Controllers/ReportController.php`, `php -l resources/lang/fr/trackers.php`, `php artisan test tests/Feature/ReportsTest.php --stop-on-failure`.
+
+## 2026-07-09 - Rapports PDF inline et boutons rapports
+- Changement de l'export PDF Dompdf de telechargement vers affichage inline dans le navigateur via stream().
+- Correction des couleurs des boutons de filtrage, export et planification des rapports pour eviter l'heritage CSS sombre sur les textes et icones.
+- Verification ajoutee dans les tests pour garantir le Content-Disposition inline du PDF.
+- Tests executes : php artisan test tests\\Feature\\ReportsTest.php --stop-on-failure, puis php artisan test --stop-on-failure.
+
+
+## 2026-07-10 - Carte Google : zoom selection et trace GPS reelle
+- Limitation du zoom lors de la selection d'un seul vehicule sur la carte Google afin de conserver une vue operationnelle moins serree.
+- Remplacement de la trace de mouvement snappee par la trace GPS brute des positions enregistrees, avec jusqu'a 80 points sur les 120 dernieres minutes.
+- Correction de l'animation du vehicule : la ligne de suivi reste derriere l'icone et s'appuie sur le segment courant du trajet pour eviter les retours visuels.
+- Ajustement du test carte pour verifier que la trace suit les points GPS enregistres.
+- Verifications : `php -l app\\Http\\Controllers\\MapController.php`, `php -l tests\\Feature\\ExampleTest.php`, `node --check public/js/google-map.js`, `php artisan test --filter=map`.

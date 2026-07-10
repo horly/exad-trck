@@ -52,6 +52,14 @@
             <span>{{ __('dashboard.alerts') }}</span>
         </a>
         @if ($user->isSuperadmin())
+            <a class="nav-link {{ $active === 'alert-rules' ? 'active' : '' }}" href="{{ route('alert-rules.index') }}">
+                <i class="fa-solid fa-sliders"></i>
+                <span>{{ __('alert_rules.sidebar') }}</span>
+            </a>
+            <a class="nav-link {{ $active === 'reports' ? 'active' : '' }}" href="{{ route('reports.index') }}">
+                <i class="fa-solid fa-file-lines"></i>
+                <span>{{ __('dashboard.reports') }}</span>
+            </a>
             <a class="nav-link {{ $active === 'server-logs' ? 'active' : '' }}" href="{{ route('server-logs.index') }}">
                 <i class="fa-solid fa-terminal"></i>
                 <span>{{ __('dashboard.server_logs') }}</span>

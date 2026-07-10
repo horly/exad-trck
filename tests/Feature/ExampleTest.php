@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleSubscriptionFeature;
 use App\Models\VehicleSubscriptionPlan;
+use Database\Seeders\AlertRuleSeeder;
 use Database\Seeders\VehicleSubscriptionFeatureSeeder;
 use Database\Seeders\VehicleSubscriptionPlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -1331,7 +1332,7 @@ test('map devices endpoint can filter positioned trackers by address city', func
         ->and($response->json('geojson.features.0.properties.id'))->toBe($kinshasaDevice->id);
 });
 
-test('map device marker keeps the exact gps position while movement trail can be snapped to roads', function () {
+test('map device marker keeps the exact gps position and movement trail follows recorded gps points', function () {
     config([
         'services.google_maps.api_key' => 'AIza-test-key',
         'services.google_maps.roads_enabled' => true,
@@ -1396,8 +1397,8 @@ test('map device marker keeps the exact gps position while movement trail can be
         ->toBe([15.333, -4.333])
         ->and($feature['properties']['trail'])
         ->toBe([
-            [15.3, -4.3],
-            [15.301, -4.301],
+            [15.331, -4.331],
+            [15.332, -4.332],
             [15.333, -4.333],
         ]);
 
@@ -1494,6 +1495,85 @@ test('superadmin can view alerts page with local realtime client and datatable',
     expect($response->json('html'))
         ->toContain('Alerte 6')
         ->toContain('data-datatable-sort');
+});
+
+test('superadmin can manage alert rules with ajax datatable', function () {
+    $this->seed(AlertRuleSeeder::class);
+
+    $superadmin = User::factory()->superadmin()->create();
+    $fleet = Fleet::factory()->create([
+        'name' => 'EXAD CARS',
+        'code' => 'EXAD1505',
+    ]);
+    $vehicle = Vehicle::factory()->create([
+        'fleet_id' => $fleet->id,
+        'name' => 'Toyota Hilux',
+        'registration_number' => '1234BV01',
+    ]);
+    $device = Device::factory()->create([
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $vehicle->id,
+        'name' => 'OBD2',
+        'imei' => '353201355315547',
+    ]);
+
+    $this->actingAs($superadmin)
+        ->withSession(['locale' => 'fr'])
+        ->get(route('alert-rules.index'))
+        ->assertSuccessful()
+        ->assertSee('alertRuleModal', false)
+        ->assertSee('data-rule-create', false)
+        ->assertSee('data-datatable-search-form', false)
+        ->assertSee('datatable-sort-link', false)
+        ->assertSee('no_signal', false)
+        ->assertSee('platform', false);
+
+    $response = $this->actingAs($superadmin)
+        ->withHeader('X-Requested-With', 'XMLHttpRequest')
+        ->getJson(route('alert-rules.index', [
+            'search' => 'signal',
+            'sort' => 'severity',
+            'direction' => 'asc',
+        ]))
+        ->assertSuccessful()
+        ->assertJsonStructure([
+            'html',
+            'stats' => ['total', 'active', 'equipment', 'vehicle'],
+        ]);
+
+    expect($response->json('html'))
+        ->toContain('data-datatable-sort')
+        ->toContain('no_signal');
+
+    $this->actingAs($superadmin)
+        ->post(route('alert-rules.store'), [
+            'name' => 'Vitesse Gombe',
+            'type' => 'overspeed',
+            'category' => 'vehicle',
+            'severity' => 'high',
+            'scope_type' => 'vehicle',
+            'vehicle_id' => $vehicle->id,
+            'device_id' => $device->id,
+            'threshold_value' => 90,
+            'threshold_unit' => 'km/h',
+            'channels' => ['platform', 'email'],
+            'schedule_days' => ['mon', 'tue'],
+            'starts_at' => '08:00',
+            'ends_at' => '18:00',
+            'is_active' => '1',
+        ])
+        ->assertRedirect(route('alert-rules.index'))
+        ->assertSessionHas('status');
+
+    $this->assertDatabaseHas('alert_rules', [
+        'name' => 'Vitesse Gombe',
+        'type' => 'overspeed',
+        'category' => 'vehicle',
+        'scope_type' => 'vehicle',
+        'vehicle_id' => $vehicle->id,
+        'device_id' => null,
+        'threshold_unit' => 'km/h',
+    ]);
 });
 
 test('processed alerts are always listed after new alerts', function () {

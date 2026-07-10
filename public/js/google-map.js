@@ -36,6 +36,7 @@
     let latestGeojson = { type: 'FeatureCollection', features: [] };
     let VehicleOverlay;
     const MARKER_ANIMATION_MS = 5000;
+    const SELECTED_DEVICE_ZOOM = 16;
 
     const statusColors = {
         online: '#10b981',
@@ -279,6 +280,49 @@
         first.lng() - second.lng(),
     );
 
+    const pushUniquePoint = (path, point) => {
+        if (!point) {
+            return;
+        }
+
+        if (!path.length || !sameLatLng(path[path.length - 1], point)) {
+            path.push(point);
+        }
+    };
+
+    const closestPathSegment = (path, position) => {
+        if (!Array.isArray(path) || path.length < 2 || !position) {
+            return { startIndex: 0, nextIndex: 1 };
+        }
+
+        const targetLat = position.lat();
+        const targetLng = position.lng();
+
+        return path.slice(1).reduce((closest, point, index) => {
+            const previous = path[index];
+            const deltaLat = point.lat() - previous.lat();
+            const deltaLng = point.lng() - previous.lng();
+            const segmentLength = (deltaLat * deltaLat) + (deltaLng * deltaLng);
+            const projection = segmentLength === 0
+                ? 0
+                : (((targetLat - previous.lat()) * deltaLat) + ((targetLng - previous.lng()) * deltaLng)) / segmentLength;
+            const clampedProjection = Math.min(Math.max(projection, 0), 1);
+            const projectedLat = previous.lat() + (deltaLat * clampedProjection);
+            const projectedLng = previous.lng() + (deltaLng * clampedProjection);
+            const distance = Math.hypot(projectedLat - targetLat, projectedLng - targetLng);
+
+            if (distance < closest.distance) {
+                return {
+                    startIndex: index,
+                    nextIndex: index + 1,
+                    distance,
+                };
+            }
+
+            return closest;
+        }, { startIndex: 0, nextIndex: 1, distance: Number.POSITIVE_INFINITY });
+    };
+
     const interpolatePath = (path, progress) => {
         if (!Array.isArray(path) || path.length < 2) {
             return {
@@ -333,20 +377,28 @@
     const movementTrailContext = (coordinates = [], currentPosition, targetPosition, hasExistingMarker) => {
         const serverPath = coordinatePathToLatLng(coordinates);
 
-        if (!hasExistingMarker) {
-            if (serverPath.length < 2) {
-                return null;
-            }
+        if (serverPath.length < 2) {
+            return null;
+        }
 
+        if (!hasExistingMarker) {
             return {
                 basePath: serverPath,
-                animationPath: [targetPosition],
+                animationPath: null,
             };
         }
 
+        const segment = closestPathSegment(serverPath, currentPosition);
+        const basePath = serverPath.slice(0, Math.max(segment.startIndex + 1, 1));
+        pushUniquePoint(basePath, currentPosition);
+
+        const animationPath = [currentPosition];
+        serverPath.slice(Math.max(segment.nextIndex, 1)).forEach((point) => pushUniquePoint(animationPath, point));
+        pushUniquePoint(animationPath, targetPosition);
+
         return {
-            basePath: [currentPosition, targetPosition],
-            animationPath: [currentPosition, targetPosition],
+            basePath,
+            animationPath,
         };
     };
 
@@ -356,8 +408,9 @@
         }
 
         const interpolated = interpolatePath(animationPath, progress);
-        const path = [basePath[0]];
+        const path = [...basePath];
 
+        (interpolated.passedPoints || []).slice(1).forEach((point) => pushUniquePoint(path, point));
         if (interpolated.position && !sameLatLng(path[path.length - 1], interpolated.position)) {
             path.push(interpolated.position);
         }
@@ -539,6 +592,13 @@
 
     const fitToFeatures = () => {
         if (!latestGeojson.features.length || !map) {
+            return;
+        }
+
+        if (latestGeojson.features.length === 1) {
+            const position = coordinatesToLatLng(latestGeojson.features[0].geometry.coordinates);
+            map.panTo(position);
+            map.setZoom(SELECTED_DEVICE_ZOOM);
             return;
         }
 

@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260708-dashboard-city-tooltip">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260709-dashboard-refinement">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -104,65 +104,6 @@
                 @endforeach
             </section>
 
-            <section class="dashboard-map-grid">
-                <article class="admin-panel world-map-panel">
-                    <div class="chart-panel-header">
-                        <div>
-                            <p class="eyebrow mb-1">{{ __('dashboard.global_tracking') }}</p>
-                            <h2>{{ __('dashboard.tracker_world_map') }}</h2>
-                        </div>
-                        <span class="chart-chip">{{ __('dashboard.grouped_trackers') }}</span>
-                    </div>
-                    <div class="dashboard-world-map" data-dashboard-world-map>
-                        <div class="world-map-canvas"></div>
-                        <div class="world-map-empty">{{ __('dashboard.no_positioned_trackers') }}</div>
-                    </div>
-                </article>
-            </section>
-
-            <section class="charts-grid">
-                <article class="admin-panel chart-panel chart-panel-wide">
-                    <div class="chart-panel-header">
-                        <div>
-                            <p class="eyebrow mb-1">{{ __('dashboard.gps_activity') }}</p>
-                            <h2>{{ __('dashboard.positions_evolution') }}</h2>
-                        </div>
-                        <span class="chart-chip">{{ $periodWindow['label'] }}</span>
-                    </div>
-                    <div class="dashboard-chart dashboard-chart-main" data-dashboard-chart="trend"></div>
-                </article>
-
-                <article class="admin-panel chart-panel">
-                    <div class="chart-panel-header">
-                        <div>
-                            <p class="eyebrow mb-1">{{ __('dashboard.realtime_health') }}</p>
-                            <h2>{{ __('dashboard.device_status_distribution') }}</h2>
-                        </div>
-                    </div>
-                    <div class="dashboard-chart dashboard-chart-donut" data-dashboard-chart="status"></div>
-                </article>
-
-                <article class="admin-panel chart-panel">
-                    <div class="chart-panel-header">
-                        <div>
-                            <p class="eyebrow mb-1">{{ __('dashboard.signal_quality') }}</p>
-                            <h2>{{ __('dashboard.signal_health') }}</h2>
-                        </div>
-                    </div>
-                    <div class="dashboard-chart dashboard-chart-radial" data-dashboard-chart="health"></div>
-                </article>
-
-                <article class="admin-panel chart-panel chart-panel-wide">
-                    <div class="chart-panel-header">
-                        <div>
-                            <p class="eyebrow mb-1">{{ __('dashboard.fleet_tracking') }}</p>
-                            <h2>{{ __('dashboard.fleet_distribution') }}</h2>
-                        </div>
-                    </div>
-                    <div class="dashboard-chart dashboard-chart-bar" data-dashboard-chart="fleet"></div>
-                </article>
-            </section>
-
             <section class="admin-panel latest-trackers-panel">
                 <div class="panel-heading latest-trackers-heading">
                     <div class="latest-trackers-title">
@@ -247,6 +188,136 @@
                     </table>
                 </div>
             </section>
+
+            @php
+                $supervisionCards = [
+                    [
+                        'tone' => 'danger',
+                        'icon' => 'fa-triangle-exclamation',
+                        'title' => __('dashboard.supervision_no_signal'),
+                        'caption' => __('dashboard.supervision_no_signal_caption'),
+                        'items' => $supervisionLists['no_signal'],
+                        'metric' => fn ($device) => $device->last_seen_at?->diffForHumans() ?? __('dashboard.no_signal'),
+                    ],
+                    [
+                        'tone' => 'blue',
+                        'icon' => 'fa-gauge-high',
+                        'title' => __('dashboard.supervision_speed'),
+                        'caption' => __('dashboard.supervision_speed_caption'),
+                        'items' => $supervisionLists['speed'],
+                        'metric' => fn ($device) => __('dashboard.speed_value', ['value' => (int) $device->last_speed]),
+                    ],
+                    [
+                        'tone' => 'amber',
+                        'icon' => 'fa-hourglass-half',
+                        'title' => __('dashboard.supervision_idle'),
+                        'caption' => __('dashboard.supervision_idle_caption'),
+                        'items' => $supervisionLists['idle'],
+                        'metric' => fn ($device) => $device->last_seen_at?->diffForHumans() ?? __('dashboard.no_signal'),
+                    ],
+                    [
+                        'tone' => 'green',
+                        'icon' => 'fa-battery-quarter',
+                        'title' => __('dashboard.supervision_battery'),
+                        'caption' => __('dashboard.supervision_battery_caption'),
+                        'items' => $supervisionLists['battery'],
+                        'metric' => fn ($device) => __('dashboard.battery_value', ['value' => (int) $device->last_battery_level]),
+                    ],
+                ];
+            @endphp
+
+            <section class="dashboard-supervision-grid" aria-label="{{ __('dashboard.operational_supervision') }}">
+                @foreach ($supervisionCards as $card)
+                    <article class="admin-panel supervision-card supervision-card-{{ $card['tone'] }}">
+                        <div class="supervision-card-header">
+                            <span class="supervision-icon"><i class="fa-solid {{ $card['icon'] }}"></i></span>
+                            <div>
+                                <p class="eyebrow mb-1">{{ __('dashboard.operational_supervision') }}</p>
+                                <h2>{{ $card['title'] }}</h2>
+                                <small>{{ $card['caption'] }}</small>
+                            </div>
+                        </div>
+
+                        <div class="supervision-list">
+                            @forelse ($card['items'] as $device)
+                                @php
+                                    $vehicleLabel = $device->vehicle?->name ?? __('dashboard.no_vehicle');
+                                    $fleetLabel = $device->fleet?->name ?? __('dashboard.no_fleet');
+                                    $mapSearch = $device->vehicle?->name ?: ($device->name ?: $device->imei);
+                                @endphp
+                                <a href="{{ route('map.index', ['search' => $mapSearch, 'show' => 1]) }}" class="supervision-item">
+                                    <span>
+                                        <strong>{{ $vehicleLabel }}</strong>
+                                        <small>{{ $device->imei }} · {{ $fleetLabel }}</small>
+                                    </span>
+                                    <em>{{ $card['metric']($device) }}</em>
+                                </a>
+                            @empty
+                                <p class="supervision-empty">{{ __('dashboard.supervision_empty') }}</p>
+                            @endforelse
+                        </div>
+                    </article>
+                @endforeach
+            </section>
+
+            <section class="dashboard-map-grid">
+                <article class="admin-panel world-map-panel">
+                    <div class="chart-panel-header">
+                        <div>
+                            <p class="eyebrow mb-1">{{ __('dashboard.global_tracking') }}</p>
+                            <h2>{{ __('dashboard.tracker_world_map') }}</h2>
+                        </div>
+                        <span class="chart-chip">{{ __('dashboard.grouped_trackers') }}</span>
+                    </div>
+                    <div class="dashboard-world-map" data-dashboard-world-map>
+                        <div class="world-map-canvas"></div>
+                        <div class="world-map-empty">{{ __('dashboard.no_positioned_trackers') }}</div>
+                    </div>
+                </article>
+            </section>
+
+            <section class="charts-grid">
+                <article class="admin-panel chart-panel chart-panel-wide">
+                    <div class="chart-panel-header">
+                        <div>
+                            <p class="eyebrow mb-1">{{ __('dashboard.gps_activity') }}</p>
+                            <h2>{{ __('dashboard.positions_evolution') }}</h2>
+                        </div>
+                        <span class="chart-chip">{{ $periodWindow['label'] }}</span>
+                    </div>
+                    <div class="dashboard-chart dashboard-chart-main" data-dashboard-chart="trend"></div>
+                </article>
+
+                <article class="admin-panel chart-panel">
+                    <div class="chart-panel-header">
+                        <div>
+                            <p class="eyebrow mb-1">{{ __('dashboard.realtime_health') }}</p>
+                            <h2>{{ __('dashboard.device_status_distribution') }}</h2>
+                        </div>
+                    </div>
+                    <div class="dashboard-chart dashboard-chart-donut" data-dashboard-chart="status"></div>
+                </article>
+
+                <article class="admin-panel chart-panel">
+                    <div class="chart-panel-header">
+                        <div>
+                            <p class="eyebrow mb-1">{{ __('dashboard.signal_quality') }}</p>
+                            <h2>{{ __('dashboard.signal_health') }}</h2>
+                        </div>
+                    </div>
+                    <div class="dashboard-chart dashboard-chart-radial" data-dashboard-chart="health"></div>
+                </article>
+
+                <article class="admin-panel chart-panel chart-panel-wide">
+                    <div class="chart-panel-header">
+                        <div>
+                            <p class="eyebrow mb-1">{{ __('dashboard.fleet_tracking') }}</p>
+                            <h2>{{ __('dashboard.fleet_distribution') }}</h2>
+                        </div>
+                    </div>
+                    <div class="dashboard-chart dashboard-chart-bar" data-dashboard-chart="fleet"></div>
+                </article>
+            </section>
         </main>
     </div>
 
@@ -259,6 +330,6 @@
     <script src="{{ asset('vendor/topojson/topojson.min.js') }}"></script>
     <script src="{{ asset('vendor/datamaps/datamaps.world.min.js') }}"></script>
     <script id="dashboardChartData" type="application/json">@json($dashboardCharts)</script>
-    <script src="{{ asset('js/dashboard-charts.js') }}?v=20260708-dashboard-city-search-link"></script>
+    <script src="{{ asset('js/dashboard-charts.js') }}?v=20260709-dashboard-refinement"></script>
 </body>
 </html>

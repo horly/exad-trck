@@ -53,6 +53,7 @@ class DashboardController extends Controller
             ],
             'devices' => $devices,
             'recentPositions' => $recentPositions,
+            'supervisionLists' => $this->supervisionLists($user),
             'dashboardCharts' => [
                 'trend' => $this->positionsTrend($user, $periodWindow),
                 'status' => $this->deviceStatusDistribution($user),
@@ -187,6 +188,58 @@ class DashboardController extends Controller
                 min(100, max(0, (int) round(((float) ($positionStats?->valid_total ?? 0) / $totalPositions) * 100))),
                 min(100, max(0, (int) round(((float) ($deviceStats?->reporting ?? 0) / $totalDevices) * 100))),
             ],
+        ];
+    }
+
+    /**
+     * @return array{
+     *     no_signal: Collection<int, Device>,
+     *     speed: Collection<int, Device>,
+     *     idle: Collection<int, Device>,
+     *     battery: Collection<int, Device>
+     * }
+     */
+    private function supervisionLists($user): array
+    {
+        $baseQuery = fn () => Device::query()
+            ->visibleTo($user)
+            ->with(['fleet:id,name', 'vehicle:id,name,registration_number']);
+
+        return [
+            'no_signal' => $baseQuery()
+                ->where(function ($query): void {
+                    $query
+                        ->whereIn('status', ['offline', 'inactive'])
+                        ->orWhereNull('last_seen_at')
+                        ->orWhere('last_seen_at', '<', now()->subMinutes(5));
+                })
+                ->orderByRaw('last_seen_at IS NULL DESC')
+                ->latest('last_seen_at')
+                ->limit(5)
+                ->get(),
+            'speed' => $baseQuery()
+                ->where('last_speed', '>', 0)
+                ->orderByDesc('last_speed')
+                ->latest('last_seen_at')
+                ->limit(5)
+                ->get(),
+            'idle' => $baseQuery()
+                ->where('status', 'online')
+                ->where(function ($query): void {
+                    $query
+                        ->where('last_speed', '<=', 0)
+                        ->orWhere('last_movement', false);
+                })
+                ->where('last_ignition', true)
+                ->latest('last_seen_at')
+                ->limit(5)
+                ->get(),
+            'battery' => $baseQuery()
+                ->whereNotNull('last_battery_level')
+                ->orderBy('last_battery_level')
+                ->latest('last_seen_at')
+                ->limit(5)
+                ->get(),
         ];
     }
 

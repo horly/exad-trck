@@ -50,6 +50,13 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         'battery_level' => ['nullable', 'integer', 'min:0', 'max:100'],
         'external_voltage' => ['nullable', 'numeric', 'min:0', 'max:100'],
         'battery_voltage' => ['nullable', 'numeric', 'min:0', 'max:100'],
+        'codec' => ['nullable', 'string', 'max:50'],
+        'odometer' => ['nullable', 'numeric', 'min:0'],
+        'engine_seconds' => ['nullable', 'integer', 'min:0'],
+        'engine_hours' => ['nullable', 'numeric', 'min:0'],
+        'sensors' => ['nullable', 'array'],
+        'io' => ['nullable', 'array'],
+        'raw' => ['nullable', 'array'],
         'address' => ['nullable', 'string', 'max:255'],
         'ignition' => ['nullable', 'boolean'],
         'movement' => ['nullable', 'boolean'],
@@ -88,6 +95,13 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
     $previousIgnition = $device->last_ignition;
     $movement = (bool) ($validated['movement'] ?? ($speed > 0));
     $gsmSignal = $device->last_gsm_signal;
+    $engineSeconds = $validated['engine_seconds']
+        ?? (isset($validated['engine_hours']) ? (int) round((float) $validated['engine_hours'] * 3600) : null);
+    $odometerKm = isset($validated['odometer']) ? round((float) $validated['odometer'], 2) : null;
+    $rawTelemetry = [
+        'source' => $data['source'] ?? 'gps-listener-server-local',
+        'payload' => $data,
+    ];
 
     if (array_key_exists('gsm_signal', $validated)) {
         $rawGsmSignal = max(0, (int) $validated['gsm_signal']);
@@ -111,10 +125,8 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         'movement' => $movement,
         'external_voltage' => $validated['external_voltage'] ?? null,
         'battery_voltage' => $validated['battery_voltage'] ?? null,
-        'raw_data' => [
-            'source' => 'gps-listener-server-local',
-            'payload' => $data,
-        ],
+        'odometer' => $odometerKm,
+        'raw_data' => $rawTelemetry,
     ]);
 
     $device->forceFill([
@@ -132,7 +144,13 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         'last_battery_level' => $validated['battery_level'] ?? $device->last_battery_level,
         'last_external_voltage' => $validated['external_voltage'] ?? $device->last_external_voltage,
         'last_battery_voltage' => $validated['battery_voltage'] ?? $device->last_battery_voltage,
+        'last_odometer_km' => $odometerKm ?? $device->last_odometer_km,
+        'last_engine_seconds' => $engineSeconds ?? $device->last_engine_seconds,
+        'last_sensors' => $validated['sensors'] ?? $device->last_sensors,
+        'last_io' => $validated['io'] ?? $device->last_io,
+        'last_raw_payload' => $validated['raw'] ?? $rawTelemetry,
         'last_address' => $validated['address'] ?? $device->last_address,
+        'codec' => $validated['codec'] ?? $device->codec,
     ])->save();
 
     if ($previousStatus !== 'online') {

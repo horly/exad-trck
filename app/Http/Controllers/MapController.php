@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Device;
 use App\Models\Fleet;
 use App\Models\Position;
-use App\Services\GoogleRoadsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -17,6 +16,8 @@ class MapController extends Controller
      * @var list<string>
      */
     private const STATUSES = ['online', 'inactive', 'offline', 'maintenance'];
+    private const MOVEMENT_TRAIL_MAX_POINTS = 80;
+    private const MOVEMENT_TRAIL_WINDOW_MINUTES = 120;
 
     public function index(Request $request): View
     {
@@ -38,13 +39,13 @@ class MapController extends Controller
         ]);
     }
 
-    public function devices(Request $request, GoogleRoadsService $googleRoads): JsonResponse
+    public function devices(Request $request): JsonResponse
     {
         $devices = $this->filteredDevices($request)
             ->whereNotNull('devices.last_latitude')
             ->whereNotNull('devices.last_longitude')
             ->get();
-        $trails = $this->movementTrails($devices, $googleRoads);
+        $trails = $this->movementTrails($devices);
 
         return response()->json([
             'summary' => $this->summary($request),
@@ -200,7 +201,7 @@ class MapController extends Controller
             : (int) $device->last_speed > 0;
     }
 
-    private function movementTrails($devices, GoogleRoadsService $googleRoads): array
+    private function movementTrails($devices): array
     {
         $movingDevices = $devices
             ->filter(fn (Device $device): bool => $this->isMoving($device))
@@ -212,7 +213,7 @@ class MapController extends Controller
 
         return Position::query()
             ->whereIn('device_id', $movingDevices->keys())
-            ->where('server_time', '>=', now()->subMinutes(30))
+            ->where('server_time', '>=', now()->subMinutes(self::MOVEMENT_TRAIL_WINDOW_MINUTES))
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->where('is_valid', true)
@@ -220,10 +221,10 @@ class MapController extends Controller
             ->latest('server_time')
             ->get(['device_id', 'latitude', 'longitude', 'server_time'])
             ->groupBy('device_id')
-            ->map(function ($positions, int $deviceId) use ($movingDevices, $googleRoads): array {
+            ->map(function ($positions, int $deviceId) use ($movingDevices): array {
                 $device = $movingDevices->get($deviceId);
                 $coordinates = $positions
-                    ->take(8)
+                    ->take(self::MOVEMENT_TRAIL_MAX_POINTS)
                     ->reverse()
                     ->map(fn (Position $position): array => [
                         (float) $position->longitude,
@@ -232,6 +233,14 @@ class MapController extends Controller
                     ->values()
                     ->all();
 
+                $coordinates = array_reduce($coordinates, function (array $carry, array $coordinate): array {
+                    if ($carry === [] || end($carry) !== $coordinate) {
+                        $carry[] = $coordinate;
+                    }
+
+                    return $carry;
+                }, []);
+
                 $current = [
                     (float) $device->last_longitude,
                     (float) $device->last_latitude,
@@ -239,23 +248,6 @@ class MapController extends Controller
 
                 if ($coordinates === [] || end($coordinates) !== $current) {
                     $coordinates[] = $current;
-                }
-
-                $snapped = $googleRoads->snap(
-                    $positions
-                        ->take(8)
-                        ->reverse()
-                        ->push(new Position([
-                            'latitude' => $device->last_latitude,
-                            'longitude' => $device->last_longitude,
-                        ]))
-                        ->values()
-                );
-
-                if (count($snapped) > 1) {
-                    $snapped[array_key_last($snapped)] = $current;
-
-                    return $snapped;
                 }
 
                 return $coordinates;
