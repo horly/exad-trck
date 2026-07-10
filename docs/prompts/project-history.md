@@ -463,3 +463,12 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Réduction du tracé de déplacement aux points récents, continus et bornés en distance pour éviter les longues lignes parasites.
 - Rapprochement léger du zoom lorsqu’un véhicule est sélectionné depuis la recherche de la carte.
 - Vérifications : `php -l app\Http\Controllers\MapController.php` et `node --check public\js\google-map.js`.
+
+## 2026-07-10 - Zoom carte et extraction OBD/CAN robuste
+- Rapprochement du zoom lors de la sélection d'un véhicule sur la carte Google afin de mieux cadrer le traceur sans perdre le contexte de rue.
+- Allègement visuel de la queue de trace derrière le véhicule en mouvement avec une opacité plus faible et une ligne légèrement plus fine.
+- Suppression des doublons Odomètre et Heures moteur dans le bloc Diagnostic traceur : ces informations restent centralisées dans le bloc OBD / CAN bus.
+- Amélioration de la lecture OBD/CAN dans la fiche traceur : les valeurs peuvent désormais être relues depuis les blocs `obd`, `can`, `io`, `sensors`, `payload` et les clés numériques reçues dans le payload brut.
+- Extension de `gps:ingest-position` pour extraire et normaliser automatiquement régime moteur, vitesse OBD, papillon, température moteur, tension module, charge moteur, distances défaut/réinitialisation, erreurs, carburant et kilométrage même lorsque le serveur GPS les envoie sous forme IO brute.
+- Correction du formatage numérique pour conserver les valeurs `0` et lire correctement les valeurs avec espaces ou virgules comme `1 137,00 km`.
+- Vérifications : `php -l routes/console.php`, `php -l app/Models/Device.php`, `node --check public/js/google-map.js`.

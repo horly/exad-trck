@@ -8,6 +8,7 @@ use App\Services\AlertService;
 use App\Services\ReverseGeocodingService;
 use App\Services\TrackerEventService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Arr;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Validator;
@@ -64,7 +65,7 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         'obd.speed' => ['nullable', 'integer', 'min:0', 'max:300'],
         'obd.throttle_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         'obd.engine_temperature_c' => ['nullable', 'numeric', 'min:-50', 'max:250'],
-        'obd.module_voltage' => ['nullable', 'numeric', 'min:0', 'max:100'],
+        'obd.module_voltage' => ['nullable', 'numeric', 'min:0', 'max:20000'],
         'obd.engine_load_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         'obd.fault_distance_km' => ['nullable', 'integer', 'min:0'],
         'obd.errors_count' => ['nullable', 'integer', 'min:0', 'max:65535'],
@@ -109,11 +110,144 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
     $previousIgnition = $device->last_ignition;
     $movement = (bool) ($validated['movement'] ?? ($speed > 0));
     $gsmSignal = $device->last_gsm_signal;
-    $engineSeconds = $validated['engine_seconds']
-        ?? (isset($validated['engine_hours']) ? (int) round((float) $validated['engine_hours'] * 3600) : null);
-    $odometerKm = isset($validated['odometer']) ? round((float) $validated['odometer'], 2) : null;
-    $obd = $validated['obd'] ?? [];
-    $can = $validated['can'] ?? [];
+    $metricSources = array_filter([
+        $validated,
+        $validated['io'] ?? null,
+        $validated['sensors'] ?? null,
+        $validated['raw'] ?? null,
+        data_get($validated, 'raw.payload'),
+        data_get($validated, 'raw.payload.io'),
+        data_get($validated, 'raw.payload.sensors'),
+        data_get($validated, 'raw.payload.obd'),
+        data_get($validated, 'raw.payload.can'),
+        $data,
+        data_get($data, 'payload'),
+        data_get($data, 'payload.io'),
+        data_get($data, 'payload.sensors'),
+        data_get($data, 'payload.obd'),
+        data_get($data, 'payload.can'),
+        data_get($data, 'io'),
+        data_get($data, 'sensors'),
+        data_get($data, 'obd'),
+        data_get($data, 'can'),
+    ], 'is_array');
+    $normalizeMetricKey = static fn ($key): string => strtolower((string) preg_replace('/[^a-z0-9]+/i', '_', (string) $key));
+    $metricValue = static function (array $keys) use ($metricSources, $normalizeMetricKey) {
+        foreach ($keys as $key) {
+            $normalizedKey = $normalizeMetricKey($key);
+
+            foreach ($metricSources as $source) {
+                if (array_key_exists($key, $source) && $source[$key] !== null && $source[$key] !== '') {
+                    return $source[$key];
+                }
+
+                if (is_numeric($key)) {
+                    foreach ([(string) $key, (int) $key] as $numericKey) {
+                        if (array_key_exists($numericKey, $source) && $source[$numericKey] !== null && $source[$numericKey] !== '') {
+                            return $source[$numericKey];
+                        }
+                    }
+                }
+
+                $value = data_get($source, (string) $key);
+
+                if ($value !== null && $value !== '') {
+                    return $value;
+                }
+
+                foreach (Arr::dot($source) as $dotKey => $dotValue) {
+                    if ($dotValue === null || $dotValue === '') {
+                        continue;
+                    }
+
+                    $segments = explode('.', (string) $dotKey);
+                    $lastSegment = end($segments);
+
+                    if ((string) $dotKey === (string) $key
+                        || $normalizeMetricKey($dotKey) === $normalizedKey
+                        || $normalizeMetricKey($lastSegment) === $normalizedKey) {
+                        return $dotValue;
+                    }
+                }
+            }
+        }
+
+        return null;
+    };
+    $metricNumber = static function (array $keys) use ($metricValue): ?float {
+        $value = $metricValue($keys);
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_string($value)) {
+            $value = trim(str_replace(',', '.', $value));
+            $value = preg_replace('/(?<=\d)\s+(?=\d)/', '', $value);
+
+            if (! is_numeric($value) && preg_match('/-?\d+(?:\.\d+)?/', $value, $matches)) {
+                $value = $matches[0];
+            }
+        }
+
+        return is_numeric($value) ? (float) $value : null;
+    };
+    $percentMetric = static fn ($value) => $value !== null && is_numeric($value) && (float) $value <= 1
+        ? round((float) $value * 100, 2)
+        : $value;
+    $voltageMetric = static fn ($value) => $value !== null && is_numeric($value) && (float) $value > 100
+        ? round((float) $value / 1000, 3)
+        : $value;
+    $compactMetrics = static fn (array $metrics): array => array_filter(
+        $metrics,
+        static fn ($value): bool => $value !== null && $value !== '',
+    );
+
+    $engineSeconds = $validated['engine_seconds'] ?? null;
+    $engineHours = $validated['engine_hours'] ?? $metricNumber(['engine_hours', 'engine_hours_total', 'engine_time_hours', 'motor_hours', 'obd.engine_hours', 'can.engine_hours', 'io.103', '103']);
+
+    if ($engineSeconds === null && $engineHours !== null) {
+        $engineSeconds = (int) round((float) $engineHours * 3600);
+    }
+
+    $odometerRaw = $validated['odometer'] ?? $metricNumber(['odometer', 'odometer_km', 'total_odometer', 'mileage', 'total_mileage', 'can.total_mileage_km', 'io.199', '199']);
+    $odometerKm = $odometerRaw !== null ? round((float) $odometerRaw, 2) : null;
+    $obd = array_replace(
+        $compactMetrics([
+            'rpm' => $metricNumber(['rpm', 'engine_rpm', 'tr_min', 'tr/min', 'obd.rpm', 'payload.obd.rpm', 'can.rpm', 'engine.rpm', 'obd_tr_min', 'io.36', '36', 'io.85', '85']),
+            'speed' => $metricNumber(['obd_speed', 'obd.speed', 'payload.obd.speed', 'can.speed', 'vehicle.speed', 'speed', 'io.37', '37', 'io.24', '24']),
+            'throttle_percent' => $percentMetric($metricNumber(['throttle', 'throttle_percent', 'papillon', 'obd.throttle_percent', 'payload.obd.throttle_percent', 'can.throttle', 'io.53', '53'])),
+            'engine_temperature_c' => $metricNumber(['engine_temperature', 'engine_temperature_c', 'coolant_temperature', 'temperature_moteur', 'obd.engine_temperature_c', 'payload.obd.engine_temperature_c', 'obd.coolant_temperature', 'can.engine_temperature', 'temperature.engine', 'io.32', '32']),
+            'module_voltage' => $voltageMetric($metricNumber(['module_voltage', 'control_module_voltage', 'tension_commande_module', 'obd.module_voltage', 'payload.obd.module_voltage', 'can.module_voltage', 'io.66', '66'])),
+            'engine_load_percent' => $percentMetric($metricNumber(['engine_load', 'engine_load_percent', 'absolute_load', 'absolute_load_value', 'valeur_absolue_de_charge', 'obd.engine_load_percent', 'payload.obd.engine_load_percent', 'can.engine_load', 'io.51', '51'])),
+            'fault_distance_km' => $metricNumber(['fault_distance', 'fault_distance_km', 'distance_with_fault', 'distance_with_mil', 'distance_avec_defaut_moteur', 'obd.fault_distance_km', 'payload.obd.fault_distance_km', 'io.49', '49']),
+            'errors_count' => $metricNumber(['errors', 'errors_count', 'dtc_count', 'obd.errors_count', 'payload.obd.errors_count']),
+            'distance_since_clear_km' => $metricNumber(['distance_since_clear', 'distance_since_clear_km', 'distance_since_codes_cleared', 'mileage_since_reset', 'kilometrage_depuis_reinitialisation', 'obd.distance_since_clear_km', 'payload.obd.distance_since_clear_km', 'io.55', '55']),
+        ]),
+        $compactMetrics($validated['obd'] ?? []),
+    );
+    $can = array_replace(
+        $compactMetrics([
+            'fuel_level_percent' => $percentMetric($metricNumber(['fuel', 'fuel_level', 'fuel_level_percent', 'carburant', 'obd.fuel', 'obd.fuel_level', 'payload.can.fuel_level_percent', 'can.fuel', 'can.fuel_level', 'fuel.level', 'io.48', '48'])),
+            'total_mileage_km' => $metricNumber(['total_mileage', 'total_mileage_km', 'can.total_mileage_km', 'payload.can.total_mileage_km', 'io.16', '16']),
+        ]),
+        $compactMetrics($validated['can'] ?? []),
+    );
+
+    if (isset($obd['module_voltage'])) {
+        $obd['module_voltage'] = $voltageMetric($obd['module_voltage']);
+    }
+
+    foreach (['throttle_percent', 'engine_load_percent'] as $percentKey) {
+        if (isset($obd[$percentKey])) {
+            $obd[$percentKey] = $percentMetric($obd[$percentKey]);
+        }
+    }
+
+    if (isset($can['fuel_level_percent'])) {
+        $can['fuel_level_percent'] = $percentMetric($can['fuel_level_percent']);
+    }
+
     $address = $validated['address'] ?? null;
     $rawTelemetry = [
         'source' => $data['source'] ?? 'gps-listener-server-local',

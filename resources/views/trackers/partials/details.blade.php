@@ -29,23 +29,108 @@
     $ioData = is_array($device->last_io) ? $device->last_io : [];
     $sensorData = is_array($device->last_sensors) ? $device->last_sensors : [];
     $payloadData = is_array($device->last_raw_payload) ? $device->last_raw_payload : [];
-    $metricValue = function (array $keys) use ($ioData, $sensorData, $payloadData) {
+    $metricSources = array_filter([
+        $ioData,
+        $sensorData,
+        $payloadData,
+        data_get($payloadData, 'payload'),
+        data_get($payloadData, 'payload.io'),
+        data_get($payloadData, 'payload.sensors'),
+        data_get($payloadData, 'payload.obd'),
+        data_get($payloadData, 'payload.can'),
+        data_get($payloadData, 'io'),
+        data_get($payloadData, 'sensors'),
+        data_get($payloadData, 'obd'),
+        data_get($payloadData, 'can'),
+        data_get($payloadData, 'data'),
+    ], 'is_array');
+    $normalizeMetricKey = fn ($key) => strtolower((string) preg_replace('/[^a-z0-9]+/i', '_', (string) $key));
+    $metricValue = function (array $keys) use ($metricSources, $normalizeMetricKey) {
         foreach ($keys as $key) {
-            foreach ([$ioData, $sensorData, $payloadData] as $source) {
-                $value = data_get($source, $key);
+            $normalizedKey = $normalizeMetricKey($key);
+
+            foreach ($metricSources as $source) {
+                if (array_key_exists($key, $source) && $source[$key] !== null && $source[$key] !== '') {
+                    return $source[$key];
+                }
+
+                if (is_numeric($key)) {
+                    foreach ([(string) $key, (int) $key] as $numericKey) {
+                        if (array_key_exists($numericKey, $source) && $source[$numericKey] !== null && $source[$numericKey] !== '') {
+                            return $source[$numericKey];
+                        }
+                    }
+                }
+
+                $value = data_get($source, (string) $key);
 
                 if ($value !== null && $value !== '') {
                     return $value;
+                }
+
+                foreach (\Illuminate\Support\Arr::dot($source) as $dotKey => $dotValue) {
+                    if ($dotValue === null || $dotValue === '') {
+                        continue;
+                    }
+
+                    $segments = explode('.', (string) $dotKey);
+                    $lastSegment = end($segments);
+
+                    if ((string) $dotKey === (string) $key
+                        || $normalizeMetricKey($dotKey) === $normalizedKey
+                        || $normalizeMetricKey($lastSegment) === $normalizedKey) {
+                        return $dotValue;
+                    }
                 }
             }
         }
 
         return null;
     };
+    $metricNumber = function ($value) {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_string($value)) {
+            $value = trim(str_replace(',', '.', $value));
+            $value = preg_replace('/(?<=\d)\s+(?=\d)/', '', $value);
+
+            if (! is_numeric($value) && preg_match('/-?\d+(?:\.\d+)?/', $value, $matches)) {
+                $value = $matches[0];
+            }
+        }
+
+        return is_numeric($value) ? (float) $value : null;
+    };
     $metricFirst = fn ($deviceValue, array $keys) => $deviceValue !== null ? $deviceValue : $metricValue($keys);
-    $formatMetric = fn ($value, int $decimals = 0) => $value !== null && is_numeric($value)
-        ? rtrim(rtrim(number_format((float) $value, $decimals, ',', ' '), '0'), ',')
-        : null;
+    $metricFirstNumber = fn ($deviceValue, array $keys) => $metricNumber($metricFirst($deviceValue, $keys));
+    $formatMetric = function ($value, int $decimals = 0) {
+        if ($value === null || ! is_numeric($value)) {
+            return null;
+        }
+
+        $formatted = number_format((float) $value, $decimals, ',', ' ');
+
+        if (str_contains($formatted, ',')) {
+            $formatted = rtrim(rtrim($formatted, '0'), ',');
+        }
+
+        return $formatted === '' ? '0' : $formatted;
+    };
+
+    if ($engineLabel === null) {
+        $engineHoursFallback = $metricNumber($metricValue(['engine_hours', 'engine_hours_total', 'engine_time_hours', 'motor_hours', 'obd.engine_hours', 'can.engine_hours', 'io.103', '103']));
+
+        if ($engineHoursFallback !== null) {
+            $fallbackSeconds = (int) round((float) $engineHoursFallback * 3600);
+            $engineHours = intdiv($fallbackSeconds, 3600);
+            $engineMinutes = intdiv($fallbackSeconds % 3600, 60);
+            $engineLabel = $engineHours > 0
+                ? __('trackers.engine_hours_minutes_value', ['hours' => $engineHours, 'minutes' => $engineMinutes])
+                : __('trackers.engine_minutes_value', ['minutes' => $engineMinutes]);
+        }
+    }
     $formatPercentMetric = function ($value) use ($formatMetric) {
         if ($value !== null && is_numeric($value) && (float) $value <= 1) {
             $value = (float) $value * 100;
@@ -53,17 +138,22 @@
 
         return $formatMetric($value);
     };
-    $obdRpm = $metricFirst($device->last_obd_rpm, ['rpm', 'engine_rpm', 'obd.rpm', 'payload.obd.rpm', 'can.rpm', 'engine.rpm']);
-    $obdSpeed = $metricFirst($device->last_obd_speed, ['obd_speed', 'obd.speed', 'payload.obd.speed', 'can.speed', 'vehicle.speed']);
-    $obdThrottle = $metricFirst($device->last_obd_throttle_percent, ['throttle', 'throttle_percent', 'obd.throttle_percent', 'payload.obd.throttle_percent', 'can.throttle']);
-    $obdTemperature = $metricFirst($device->last_obd_engine_temperature_c, ['engine_temperature', 'engine_temperature_c', 'coolant_temperature', 'obd.engine_temperature_c', 'payload.obd.engine_temperature_c', 'obd.coolant_temperature', 'can.engine_temperature', 'temperature.engine']);
-    $obdModuleVoltage = $metricFirst($device->last_obd_module_voltage, ['module_voltage', 'obd.module_voltage', 'payload.obd.module_voltage', 'can.module_voltage']);
-    $obdEngineLoad = $metricFirst($device->last_obd_engine_load_percent, ['engine_load', 'engine_load_percent', 'obd.engine_load_percent', 'payload.obd.engine_load_percent', 'can.engine_load']);
-    $obdFaultDistance = $metricFirst($device->last_obd_fault_distance_km, ['fault_distance', 'fault_distance_km', 'obd.fault_distance_km', 'payload.obd.fault_distance_km']);
-    $obdErrorsCount = $metricFirst($device->last_obd_errors_count, ['errors', 'errors_count', 'obd.errors_count', 'payload.obd.errors_count', 'dtc_count']);
-    $obdDistanceSinceClear = $metricFirst($device->last_obd_distance_since_clear_km, ['distance_since_clear', 'distance_since_clear_km', 'obd.distance_since_clear_km', 'payload.obd.distance_since_clear_km']);
-    $obdFuel = $metricFirst($device->last_can_fuel_level_percent, ['fuel', 'fuel_level', 'fuel_level_percent', 'obd.fuel', 'obd.fuel_level', 'payload.can.fuel_level_percent', 'can.fuel', 'can.fuel_level', 'fuel.level']);
-    $canMileage = $metricFirst($device->last_can_total_mileage_km, ['total_mileage', 'total_mileage_km', 'can.total_mileage_km', 'payload.can.total_mileage_km']);
+    $obdOdometer = $metricFirstNumber($device->last_odometer_km, ['odometer', 'odometer_km', 'total_odometer', 'mileage', 'total_mileage', 'can.total_mileage_km', 'io.199', '199']);
+    $obdRpm = $metricFirstNumber($device->last_obd_rpm, ['rpm', 'engine_rpm', 'tr_min', 'tr/min', 'obd.rpm', 'payload.obd.rpm', 'can.rpm', 'engine.rpm', 'obd_tr_min', 'io.36', '36', 'io.85', '85']);
+    $obdSpeed = $metricFirstNumber($device->last_obd_speed, ['obd_speed', 'obd.speed', 'payload.obd.speed', 'can.speed', 'vehicle.speed', 'speed', 'io.37', '37', 'io.24', '24']);
+    $obdThrottle = $metricFirstNumber($device->last_obd_throttle_percent, ['throttle', 'throttle_percent', 'papillon', 'obd.throttle_percent', 'payload.obd.throttle_percent', 'can.throttle', 'io.53', '53']);
+    $obdTemperature = $metricFirstNumber($device->last_obd_engine_temperature_c, ['engine_temperature', 'engine_temperature_c', 'coolant_temperature', 'temperature_moteur', 'obd.engine_temperature_c', 'payload.obd.engine_temperature_c', 'obd.coolant_temperature', 'can.engine_temperature', 'temperature.engine', 'io.32', '32']);
+    $obdModuleVoltage = $metricFirstNumber($device->last_obd_module_voltage, ['module_voltage', 'control_module_voltage', 'tension_commande_module', 'obd.module_voltage', 'payload.obd.module_voltage', 'can.module_voltage', 'io.66', '66']);
+    $obdEngineLoad = $metricFirstNumber($device->last_obd_engine_load_percent, ['engine_load', 'engine_load_percent', 'absolute_load', 'absolute_load_value', 'valeur_absolue_de_charge', 'obd.engine_load_percent', 'payload.obd.engine_load_percent', 'can.engine_load', 'io.51', '51']);
+    $obdFaultDistance = $metricFirstNumber($device->last_obd_fault_distance_km, ['fault_distance', 'fault_distance_km', 'distance_with_fault', 'distance_with_mil', 'distance_avec_defaut_moteur', 'obd.fault_distance_km', 'payload.obd.fault_distance_km', 'io.49', '49']);
+    $obdErrorsCount = $metricFirstNumber($device->last_obd_errors_count, ['errors', 'errors_count', 'dtc_count', 'obd.errors_count', 'payload.obd.errors_count']);
+    $obdDistanceSinceClear = $metricFirstNumber($device->last_obd_distance_since_clear_km, ['distance_since_clear', 'distance_since_clear_km', 'distance_since_codes_cleared', 'mileage_since_reset', 'kilometrage_depuis_reinitialisation', 'obd.distance_since_clear_km', 'payload.obd.distance_since_clear_km', 'io.55', '55']);
+    $obdFuel = $metricFirstNumber($device->last_can_fuel_level_percent, ['fuel', 'fuel_level', 'fuel_level_percent', 'carburant', 'obd.fuel', 'obd.fuel_level', 'payload.can.fuel_level_percent', 'can.fuel', 'can.fuel_level', 'fuel.level', 'io.48', '48']);
+    $canMileage = $metricFirstNumber($device->last_can_total_mileage_km, ['total_mileage', 'total_mileage_km', 'can.total_mileage_km', 'payload.can.total_mileage_km', 'io.16', '16']);
+
+    if ($obdModuleVoltage !== null && is_numeric($obdModuleVoltage) && (float) $obdModuleVoltage > 100) {
+        $obdModuleVoltage = (float) $obdModuleVoltage / 1000;
+    }
 
     if ($obdFuel !== null && is_numeric($obdFuel) && (float) $obdFuel <= 1) {
         $obdFuel = (float) $obdFuel * 100;
@@ -80,7 +170,7 @@
         || $obdDistanceSinceClear !== null
         || $obdFuel !== null
         || $canMileage !== null
-        || $device->last_odometer_km !== null
+        || $obdOdometer !== null
         || $engineLabel
         || $device->codec !== null;
     $obdUpdatedAt = $device->last_obd_updated_at ?: $updatedAt;
@@ -258,14 +348,6 @@
                 <dd>{{ __('trackers.satellites_value', ['value' => $device->last_satellites ?? __('trackers.unknown_value')]) }}</dd>
             </div>
             <div>
-                <dt><i class="fa-solid fa-road"></i></dt>
-                <dd>{{ $device->last_odometer_km !== null ? __('trackers.odometer_value', ['value' => $device->last_odometer_km]) : __('trackers.odometer_unavailable') }}</dd>
-            </div>
-            <div>
-                <dt><i class="fa-solid fa-stopwatch"></i></dt>
-                <dd>{{ $engineLabel ? __('trackers.engine_hours_value', ['value' => $engineLabel]) : __('trackers.engine_hours_unavailable') }}</dd>
-            </div>
-            <div>
                 <dt><i class="fa-solid fa-toggle-on"></i></dt>
                 <dd>{{ __('trackers.io_count_value', ['count' => $ioCount]) }}</dd>
             </div>
@@ -289,8 +371,8 @@
                 <div>
                     <dt><i class="fa-solid fa-road"></i></dt>
                     <dd>
-                        {{ $device->last_odometer_km !== null
-                            ? __('trackers.odometer_value', ['value' => number_format((float) $device->last_odometer_km, 2, ',', ' ')])
+                        {{ $obdOdometer !== null
+                            ? __('trackers.odometer_value', ['value' => number_format((float) $obdOdometer, 2, ',', ' ')])
                             : __('trackers.obd_metric_unavailable', ['metric' => __('trackers.obd_odometer_label')]) }}
                     </dd>
                 </div>

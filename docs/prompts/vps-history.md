@@ -333,3 +333,10 @@ The battery voltage field must not be greater than 100.
 - Vérification que les variables Google/Mapbox sont présentes côté production ; le reverse geocoding est maintenant appelé à l'ingestion Laravel pour les nouvelles positions lorsque l'adresse n'est pas fournie.
 - Commandes exécutées côté VPS : `php artisan migrate --force`, `php artisan optimize:clear`, `php artisan optimize`, `node --check` sur le décodeur et l'ingestor, puis `systemctl restart gps-tcp.service`.
 - État final vérifié : `gps-tcp.service` actif et réception continue de paquets réels `codec8_extended`.
+
+## 2026-07-10 - Déploiement zoom carte et extraction OBD/CAN robuste
+- Déploiement ciblé vers `/var/www/exadtracking.app` des fichiers : `public/js/google-map.js`, `resources/views/trackers/partials/details.blade.php`, `routes/console.php` et `docs/prompts/project-history.md`.
+- Objectif : rapprocher légèrement le zoom de sélection carte, rendre la queue de trace plus transparente, supprimer les doublons Odomètre/Heures moteur et renforcer l'extraction OBD/CAN depuis les payloads bruts.
+- Vérifications côté VPS : `php -l routes/console.php`, `php -l resources/views/trackers/partials/details.blade.php`, `node --check public/js/google-map.js`.
+- Caches Laravel : `config:clear`, `view:clear`, `route:clear`, puis `config:cache` et `view:cache` exécutés avec succès.
+- Note : `route:cache` a interrompu la session SSH et n'a pas généré de fichier de cache de routes ; les routes restent donc non cachées, ce qui est acceptable et plus sûr pour éviter un cache incomplet.

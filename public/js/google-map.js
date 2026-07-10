@@ -36,7 +36,7 @@
     let latestGeojson = { type: 'FeatureCollection', features: [] };
     let VehicleOverlay;
     const MARKER_ANIMATION_MS = 5000;
-    const SELECTED_DEVICE_ZOOM = 16;
+    const SELECTED_DEVICE_ZOOM = 17;
 
     const statusColors = {
         online: '#10b981',
@@ -428,8 +428,8 @@
             path,
             geodesic: true,
             strokeColor: '#229bd8',
-            strokeOpacity: 0.72,
-            strokeWeight: 5,
+            strokeOpacity: 0.48,
+            strokeWeight: 4,
         });
 
         trailPolylines.push(polyline);
