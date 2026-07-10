@@ -446,3 +446,15 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Les rapports PDF Dompdf sont téléchargés directement au lieu d'être ouverts en lecture dans le navigateur.
 - Le zoom automatique de sélection d'un véhicule sur la carte Google a été réduit pour conserver davantage de contexte autour du véhicule.
 - La fiche détail traceur ne montre plus les données brutes et ajoute un bloc OBD/CAN bus avec odomètre, heures moteur, régime moteur, carburant, température et protocole lorsque ces données sont disponibles.
+
+## 2026-07-10 - Codec traceur, OBD/CAN et diagnostics
+- Réutilisation du champ existant `devices.codec` pour stocker le codec réel reçu par les traceurs, sans créer de champ doublon.
+- Ajout d'une migration pour enrichir la table `devices` avec les métriques OBD/CAN : régime moteur, vitesse OBD, papillon, température moteur, tension module, charge moteur, distance avec défaut, erreurs, distance depuis réinitialisation, carburant CAN, kilométrage CAN et dates de mise à jour.
+- Extension du modèle `Device` avec les nouveaux champs remplissables et les casts adaptés.
+- Extension de la commande `gps:ingest-position` pour accepter les blocs `obd`, `can`, `io`, `sensors`, `raw`, le codec, l'odomètre, les heures moteur et l'adresse.
+- Ajout d'une résolution d'adresse côté ingestion via le service de reverse geocoding lorsque le serveur GPS n'envoie pas directement l'adresse.
+- Enrichissement de la fiche détail traceur : OBD/CAN bus, diagnostic traceur, satellites, odomètre, heures moteur, entrées/sorties, capteurs et dates de fraîcheur.
+- Amélioration de l'affichage des rapports : espacement clair entre le nom du traceur et son numéro de série/IMEI.
+- Ajout des traductions FR/EN pour les nouvelles métriques OBD/CAN visibles.
+- Commandes exécutées : `php artisan migrate`, `php artisan test --filter=ReportsTest --stop-on-failure`.
+- Vérifications : `php -l` sur `Device`, `routes/console.php`, la migration, les traductions et les vues rapports/détails traceur.

@@ -322,3 +322,14 @@ The battery voltage field must not be greater than 100.
 - Nettoyage cibl� des fichiers mal plac�s � la racine du projet distant.
 - Ex�cution c�t� VPS : `composer dump-autoload --optimize`, `php artisan optimize:clear`, `php artisan migrate --force`, seeders `VehicleSubscriptionFeatureSeeder` et `VehicleSubscriptionPlanSeeder`, puis `php artisan optimize`.
 - V�rification distante : routes `GET subscriptions` et `PATCH subscriptions` disponibles.
+
+## 2026-07-10 - Production GPS : codec, OBD/CAN et diagnostic traceur
+- Déploiement ciblé vers `/var/www/exadtracking.app` des fichiers Laravel liés à la télémétrie enrichie des traceurs.
+- Exécution de la migration production ajoutant les champs OBD/CAN sur la table `devices`.
+- Conservation du champ existant `devices.codec` pour enregistrer le codec réel reçu, sans ajouter de champ `last_codec`.
+- Mise à jour du serveur d'écoute production dans `/var/www/exadtracking.app/gps-listener-server-prod`.
+- Extension du décodeur Teltonika Codec 8 / Codec 8 Extended pour extraire les valeurs IO utiles : contact, mouvement, GSM, tensions, batterie, odomètre, heures moteur, OBD RPM, vitesse OBD, papillon, température moteur, tension module, charge moteur, erreurs, distance défaut, carburant CAN et kilométrage CAN.
+- Mise à jour de l'ingestion Laravel pour envoyer `codec`, `obd`, `can`, `io`, `sensors`, `raw`, `odometer`, `engine_seconds` et `gps_time` à la commande `gps:ingest-position`.
+- Vérification que les variables Google/Mapbox sont présentes côté production ; le reverse geocoding est maintenant appelé à l'ingestion Laravel pour les nouvelles positions lorsque l'adresse n'est pas fournie.
+- Commandes exécutées côté VPS : `php artisan migrate --force`, `php artisan optimize:clear`, `php artisan optimize`, `node --check` sur le décodeur et l'ingestor, puis `systemctl restart gps-tcp.service`.
+- État final vérifié : `gps-tcp.service` actif et réception continue de paquets réels `codec8_extended`.

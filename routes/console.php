@@ -5,6 +5,7 @@ use App\Models\Device;
 use App\Models\Position;
 use App\Models\Vehicle;
 use App\Services\AlertService;
+use App\Services\ReverseGeocodingService;
 use App\Services\TrackerEventService;
 use Illuminate\Support\Carbon;
 use Illuminate\Foundation\Inspiring;
@@ -57,6 +58,19 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         'sensors' => ['nullable', 'array'],
         'io' => ['nullable', 'array'],
         'raw' => ['nullable', 'array'],
+        'obd' => ['nullable', 'array'],
+        'can' => ['nullable', 'array'],
+        'obd.rpm' => ['nullable', 'integer', 'min:0', 'max:20000'],
+        'obd.speed' => ['nullable', 'integer', 'min:0', 'max:300'],
+        'obd.throttle_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+        'obd.engine_temperature_c' => ['nullable', 'numeric', 'min:-50', 'max:250'],
+        'obd.module_voltage' => ['nullable', 'numeric', 'min:0', 'max:100'],
+        'obd.engine_load_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+        'obd.fault_distance_km' => ['nullable', 'integer', 'min:0'],
+        'obd.errors_count' => ['nullable', 'integer', 'min:0', 'max:65535'],
+        'obd.distance_since_clear_km' => ['nullable', 'integer', 'min:0'],
+        'can.fuel_level_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+        'can.total_mileage_km' => ['nullable', 'numeric', 'min:0'],
         'address' => ['nullable', 'string', 'max:255'],
         'ignition' => ['nullable', 'boolean'],
         'movement' => ['nullable', 'boolean'],
@@ -98,6 +112,9 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
     $engineSeconds = $validated['engine_seconds']
         ?? (isset($validated['engine_hours']) ? (int) round((float) $validated['engine_hours'] * 3600) : null);
     $odometerKm = isset($validated['odometer']) ? round((float) $validated['odometer'], 2) : null;
+    $obd = $validated['obd'] ?? [];
+    $can = $validated['can'] ?? [];
+    $address = $validated['address'] ?? null;
     $rawTelemetry = [
         'source' => $data['source'] ?? 'gps-listener-server-local',
         'payload' => $data,
@@ -108,6 +125,14 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         $gsmSignal = min(100, $rawGsmSignal <= 5 ? $rawGsmSignal * 20 : $rawGsmSignal);
     }
 
+    if ($address === null) {
+        $address = app(ReverseGeocodingService::class)->resolveBest(
+            (float) $validated['lat'],
+            (float) $validated['lng'],
+            $device->last_address,
+        );
+    }
+
     $position = Position::query()->create([
         'device_id' => $device->id,
         'imei' => $device->imei,
@@ -115,7 +140,7 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         'server_time' => $serverTime,
         'latitude' => $validated['lat'],
         'longitude' => $validated['lng'],
-        'address' => $validated['address'] ?? null,
+        'address' => $address,
         'is_valid' => true,
         'speed' => $speed,
         'angle' => $angle,
@@ -146,10 +171,25 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         'last_battery_voltage' => $validated['battery_voltage'] ?? $device->last_battery_voltage,
         'last_odometer_km' => $odometerKm ?? $device->last_odometer_km,
         'last_engine_seconds' => $engineSeconds ?? $device->last_engine_seconds,
+        'last_obd_rpm' => $obd['rpm'] ?? $device->last_obd_rpm,
+        'last_obd_speed' => $obd['speed'] ?? $device->last_obd_speed,
+        'last_obd_throttle_percent' => $obd['throttle_percent'] ?? $device->last_obd_throttle_percent,
+        'last_obd_engine_temperature_c' => $obd['engine_temperature_c'] ?? $device->last_obd_engine_temperature_c,
+        'last_obd_module_voltage' => $obd['module_voltage'] ?? $device->last_obd_module_voltage,
+        'last_obd_engine_load_percent' => $obd['engine_load_percent'] ?? $device->last_obd_engine_load_percent,
+        'last_obd_fault_distance_km' => $obd['fault_distance_km'] ?? $device->last_obd_fault_distance_km,
+        'last_obd_errors_count' => $obd['errors_count'] ?? $device->last_obd_errors_count,
+        'last_obd_distance_since_clear_km' => $obd['distance_since_clear_km'] ?? $device->last_obd_distance_since_clear_km,
+        'last_can_fuel_level_percent' => $can['fuel_level_percent'] ?? $device->last_can_fuel_level_percent,
+        'last_can_total_mileage_km' => $can['total_mileage_km'] ?? $device->last_can_total_mileage_km,
+        'last_obd_updated_at' => ($obd !== [] || $can !== []) ? $serverTime : $device->last_obd_updated_at,
+        'last_diagnostic_updated_at' => (array_key_exists('satellites', $validated) || array_key_exists('io', $validated) || array_key_exists('sensors', $validated))
+            ? $serverTime
+            : $device->last_diagnostic_updated_at,
         'last_sensors' => $validated['sensors'] ?? $device->last_sensors,
         'last_io' => $validated['io'] ?? $device->last_io,
         'last_raw_payload' => $validated['raw'] ?? $rawTelemetry,
-        'last_address' => $validated['address'] ?? $device->last_address,
+        'last_address' => $address ?? $device->last_address,
         'codec' => $validated['codec'] ?? $device->codec,
     ])->save();
 

@@ -196,9 +196,9 @@
                         @default
                             <tr>
                                 <td>{{ $rows->firstItem() + $loop->index }}</td>
-                                <td><strong>{{ $row->device?->name ?: $row->imei }}</strong><span class="technical-code">{{ $row->device?->imei ?: $row->imei }}</span></td>
-                                <td><strong>{{ $row->device?->vehicle?->name ?: '-' }}</strong><span class="technical-code">{{ $row->device?->vehicle?->registration_number ?: '-' }}</span></td>
-                                <td><strong>{{ $row->device?->fleet?->name ?: '-' }}</strong><span class="technical-code">{{ $row->device?->fleet?->code ?: '-' }}</span></td>
+                                <td><span class="report-identity-cell"><strong>{{ $row->device?->name ?: $row->imei }}</strong><span class="technical-code">{{ $row->device?->imei ?: $row->imei }}</span></span></td>
+                                <td><span class="report-identity-cell"><strong>{{ $row->device?->vehicle?->name ?: '-' }}</strong><span class="technical-code">{{ $row->device?->vehicle?->registration_number ?: '-' }}</span></span></td>
+                                <td><span class="report-identity-cell"><strong>{{ $row->device?->fleet?->name ?: '-' }}</strong><span class="technical-code">{{ $row->device?->fleet?->code ?: '-' }}</span></span></td>
                                 <td>{{ __('reports.speed_value', ['value' => $row->speed ?? 0]) }}</td>
                                 <td>{{ $row->address ?: __('reports.address_unavailable') }}</td>
                                 <td>{{ $row->server_time?->format('Y-m-d H:i:s') ?: '-' }}</td>
