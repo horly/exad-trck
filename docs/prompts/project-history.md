@@ -458,3 +458,8 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Ajout des traductions FR/EN pour les nouvelles métriques OBD/CAN visibles.
 - Commandes exécutées : `php artisan migrate`, `php artisan test --filter=ReportsTest --stop-on-failure`.
 - Vérifications : `php -l` sur `Device`, `routes/console.php`, la migration, les traductions et les vues rapports/détails traceur.
+
+## 2026-07-10 - Carte : trace de déplacement courte et zoom de sélection
+- Réduction du tracé de déplacement aux points récents, continus et bornés en distance pour éviter les longues lignes parasites.
+- Rapprochement léger du zoom lorsqu’un véhicule est sélectionné depuis la recherche de la carte.
+- Vérifications : `php -l app\Http\Controllers\MapController.php` et `node --check public\js\google-map.js`.

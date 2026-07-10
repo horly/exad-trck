@@ -16,8 +16,10 @@ class MapController extends Controller
      * @var list<string>
      */
     private const STATUSES = ['online', 'inactive', 'offline', 'maintenance'];
-    private const MOVEMENT_TRAIL_MAX_POINTS = 80;
-    private const MOVEMENT_TRAIL_WINDOW_MINUTES = 120;
+    private const MOVEMENT_TRAIL_MAX_POINTS = 10;
+    private const MOVEMENT_TRAIL_WINDOW_MINUTES = 10;
+    private const MOVEMENT_TRAIL_MAX_SEGMENT_METERS = 600;
+    private const MOVEMENT_TRAIL_MAX_TOTAL_METERS = 850;
 
     public function index(Request $request): View
     {
@@ -250,10 +252,66 @@ class MapController extends Controller
                     $coordinates[] = $current;
                 }
 
-                return $coordinates;
+                return $this->trimMovementTrail(
+                    $this->recentContinuousTrail($coordinates)
+                );
             })
             ->filter(fn (array $coordinates): bool => count($coordinates) > 1)
             ->all();
+    }
+
+    private function recentContinuousTrail(array $coordinates): array
+    {
+        $trail = [];
+
+        foreach ($coordinates as $coordinate) {
+            if ($trail !== [] && $this->distanceInMeters(end($trail), $coordinate) > self::MOVEMENT_TRAIL_MAX_SEGMENT_METERS) {
+                $trail = [];
+            }
+
+            if ($trail === [] || end($trail) !== $coordinate) {
+                $trail[] = $coordinate;
+            }
+        }
+
+        return $trail;
+    }
+
+    private function trimMovementTrail(array $coordinates): array
+    {
+        if (count($coordinates) < 2) {
+            return $coordinates;
+        }
+
+        $trimmed = [array_pop($coordinates)];
+        $distance = 0.0;
+
+        for ($index = count($coordinates) - 1; $index >= 0; $index--) {
+            $segmentDistance = $this->distanceInMeters($coordinates[$index], $trimmed[0]);
+
+            if ($distance + $segmentDistance > self::MOVEMENT_TRAIL_MAX_TOTAL_METERS) {
+                break;
+            }
+
+            array_unshift($trimmed, $coordinates[$index]);
+            $distance += $segmentDistance;
+        }
+
+        return $trimmed;
+    }
+
+    private function distanceInMeters(array $first, array $second): float
+    {
+        $earthRadius = 6371000;
+        $firstLatitude = deg2rad((float) $first[1]);
+        $secondLatitude = deg2rad((float) $second[1]);
+        $latitudeDelta = deg2rad((float) $second[1] - (float) $first[1]);
+        $longitudeDelta = deg2rad((float) $second[0] - (float) $first[0]);
+
+        $haversine = sin($latitudeDelta / 2) ** 2
+            + cos($firstLatitude) * cos($secondLatitude) * sin($longitudeDelta / 2) ** 2;
+
+        return $earthRadius * 2 * atan2(sqrt($haversine), sqrt(1 - $haversine));
     }
 
     private function deviceCoordinates(Device $device): array

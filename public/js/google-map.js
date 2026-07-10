@@ -36,7 +36,7 @@
     let latestGeojson = { type: 'FeatureCollection', features: [] };
     let VehicleOverlay;
     const MARKER_ANIMATION_MS = 5000;
-    const SELECTED_DEVICE_ZOOM = 15;
+    const SELECTED_DEVICE_ZOOM = 16;
 
     const statusColors = {
         online: '#10b981',
