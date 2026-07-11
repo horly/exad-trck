@@ -61,6 +61,7 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         'raw' => ['nullable', 'array'],
         'obd' => ['nullable', 'array'],
         'can' => ['nullable', 'array'],
+        'obd.runtime_seconds' => ['nullable', 'integer', 'min:0'],
         'obd.rpm' => ['nullable', 'integer', 'min:0', 'max:20000'],
         'obd.speed' => ['nullable', 'integer', 'min:0', 'max:300'],
         'obd.throttle_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
@@ -203,7 +204,20 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         static fn ($value): bool => $value !== null && $value !== '',
     );
 
-    $engineSeconds = $validated['engine_seconds'] ?? null;
+    $runtimeSeconds = $metricNumber([
+        'runtime_seconds',
+        'engine_runtime_seconds',
+        'execution_time_seconds',
+        'execution_moment_seconds',
+        'moment_execution_seconds',
+        'obd.runtime_seconds',
+        'payload.obd.runtime_seconds',
+        'time_since_engine_start',
+        'engine_seconds',
+        'io.42',
+        '42',
+    ]);
+    $engineSeconds = null;
     $engineHours = $validated['engine_hours'] ?? $metricNumber(['engine_hours', 'engine_hours_total', 'engine_time_hours', 'motor_hours', 'obd.engine_hours', 'can.engine_hours', 'io.103', '103']);
 
     if ($engineSeconds === null && $engineHours !== null) {
@@ -214,15 +228,16 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
     $odometerKm = $odometerRaw !== null ? round((float) $odometerRaw, 2) : null;
     $obd = array_replace(
         $compactMetrics([
+            'runtime_seconds' => $runtimeSeconds,
             'rpm' => $metricNumber(['rpm', 'engine_rpm', 'tr_min', 'tr/min', 'obd.rpm', 'payload.obd.rpm', 'can.rpm', 'engine.rpm', 'obd_tr_min', 'io.36', '36', 'io.85', '85']),
             'speed' => $metricNumber(['obd_speed', 'obd.speed', 'payload.obd.speed', 'can.speed', 'vehicle.speed', 'speed', 'io.37', '37', 'io.24', '24']),
-            'throttle_percent' => $percentMetric($metricNumber(['throttle', 'throttle_percent', 'papillon', 'obd.throttle_percent', 'payload.obd.throttle_percent', 'can.throttle', 'io.53', '53'])),
+            'throttle_percent' => $percentMetric($metricNumber(['throttle', 'throttle_percent', 'papillon', 'obd.throttle_percent', 'payload.obd.throttle_percent', 'can.throttle', 'io.41', '41'])),
             'engine_temperature_c' => $metricNumber(['engine_temperature', 'engine_temperature_c', 'coolant_temperature', 'temperature_moteur', 'obd.engine_temperature_c', 'payload.obd.engine_temperature_c', 'obd.coolant_temperature', 'can.engine_temperature', 'temperature.engine', 'io.32', '32']),
-            'module_voltage' => $voltageMetric($metricNumber(['module_voltage', 'control_module_voltage', 'tension_commande_module', 'obd.module_voltage', 'payload.obd.module_voltage', 'can.module_voltage', 'io.66', '66'])),
-            'engine_load_percent' => $percentMetric($metricNumber(['engine_load', 'engine_load_percent', 'absolute_load', 'absolute_load_value', 'valeur_absolue_de_charge', 'obd.engine_load_percent', 'payload.obd.engine_load_percent', 'can.engine_load', 'io.51', '51'])),
-            'fault_distance_km' => $metricNumber(['fault_distance', 'fault_distance_km', 'distance_with_fault', 'distance_with_mil', 'distance_avec_defaut_moteur', 'obd.fault_distance_km', 'payload.obd.fault_distance_km', 'io.49', '49']),
-            'errors_count' => $metricNumber(['errors', 'errors_count', 'dtc_count', 'obd.errors_count', 'payload.obd.errors_count']),
-            'distance_since_clear_km' => $metricNumber(['distance_since_clear', 'distance_since_clear_km', 'distance_since_codes_cleared', 'mileage_since_reset', 'kilometrage_depuis_reinitialisation', 'obd.distance_since_clear_km', 'payload.obd.distance_since_clear_km', 'io.55', '55']),
+            'module_voltage' => $voltageMetric($metricNumber(['module_voltage', 'control_module_voltage', 'tension_commande_module', 'obd.module_voltage', 'payload.obd.module_voltage', 'can.module_voltage', 'io.51', '51', 'io.66', '66'])),
+            'engine_load_percent' => $percentMetric($metricNumber(['engine_load', 'engine_load_percent', 'absolute_load', 'absolute_load_value', 'valeur_absolue_de_charge', 'obd.engine_load_percent', 'payload.obd.engine_load_percent', 'can.engine_load', 'io.52', '52', 'io.31', '31'])),
+            'fault_distance_km' => $metricNumber(['fault_distance', 'fault_distance_km', 'distance_with_fault', 'distance_with_mil', 'distance_avec_defaut_moteur', 'obd.fault_distance_km', 'payload.obd.fault_distance_km', 'io.43', '43']),
+            'errors_count' => $metricNumber(['errors', 'errors_count', 'dtc_count', 'obd.errors_count', 'payload.obd.errors_count', 'io.30', '30']),
+            'distance_since_clear_km' => $metricNumber(['distance_since_clear', 'distance_since_clear_km', 'distance_since_codes_cleared', 'mileage_since_reset', 'kilometrage_depuis_reinitialisation', 'obd.distance_since_clear_km', 'payload.obd.distance_since_clear_km', 'io.49', '49', 'io.55', '55']),
         ]),
         $compactMetrics($validated['obd'] ?? []),
     );
@@ -247,6 +262,12 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
     if (isset($can['fuel_level_percent'])) {
         $can['fuel_level_percent'] = $percentMetric($can['fuel_level_percent']);
     }
+
+    $storedRuntimeSeconds = isset($obd['runtime_seconds']) ? (int) $obd['runtime_seconds'] : null;
+    $shouldClearRuntimeAsEngineHours = $engineSeconds === null
+        && $storedRuntimeSeconds !== null
+        && $device->last_engine_seconds !== null
+        && (int) $device->last_engine_seconds === $storedRuntimeSeconds;
 
     $address = $validated['address'] ?? null;
     $rawTelemetry = [
@@ -304,7 +325,8 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         'last_external_voltage' => $validated['external_voltage'] ?? $device->last_external_voltage,
         'last_battery_voltage' => $validated['battery_voltage'] ?? $device->last_battery_voltage,
         'last_odometer_km' => $odometerKm ?? $device->last_odometer_km,
-        'last_engine_seconds' => $engineSeconds ?? $device->last_engine_seconds,
+        'last_engine_seconds' => $engineSeconds ?? ($shouldClearRuntimeAsEngineHours ? null : $device->last_engine_seconds),
+        'last_obd_runtime_seconds' => $obd['runtime_seconds'] ?? $device->last_obd_runtime_seconds,
         'last_obd_rpm' => $obd['rpm'] ?? $device->last_obd_rpm,
         'last_obd_speed' => $obd['speed'] ?? $device->last_obd_speed,
         'last_obd_throttle_percent' => $obd['throttle_percent'] ?? $device->last_obd_throttle_percent,

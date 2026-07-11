@@ -15,13 +15,39 @@
     $gsmSignal = $gsmSignal !== null && $gsmSignal <= 5 ? min(100, $gsmSignal * 20) : $gsmSignal;
     $engineSeconds = $device->last_engine_seconds;
     $engineLabel = null;
+    $runtimeSeconds = $device->last_obd_runtime_seconds;
+    $runtimeLabel = null;
+
+    $formatDurationLabel = function (?int $seconds) {
+        if ($seconds === null) {
+            return null;
+        }
+
+        $seconds = max(0, $seconds);
+        $hours = intdiv($seconds, 3600);
+        $minutes = intdiv($seconds % 3600, 60);
+        $remainingSeconds = $seconds % 60;
+
+        if ($hours > 0) {
+            return __('trackers.duration_hours_minutes_seconds_value', [
+                'hours' => $hours,
+                'minutes' => $minutes,
+                'seconds' => $remainingSeconds,
+            ]);
+        }
+
+        if ($minutes > 0) {
+            return __('trackers.duration_minutes_seconds_value', [
+                'minutes' => $minutes,
+                'seconds' => $remainingSeconds,
+            ]);
+        }
+
+        return __('trackers.duration_seconds_value', ['seconds' => $remainingSeconds]);
+    };
 
     if ($engineSeconds !== null) {
-        $engineHours = intdiv((int) $engineSeconds, 3600);
-        $engineMinutes = intdiv(((int) $engineSeconds) % 3600, 60);
-        $engineLabel = $engineHours > 0
-            ? __('trackers.engine_hours_minutes_value', ['hours' => $engineHours, 'minutes' => $engineMinutes])
-            : __('trackers.engine_minutes_value', ['minutes' => $engineMinutes]);
+        $engineLabel = $formatDurationLabel((int) $engineSeconds);
     }
 
     $sensorCount = is_array($device->last_sensors) ? count($device->last_sensors) : 0;
@@ -124,11 +150,7 @@
 
         if ($engineHoursFallback !== null) {
             $fallbackSeconds = (int) round((float) $engineHoursFallback * 3600);
-            $engineHours = intdiv($fallbackSeconds, 3600);
-            $engineMinutes = intdiv($fallbackSeconds % 3600, 60);
-            $engineLabel = $engineHours > 0
-                ? __('trackers.engine_hours_minutes_value', ['hours' => $engineHours, 'minutes' => $engineMinutes])
-                : __('trackers.engine_minutes_value', ['minutes' => $engineMinutes]);
+            $engineLabel = $formatDurationLabel($fallbackSeconds);
         }
     }
     $formatPercentMetric = function ($value) use ($formatMetric) {
@@ -139,18 +161,19 @@
         return $formatMetric($value);
     };
     $obdOdometer = $metricFirstNumber($device->last_odometer_km, ['odometer', 'odometer_km', 'total_odometer', 'mileage', 'total_mileage', 'can.total_mileage_km', 'io.199', '199']);
+    $runtimeMetric = $metricFirstNumber($runtimeSeconds, ['runtime_seconds', 'engine_runtime_seconds', 'execution_time_seconds', 'execution_moment_seconds', 'moment_execution_seconds', 'obd.runtime_seconds', 'payload.obd.runtime_seconds', 'time_since_engine_start', 'engine_seconds', 'io.42', '42']);
+    $runtimeSeconds = $runtimeMetric !== null ? (int) $runtimeMetric : null;
+    $runtimeLabel = $formatDurationLabel($runtimeSeconds);
     $obdRpm = $metricFirstNumber($device->last_obd_rpm, ['rpm', 'engine_rpm', 'tr_min', 'tr/min', 'obd.rpm', 'payload.obd.rpm', 'can.rpm', 'engine.rpm', 'obd_tr_min', 'io.36', '36', 'io.85', '85']);
     $obdSpeed = $metricFirstNumber($device->last_obd_speed, ['obd_speed', 'obd.speed', 'payload.obd.speed', 'can.speed', 'vehicle.speed', 'speed', 'io.37', '37', 'io.24', '24']);
-    $obdThrottle = $metricFirstNumber($device->last_obd_throttle_percent, ['throttle', 'throttle_percent', 'papillon', 'obd.throttle_percent', 'payload.obd.throttle_percent', 'can.throttle', 'io.53', '53']);
+    $obdThrottle = $metricFirstNumber($device->last_obd_throttle_percent, ['throttle', 'throttle_percent', 'papillon', 'obd.throttle_percent', 'payload.obd.throttle_percent', 'can.throttle', 'io.41', '41']);
     $obdTemperature = $metricFirstNumber($device->last_obd_engine_temperature_c, ['engine_temperature', 'engine_temperature_c', 'coolant_temperature', 'temperature_moteur', 'obd.engine_temperature_c', 'payload.obd.engine_temperature_c', 'obd.coolant_temperature', 'can.engine_temperature', 'temperature.engine', 'io.32', '32']);
-    $obdModuleVoltage = $metricFirstNumber($device->last_obd_module_voltage, ['module_voltage', 'control_module_voltage', 'tension_commande_module', 'obd.module_voltage', 'payload.obd.module_voltage', 'can.module_voltage', 'io.66', '66']);
-    $obdEngineLoad = $metricFirstNumber($device->last_obd_engine_load_percent, ['engine_load', 'engine_load_percent', 'absolute_load', 'absolute_load_value', 'valeur_absolue_de_charge', 'obd.engine_load_percent', 'payload.obd.engine_load_percent', 'can.engine_load', 'io.51', '51']);
-    $obdFaultDistance = $metricFirstNumber($device->last_obd_fault_distance_km, ['fault_distance', 'fault_distance_km', 'distance_with_fault', 'distance_with_mil', 'distance_avec_defaut_moteur', 'obd.fault_distance_km', 'payload.obd.fault_distance_km', 'io.49', '49']);
-    $obdErrorsCount = $metricFirstNumber($device->last_obd_errors_count, ['errors', 'errors_count', 'dtc_count', 'obd.errors_count', 'payload.obd.errors_count']);
-    $obdDistanceSinceClear = $metricFirstNumber($device->last_obd_distance_since_clear_km, ['distance_since_clear', 'distance_since_clear_km', 'distance_since_codes_cleared', 'mileage_since_reset', 'kilometrage_depuis_reinitialisation', 'obd.distance_since_clear_km', 'payload.obd.distance_since_clear_km', 'io.55', '55']);
+    $obdModuleVoltage = $metricFirstNumber($device->last_obd_module_voltage, ['module_voltage', 'control_module_voltage', 'tension_commande_module', 'obd.module_voltage', 'payload.obd.module_voltage', 'can.module_voltage', 'io.51', '51', 'io.66', '66']);
+    $obdEngineLoad = $metricFirstNumber($device->last_obd_engine_load_percent, ['engine_load', 'engine_load_percent', 'absolute_load', 'absolute_load_value', 'valeur_absolue_de_charge', 'obd.engine_load_percent', 'payload.obd.engine_load_percent', 'can.engine_load', 'io.52', '52', 'io.31', '31']);
+    $obdFaultDistance = $metricFirstNumber($device->last_obd_fault_distance_km, ['fault_distance', 'fault_distance_km', 'distance_with_fault', 'distance_with_mil', 'distance_avec_defaut_moteur', 'obd.fault_distance_km', 'payload.obd.fault_distance_km', 'io.43', '43']);
+    $obdErrorsCount = $metricFirstNumber($device->last_obd_errors_count, ['errors', 'errors_count', 'dtc_count', 'obd.errors_count', 'payload.obd.errors_count', 'io.30', '30']);
+    $obdDistanceSinceClear = $metricFirstNumber($device->last_obd_distance_since_clear_km, ['distance_since_clear', 'distance_since_clear_km', 'distance_since_codes_cleared', 'mileage_since_reset', 'kilometrage_depuis_reinitialisation', 'obd.distance_since_clear_km', 'payload.obd.distance_since_clear_km', 'io.49', '49', 'io.55', '55']);
     $obdFuel = $metricFirstNumber($device->last_can_fuel_level_percent, ['fuel', 'fuel_level', 'fuel_level_percent', 'carburant', 'obd.fuel', 'obd.fuel_level', 'payload.can.fuel_level_percent', 'can.fuel', 'can.fuel_level', 'fuel.level', 'io.48', '48']);
-    $canMileage = $metricFirstNumber($device->last_can_total_mileage_km, ['total_mileage', 'total_mileage_km', 'can.total_mileage_km', 'payload.can.total_mileage_km', 'io.16', '16']);
-
     if ($obdModuleVoltage !== null && is_numeric($obdModuleVoltage) && (float) $obdModuleVoltage > 100) {
         $obdModuleVoltage = (float) $obdModuleVoltage / 1000;
     }
@@ -161,6 +184,7 @@
 
     $obdHasData = $obdRpm !== null
         || $obdSpeed !== null
+        || $runtimeLabel !== null
         || $obdThrottle !== null
         || $obdTemperature !== null
         || $obdModuleVoltage !== null
@@ -168,11 +192,7 @@
         || $obdFaultDistance !== null
         || $obdErrorsCount !== null
         || $obdDistanceSinceClear !== null
-        || $obdFuel !== null
-        || $canMileage !== null
-        || $obdOdometer !== null
-        || $engineLabel
-        || $device->codec !== null;
+        || $obdFuel !== null;
     $obdUpdatedAt = $device->last_obd_updated_at ?: $updatedAt;
     $diagnosticUpdatedAt = $device->last_diagnostic_updated_at ?: $updatedAt;
 @endphp
@@ -324,10 +344,6 @@
                 <dd>{{ __('trackers.sim_value', ['sim' => $device->sim_number ?: __('trackers.unknown_value')]) }}</dd>
             </div>
             <div>
-                <dt><i class="fa-solid fa-network-wired"></i></dt>
-                <dd>{{ __('trackers.protocol_value', ['protocol' => $device->protocol ?: __('trackers.unknown_value')]) }}</dd>
-            </div>
-            <div>
                 <dt><i class="fa-solid fa-code"></i></dt>
                 <dd>{{ __('trackers.codec_value', ['codec' => $device->codec ?: __('trackers.unknown_value')]) }}</dd>
             </div>
@@ -346,6 +362,26 @@
             <div>
                 <dt><i class="fa-solid fa-satellite-dish"></i></dt>
                 <dd>{{ __('trackers.satellites_value', ['value' => $device->last_satellites ?? __('trackers.unknown_value')]) }}</dd>
+            </div>
+            <div>
+                <dt><i class="fa-solid fa-network-wired"></i></dt>
+                <dd>{{ __('trackers.protocol_value', ['protocol' => $device->protocol ? strtoupper($device->protocol) : __('trackers.unknown_value')]) }}</dd>
+            </div>
+            <div>
+                <dt><i class="fa-solid fa-road"></i></dt>
+                <dd>
+                    {{ $obdOdometer !== null
+                        ? __('trackers.odometer_value', ['value' => number_format((float) $obdOdometer, 2, ',', ' ')])
+                        : __('trackers.odometer_unavailable') }}
+                </dd>
+            </div>
+            <div>
+                <dt><i class="fa-solid fa-clock-rotate-left"></i></dt>
+                <dd>
+                    {{ $engineLabel
+                        ? __('trackers.engine_hours_value', ['value' => $engineLabel])
+                        : __('trackers.engine_hours_unavailable') }}
+                </dd>
             </div>
             <div>
                 <dt><i class="fa-solid fa-toggle-on"></i></dt>
@@ -369,27 +405,11 @@
         @if ($obdHasData)
             <dl class="tracker-details-list">
                 <div>
-                    <dt><i class="fa-solid fa-road"></i></dt>
+                    <dt><i class="fa-solid fa-wave-square"></i></dt>
                     <dd>
-                        {{ $obdOdometer !== null
-                            ? __('trackers.odometer_value', ['value' => number_format((float) $obdOdometer, 2, ',', ' ')])
-                            : __('trackers.obd_metric_unavailable', ['metric' => __('trackers.obd_odometer_label')]) }}
-                    </dd>
-                </div>
-                <div>
-                    <dt><i class="fa-solid fa-clock-rotate-left"></i></dt>
-                    <dd>
-                        {{ $engineLabel
-                            ? __('trackers.engine_hours_value', ['value' => $engineLabel])
-                            : __('trackers.obd_metric_unavailable', ['metric' => __('trackers.obd_engine_hours_label')]) }}
-                    </dd>
-                </div>
-                <div>
-                    <dt><i class="fa-solid fa-gauge-high"></i></dt>
-                    <dd>
-                        {{ $obdSpeed !== null && is_numeric($obdSpeed)
-                            ? __('trackers.obd_speed_value', ['value' => number_format((float) $obdSpeed, 0, ',', ' ')])
-                            : __('trackers.obd_metric_unavailable', ['metric' => __('trackers.obd_speed_label')]) }}
+                        {{ $runtimeLabel
+                            ? __('trackers.obd_runtime_value', ['value' => $runtimeLabel])
+                            : __('trackers.obd_metric_unavailable', ['metric' => __('trackers.obd_runtime_label')]) }}
                     </dd>
                 </div>
                 <div>
@@ -401,11 +421,11 @@
                     </dd>
                 </div>
                 <div>
-                    <dt><i class="fa-solid fa-gas-pump"></i></dt>
+                    <dt><i class="fa-solid fa-gauge-high"></i></dt>
                     <dd>
-                        {{ $obdFuel !== null && is_numeric($obdFuel)
-                            ? __('trackers.obd_fuel_value', ['value' => number_format((float) $obdFuel, 0, ',', ' ')])
-                            : __('trackers.obd_metric_unavailable', ['metric' => __('trackers.obd_fuel_label')]) }}
+                        {{ $obdSpeed !== null && is_numeric($obdSpeed)
+                            ? __('trackers.obd_speed_value', ['value' => number_format((float) $obdSpeed, 0, ',', ' ')])
+                            : __('trackers.obd_metric_unavailable', ['metric' => __('trackers.obd_speed_label')]) }}
                     </dd>
                 </div>
                 <div>
@@ -441,6 +461,14 @@
                     </dd>
                 </div>
                 <div>
+                    <dt><i class="fa-solid fa-gas-pump"></i></dt>
+                    <dd>
+                        {{ $obdFuel !== null && is_numeric($obdFuel)
+                            ? __('trackers.obd_fuel_value', ['value' => number_format((float) $obdFuel, 0, ',', ' ')])
+                            : __('trackers.obd_metric_unavailable', ['metric' => __('trackers.obd_fuel_label')]) }}
+                    </dd>
+                </div>
+                <div>
                     <dt><i class="fa-solid fa-triangle-exclamation"></i></dt>
                     <dd>
                         {{ $obdFaultDistance !== null && is_numeric($obdFaultDistance)
@@ -463,18 +491,6 @@
                             ? __('trackers.obd_distance_since_clear_value', ['value' => number_format((float) $obdDistanceSinceClear, 0, ',', ' ')])
                             : __('trackers.obd_metric_unavailable', ['metric' => __('trackers.obd_distance_since_clear_label')]) }}
                     </dd>
-                </div>
-                <div>
-                    <dt><i class="fa-solid fa-route"></i></dt>
-                    <dd>
-                        {{ $canMileage !== null && is_numeric($canMileage)
-                            ? __('trackers.obd_total_mileage_value', ['value' => $formatMetric($canMileage, 2)])
-                            : __('trackers.obd_metric_unavailable', ['metric' => __('trackers.obd_total_mileage_label')]) }}
-                    </dd>
-                </div>
-                <div>
-                    <dt><i class="fa-solid fa-diagram-project"></i></dt>
-                    <dd>{{ __('trackers.obd_protocol_value', ['value' => $device->protocol ? strtoupper($device->protocol) : __('trackers.unknown_value')]) }}</dd>
                 </div>
             </dl>
         @else

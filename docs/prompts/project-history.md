@@ -472,3 +472,13 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Extension de `gps:ingest-position` pour extraire et normaliser automatiquement rÃ©gime moteur, vitesse OBD, papillon, tempÃ©rature moteur, tension module, charge moteur, distances dÃ©faut/rÃ©initialisation, erreurs, carburant et kilomÃ©trage mÃªme lorsque le serveur GPS les envoie sous forme IO brute.
 - Correction du formatage numÃ©rique pour conserver les valeurs `0` et lire correctement les valeurs avec espaces ou virgules comme `1 137,00 km`.
 - VÃ©rifications : `php -l routes/console.php`, `php -l app/Models/Device.php`, `node --check public/js/google-map.js`.
+
+## 2026-07-10 - Séparation Diagnostic traceur et OBD/CAN Navixy
+- Ajout du champ `devices.last_obd_runtime_seconds` pour stocker le moment d’exécution OBD sans le confondre avec les heures moteur.
+- Diagnostic traceur recentré sur l’état du boîtier : satellites, protocole, odomètre, heures moteur, entrées/sorties et capteurs.
+- Bloc OBD / CAN bus recentré sur les données véhicule : moment d’exécution, TR/MIN, vitesse OBD, papillon, température moteur, tension module, valeur absolue de charge, carburant, défauts, erreurs et kilométrage depuis réinitialisation.
+- Correction de l’extraction de la valeur absolue de charge : lecture prioritaire de l’IO Teltonika `52`, avec fallback `31`.
+- Correction du fallback `engine_seconds` : il est traité comme moment d’exécution OBD et non comme heures moteur.
+- Vérification du décodeur GPS production et redémarrage de `gps-tcp.service` après correction du mapping `engine_load_percent`.
+- Commande exécutée : `php artisan migrate`.
+- Vérifications : `php -l routes/console.php`, `php -l resources/views/trackers/partials/details.blade.php`, `php -l app/Models/Device.php`, `php -l database/migrations/2026_07_10_180000_add_obd_runtime_seconds_to_devices_table.php`.

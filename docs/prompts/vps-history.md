@@ -340,3 +340,16 @@ The battery voltage field must not be greater than 100.
 - Vérifications côté VPS : `php -l routes/console.php`, `php -l resources/views/trackers/partials/details.blade.php`, `node --check public/js/google-map.js`.
 - Caches Laravel : `config:clear`, `view:clear`, `route:clear`, puis `config:cache` et `view:cache` exécutés avec succès.
 - Note : `route:cache` a interrompu la session SSH et n'a pas généré de fichier de cache de routes ; les routes restent donc non cachées, ce qui est acceptable et plus sûr pour éviter un cache incomplet.
+
+## 2026-07-10 - Correction mapping OBD/CAN production
+- Connexion au VPS `109.199.102.172` avec l�utilisateur `exad-tracking`.
+- V�rification du d�codeur Teltonika production : `/var/www/exadtracking.app/gps-listener-server-prod/src/protocols/teltonika/decoder.js`.
+- Correction du mapping `engine_load_percent` pour lire prioritairement l�IO OBD `52` (valeur absolue de charge), avec fallback sur `31`.
+- Red�marrage du service `gps-tcp.service` apr�s correction.
+- �tat v�rifi� : `gps-tcp.service` actif.
+
+## 2026-07-11 - Déploiement diagnostic traceur et OBD/CAN
+- Déploiement ciblé vers `/var/www/exadtracking.app` des corrections Laravel liées au détail traceur.
+- Fichiers concernés : modèle `Device`, vue détails traceur, traductions traceur, commande d'ingestion GPS, migration `last_obd_runtime_seconds` et historiques projet/VPS.
+- Objectif : séparer proprement Diagnostic traceur et OBD/CAN, conserver le protocole côté diagnostic, et afficher les métriques OBD/CAN dans un bloc dédié inspiré de Navixy.
+- Commandes prévues côté VPS : extraction ciblée, `php artisan migrate --force`, nettoyage des caches Laravel, puis cache config/vue.
