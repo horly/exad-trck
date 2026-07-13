@@ -11,6 +11,14 @@ class DeviceTripService
 {
     private const MAX_GAP_MINUTES = 15;
     private const MIN_TRIP_DISTANCE_KM = 0.05;
+    private const TRIP_COLORS = [
+        '#2563eb',
+        '#7c3aed',
+        '#0891b2',
+        '#16a34a',
+        '#ea580c',
+        '#dc2626',
+    ];
 
     public function __construct(
         private readonly ReverseGeocodingService $reverseGeocoding,
@@ -36,7 +44,18 @@ class DeviceTripService
             ->whereNotNull('longitude')
             ->orderBy('server_time')
             ->orderBy('id')
-            ->get();
+            ->get([
+                'id',
+                'device_id',
+                'gps_time',
+                'server_time',
+                'latitude',
+                'longitude',
+                'address',
+                'speed',
+                'movement',
+                'raw_data',
+            ]);
 
         $segments = $this->tripSegments($positions);
         $trips = [];
@@ -61,9 +80,17 @@ class DeviceTripService
                         'coordinates' => $trip['coordinates'],
                     ],
                     'properties' => [
+                        'id' => $trip['id'],
                         'index' => $trip['index'],
+                        'date' => $trip['date'],
+                        'start_time' => $trip['start_time'],
+                        'end_time' => $trip['end_time'],
                         'distance_km' => $trip['distance_km'],
                         'duration_seconds' => $trip['duration_seconds'],
+                        'point_count' => $trip['point_count'],
+                        'average_speed_kmh' => $trip['average_speed_kmh'],
+                        'max_speed_kmh' => $trip['max_speed_kmh'],
+                        'color' => $trip['color'],
                     ],
                 ])->values()->all(),
             ],
@@ -149,8 +176,18 @@ class DeviceTripService
         $startTime = $this->localTimeFor($start);
         $endTime = $this->localTimeFor($end);
         $duration = max(0, (int) $startTimestamp->diffInSeconds($endTimestamp));
+        $movingSpeeds = $positions
+            ->pluck('speed')
+            ->filter(fn (mixed $speed): bool => is_numeric($speed) && (float) $speed >= 0)
+            ->map(fn (mixed $speed): float => (float) $speed);
+        $averageSpeed = $duration > 0
+            ? round($distance / ($duration / 3600), 1)
+            : round((float) ($movingSpeeds->avg() ?? 0), 1);
+        $maxSpeed = round((float) ($movingSpeeds->max() ?? 0), 1);
+        $color = self::TRIP_COLORS[($index - 1) % count(self::TRIP_COLORS)];
 
         return [
+            'id' => sprintf('trip-%d', $index),
             'index' => $index,
             'date' => $startTime->format('d.m.Y'),
             'start_time' => $startTime->format('H:i'),
@@ -161,6 +198,10 @@ class DeviceTripService
             'distance_label' => __('trackers.trip_distance_value', ['distance' => number_format($distance, 2, '.', '')]),
             'duration_seconds' => $duration,
             'duration_label' => $this->durationLabel($duration),
+            'point_count' => $positions->count(),
+            'average_speed_kmh' => $averageSpeed,
+            'max_speed_kmh' => $maxSpeed,
+            'color' => $color,
             'coordinates' => $this->googleRoads->snap($positions),
         ];
     }

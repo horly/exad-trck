@@ -353,3 +353,11 @@ The battery voltage field must not be greater than 100.
 - Fichiers concernés : modèle `Device`, vue détails traceur, traductions traceur, commande d'ingestion GPS, migration `last_obd_runtime_seconds` et historiques projet/VPS.
 - Objectif : séparer proprement Diagnostic traceur et OBD/CAN, conserver le protocole côté diagnostic, et afficher les métriques OBD/CAN dans un bloc dédié inspiré de Navixy.
 - Commandes prévues côté VPS : extraction ciblée, `php artisan migrate --force`, nettoyage des caches Laravel, puis cache config/vue.
+
+## 2026-07-13 - Déploiement historique détaillé et replay des trajets
+- Déploiement ciblé vers `/var/www/exadtracking.app` du service de trajets, des vues, traductions, styles et scripts Google Maps liés au replay.
+- Ajout en production de la chronologie détaillée, de la sélection des trajets, des couleurs personnalisables et du replay jusqu’à `x300`.
+- Sauvegarde préalable des fichiers remplacés dans `/tmp/exadtracking-before-trip-replay-20260713.tar.gz`.
+- Vérifications distantes : syntaxe PHP valide, scripts JavaScript valides avec Node via NVM, aucune migration en attente.
+- Caches Laravel reconstruits avec `optimize:clear`, `config:cache` et `view:cache`.
+- Contrôle final : `https://exadtracking.app/login` répond en HTTP `200`, la route des trajets est présente et les assets `20260713-trip-replay` sont déployés.

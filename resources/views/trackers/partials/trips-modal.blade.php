@@ -14,12 +14,18 @@
                     <input type="hidden" name="period" value="today" data-trips-period>
 
                     <fieldset>
-                        <legend>{{ __('trackers.trips_period_title') }}</legend>
+                        <legend>
+                            <i class="fa-regular fa-calendar-days"></i>
+                            {{ __('trackers.trips_period_title') }}
+                        </legend>
 
                         @foreach (['today', 'yesterday', 'week', 'current_month', 'last_month', 'custom'] as $period)
                             <label class="trip-period-option">
                                 <input type="radio" name="trip_period_choice" value="{{ $period }}" @checked($period === 'today') data-trips-period-choice>
-                                <span>{{ __('trackers.trip_period_' . $period) }}</span>
+                                <span>
+                                    <i class="fa-solid {{ $period === 'custom' ? 'fa-sliders' : 'fa-calendar-day' }}"></i>
+                                    {{ __('trackers.trip_period_' . $period) }}
+                                </span>
                             </label>
                         @endforeach
                     </fieldset>
@@ -36,7 +42,8 @@
                     </div>
 
                     <button type="submit" class="btn btn-primary trip-view-button" data-trips-submit>
-                        {{ __('trackers.trips_view') }}
+                        <i class="fa-solid fa-route"></i>
+                        <span>{{ __('trackers.trips_view') }}</span>
                     </button>
                 </form>
 

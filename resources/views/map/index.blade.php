@@ -192,9 +192,9 @@
     <script src="{{ asset('js/dashboard-controls.js') }}?v=20260529-shared-controls"></script>
     @include('partials.realtime-alerts')
     <script src="{{ asset('js/tracker-details.js') }}?v=20260602-details-shared"></script>
-    <script src="{{ asset('js/tracker-trips.js') }}?v=20260602-trips-shared"></script>
+    <script src="{{ asset('js/tracker-trips.js') }}?v=20260713-trip-replay"></script>
     @if ($mapProvider === 'google')
-        <script src="{{ asset('js/google-map.js') }}?v=20260708-map-search-normalized"></script>
+        <script src="{{ asset('js/google-map.js') }}?v=20260713-trip-replay"></script>
         @if ($googleMapsApiKey !== '')
             <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ urlencode($googleMapsApiKey) }}&callback=initExadGoogleMap"></script>
         @endif

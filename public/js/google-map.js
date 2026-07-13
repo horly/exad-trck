@@ -30,7 +30,15 @@
     let searchTimer;
     let markerRegistry = new Map();
     let trailPolylines = [];
-    let tripPolyline = null;
+    let tripPolylines = new Map();
+    let tripFeatures = new Map();
+    let selectedTripIndex = null;
+    let replayMarker = null;
+    let replayFrame = null;
+    let replayPlaying = false;
+    let replaySpeed = 1;
+    let replayElapsed = 0;
+    let replayLastFrame = null;
     let selectedDeviceId = null;
     let serverGeojson = { type: 'FeatureCollection', features: [] };
     let latestGeojson = { type: 'FeatureCollection', features: [] };
@@ -727,31 +735,296 @@
         refreshTimer = setInterval(() => loadDevices(), 10000);
     };
 
-    const drawTripHistory = (geojson) => {
-        if (tripPolyline) {
-            tripPolyline.setMap(null);
-            tripPolyline = null;
+    const dispatchReplayState = () => {
+        document.dispatchEvent(new CustomEvent('exad:trip-replay-state', {
+            detail: { playing: replayPlaying, index: selectedTripIndex },
+        }));
+    };
+
+    const dispatchReplayProgress = (duration = 0) => {
+        document.dispatchEvent(new CustomEvent('exad:trip-replay-progress', {
+            detail: {
+                elapsed: Math.min(replayElapsed, duration),
+                duration,
+                index: selectedTripIndex,
+            },
+        }));
+    };
+
+    const stopTripReplay = () => {
+        if (replayFrame !== null) {
+            cancelAnimationFrame(replayFrame);
+            replayFrame = null;
         }
 
-        const coordinates = (geojson.features || []).flatMap((feature) => feature.geometry?.coordinates || []);
+        replayPlaying = false;
+        replayLastFrame = null;
+        dispatchReplayState();
+    };
 
-        if (!coordinates.length) {
+    const clearTripHistory = () => {
+        stopTripReplay();
+        tripPolylines.forEach((polyline) => polyline.setMap(null));
+        tripPolylines = new Map();
+        tripFeatures = new Map();
+        selectedTripIndex = null;
+        replayElapsed = 0;
+
+        if (replayMarker) {
+            replayMarker.setMap(null);
+            replayMarker = null;
+        }
+    };
+
+    const tripPath = (feature) => (feature?.geometry?.coordinates || [])
+        .map(coordinatesToLatLng)
+        .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
+
+    const distanceBetween = (from, to) => {
+        const earthRadius = 6371000;
+        const latitudeDelta = (to.lat - from.lat) * Math.PI / 180;
+        const longitudeDelta = (to.lng - from.lng) * Math.PI / 180;
+        const latitude1 = from.lat * Math.PI / 180;
+        const latitude2 = to.lat * Math.PI / 180;
+        const a = Math.sin(latitudeDelta / 2) ** 2
+            + Math.cos(latitude1) * Math.cos(latitude2) * Math.sin(longitudeDelta / 2) ** 2;
+
+        return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
+    const headingBetween = (from, to) => {
+        const latitude1 = from.lat * Math.PI / 180;
+        const latitude2 = to.lat * Math.PI / 180;
+        const longitudeDelta = (to.lng - from.lng) * Math.PI / 180;
+        const y = Math.sin(longitudeDelta) * Math.cos(latitude2);
+        const x = Math.cos(latitude1) * Math.sin(latitude2)
+            - Math.sin(latitude1) * Math.cos(latitude2) * Math.cos(longitudeDelta);
+
+        return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    };
+
+    const positionAlongPath = (path, ratio) => {
+        if (path.length < 2) {
+            return { position: path[0] || null, heading: 0 };
+        }
+
+        const distances = [];
+        let totalDistance = 0;
+
+        for (let index = 1; index < path.length; index += 1) {
+            const distance = distanceBetween(path[index - 1], path[index]);
+            distances.push(distance);
+            totalDistance += distance;
+        }
+
+        const targetDistance = totalDistance * Math.min(1, Math.max(0, ratio));
+        let traversedDistance = 0;
+
+        for (let index = 0; index < distances.length; index += 1) {
+            const segmentDistance = distances[index];
+
+            if (traversedDistance + segmentDistance >= targetDistance || index === distances.length - 1) {
+                const segmentRatio = segmentDistance > 0
+                    ? (targetDistance - traversedDistance) / segmentDistance
+                    : 0;
+                const from = path[index];
+                const to = path[index + 1];
+
+                return {
+                    position: {
+                        lat: from.lat + ((to.lat - from.lat) * segmentRatio),
+                        lng: from.lng + ((to.lng - from.lng) * segmentRatio),
+                    },
+                    heading: headingBetween(from, to),
+                };
+            }
+
+            traversedDistance += segmentDistance;
+        }
+
+        return { position: path[path.length - 1], heading: 0 };
+    };
+
+    const updateReplayMarker = (feature, elapsed) => {
+        const path = tripPath(feature);
+        const duration = Math.max(1, Number(feature?.properties?.duration_seconds) || 1);
+        const progress = positionAlongPath(path, elapsed / duration);
+
+        if (!progress.position) {
             return;
         }
 
-        const path = coordinates.map(coordinatesToLatLng);
-        tripPolyline = new google.maps.Polyline({
-            map,
-            path,
-            geodesic: true,
-            strokeColor: '#171064',
-            strokeOpacity: 0.88,
-            strokeWeight: 5,
+        const color = feature?.properties?.color || '#2563eb';
+        const icon = {
+            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+            fillColor: color,
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeOpacity: 1,
+            strokeWeight: 2,
+            scale: 7,
+            rotation: progress.heading,
+        };
+
+        if (!replayMarker) {
+            replayMarker = new google.maps.Marker({
+                map,
+                position: progress.position,
+                icon,
+                zIndex: 5000,
+                title: messages.replay || 'Replay',
+            });
+        } else {
+            replayMarker.setMap(map);
+            replayMarker.setPosition(progress.position);
+            replayMarker.setIcon(icon);
+        }
+    };
+
+    const styleTripPolylines = () => {
+        tripPolylines.forEach((polyline, index) => {
+            const selected = Number(index) === Number(selectedTripIndex);
+            const feature = tripFeatures.get(Number(index));
+
+            polyline.setOptions({
+                strokeColor: feature?.properties?.color || '#2563eb',
+                strokeOpacity: selected ? 0.96 : 0.32,
+                strokeWeight: selected ? 6 : 3,
+                zIndex: selected ? 30 : 10,
+            });
         });
+    };
+
+    const fitTripPath = (path) => {
+        if (!path.length) {
+            return;
+        }
 
         const bounds = new google.maps.LatLngBounds();
         path.forEach((point) => bounds.extend(point));
-        map.fitBounds(bounds, 80);
+        map.fitBounds(bounds, 100);
+        google.maps.event.addListenerOnce(map, 'idle', () => {
+            if (map.getZoom() > 16) {
+                map.setZoom(16);
+            }
+        });
+    };
+
+    const selectTrip = (index, { fit = true } = {}) => {
+        const numericIndex = Number(index);
+        const feature = tripFeatures.get(numericIndex);
+
+        if (!feature) {
+            return;
+        }
+
+        stopTripReplay();
+        selectedTripIndex = numericIndex;
+        replayElapsed = 0;
+        styleTripPolylines();
+        updateReplayMarker(feature, 0);
+        dispatchReplayProgress(Number(feature.properties?.duration_seconds) || 0);
+
+        if (fit) {
+            fitTripPath(tripPath(feature));
+        }
+    };
+
+    const replayTick = (timestamp) => {
+        const feature = tripFeatures.get(Number(selectedTripIndex));
+
+        if (!replayPlaying || !feature) {
+            return;
+        }
+
+        const duration = Math.max(1, Number(feature.properties?.duration_seconds) || 1);
+
+        if (replayLastFrame !== null) {
+            replayElapsed += ((timestamp - replayLastFrame) / 1000) * replaySpeed;
+        }
+
+        replayLastFrame = timestamp;
+
+        if (replayElapsed >= duration) {
+            replayElapsed = duration;
+            updateReplayMarker(feature, replayElapsed);
+            dispatchReplayProgress(duration);
+            stopTripReplay();
+            return;
+        }
+
+        updateReplayMarker(feature, replayElapsed);
+        dispatchReplayProgress(duration);
+        replayFrame = requestAnimationFrame(replayTick);
+    };
+
+    const toggleTripReplay = (index) => {
+        if (Number(index) !== Number(selectedTripIndex)) {
+            selectTrip(index);
+        }
+
+        const feature = tripFeatures.get(Number(selectedTripIndex));
+
+        if (!feature) {
+            return;
+        }
+
+        if (replayPlaying) {
+            stopTripReplay();
+            return;
+        }
+
+        const duration = Math.max(1, Number(feature.properties?.duration_seconds) || 1);
+        if (replayElapsed >= duration) {
+            replayElapsed = 0;
+        }
+
+        replayPlaying = true;
+        replayLastFrame = null;
+        dispatchReplayState();
+        replayFrame = requestAnimationFrame(replayTick);
+    };
+
+    const drawTripHistory = (geojson) => {
+        clearTripHistory();
+        const bounds = new google.maps.LatLngBounds();
+
+        (geojson.features || []).forEach((feature) => {
+            const index = Number(feature.properties?.index);
+            const path = tripPath(feature);
+
+            if (!Number.isFinite(index) || path.length < 2) {
+                return;
+            }
+
+            tripFeatures.set(index, feature);
+            path.forEach((point) => bounds.extend(point));
+
+            const polyline = new google.maps.Polyline({
+                map,
+                path,
+                geodesic: true,
+                strokeColor: feature.properties?.color || '#2563eb',
+                strokeOpacity: 0.72,
+                strokeWeight: 4,
+                zIndex: 10,
+            });
+
+            polyline.addListener('click', () => {
+                selectTrip(index, { fit: false });
+                document.dispatchEvent(new CustomEvent('exad:trip-map-selected', {
+                    detail: { index },
+                }));
+            });
+            tripPolylines.set(index, polyline);
+        });
+
+        if (tripFeatures.size === 0) {
+            return;
+        }
+
+        map.fitBounds(bounds, 100);
+        selectTrip(tripFeatures.keys().next().value, { fit: false });
     };
 
     hydrateFiltersFromUrl();
@@ -777,6 +1050,8 @@
         });
         defineVehicleOverlay();
         infoWindow = new google.maps.InfoWindow({ maxWidth: 340 });
+        window.exadTripReplayAvailable = true;
+        document.dispatchEvent(new CustomEvent('exad:trip-replay-ready'));
 
         loadDevices({ fit: showAllInput.checked });
         scheduleAutoRefresh();
@@ -813,10 +1088,57 @@
     });
 
     document.addEventListener('exad:trips-cleared', () => {
-        if (tripPolyline) {
-            tripPolyline.setMap(null);
-            tripPolyline = null;
+        clearTripHistory();
+    });
+
+    document.addEventListener('exad:trip-selected', (event) => {
+        selectTrip(event.detail?.index, { fit: event.detail?.fit !== false });
+    });
+
+    document.addEventListener('exad:trip-color-changed', (event) => {
+        const index = Number(event.detail?.index);
+        const feature = tripFeatures.get(index);
+
+        if (!feature) {
+            return;
         }
+
+        feature.properties.color = event.detail?.color || feature.properties.color;
+        styleTripPolylines();
+
+        if (index === Number(selectedTripIndex)) {
+            updateReplayMarker(feature, replayElapsed);
+        }
+    });
+
+    document.addEventListener('exad:trip-replay-toggle', (event) => {
+        toggleTripReplay(event.detail?.index);
+    });
+
+    document.addEventListener('exad:trip-replay-reset', (event) => {
+        selectTrip(event.detail?.index, { fit: false });
+    });
+
+    document.addEventListener('exad:trip-replay-speed', (event) => {
+        replaySpeed = Math.min(300, Math.max(1, Number(event.detail?.speed) || 1));
+    });
+
+    document.addEventListener('exad:trip-replay-seek', (event) => {
+        const index = Number(event.detail?.index);
+
+        if (index !== Number(selectedTripIndex)) {
+            selectTrip(index, { fit: false });
+        }
+
+        const feature = tripFeatures.get(Number(selectedTripIndex));
+        if (!feature) {
+            return;
+        }
+
+        const duration = Math.max(1, Number(feature.properties?.duration_seconds) || 1);
+        replayElapsed = duration * Math.min(1, Math.max(0, Number(event.detail?.ratio) || 0));
+        updateReplayMarker(feature, replayElapsed);
+        dispatchReplayProgress(duration);
     });
 
     if (window.google?.maps) {

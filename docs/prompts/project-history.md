@@ -482,3 +482,17 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - V�rification du d�codeur GPS production et red�marrage de `gps-tcp.service` apr�s correction du mapping `engine_load_percent`.
 - Commande ex�cut�e : `php artisan migrate`.
 - V�rifications : `php -l routes/console.php`, `php -l resources/views/trackers/partials/details.blade.php`, `php -l app/Models/Device.php`, `php -l database/migrations/2026_07_10_180000_add_obd_runtime_seconds_to_devices_table.php`.
+
+## 2026-07-13 - Historique détaillé des trajets et replay cartographique
+- Refonte du modal `Trajets` avec une présentation chronologique plus détaillée : adresses de départ et d’arrivée, horaires, distance, durée, nombre de points GPS, vitesse moyenne et vitesse maximale.
+- Ajout de la sélection individuelle des trajets et de la mise en évidence du parcours choisi sur la carte Google.
+- Ajout d’un replay animé du trajet avec lecture, pause, remise à zéro, navigation dans la progression et vitesses `x1`, `x3`, `x10`, `x30`, `x100` et `x300`.
+- Ajout d’une couleur personnalisable pour chaque parcours, appliquée immédiatement à la trace cartographique.
+- Enrichissement du GeoJSON des trajets avec identifiant stable, couleur, nombre de points et statistiques de vitesse.
+- Ajout d’un mode replay latéral sur grand écran pour conserver simultanément la carte et la chronologie, avec retour automatique au modal centré sur tablette et mobile.
+- Ajout du support responsive et dark mode pour le sélecteur de période, la chronologie, la barre de replay, les cartes de trajets et les totaux.
+- Ajout des traductions françaises et anglaises de tous les nouveaux contrôles et indicateurs.
+- Renforcement du test fonctionnel des trajets pour vérifier les métadonnées GeoJSON, les statistiques, la couleur, la barre de replay et la vitesse `x300`.
+- Vérifications : `php -l app/Services/DeviceTripService.php`, `node --check public/js/tracker-trips.js`, `node --check public/js/google-map.js`, `git diff --check`.
+- Tests : `php artisan test --compact` OK avec 65 tests et 520 assertions.
+- Interface locale ciblée : `http://127.0.0.1:8000`.

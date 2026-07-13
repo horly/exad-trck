@@ -927,6 +927,10 @@ test('superadmin can display tracker trips as html and geojson', function () {
         ->assertSuccessful()
         ->assertJsonStructure(['html', 'geojson', 'summary'])
         ->assertJsonPath('geojson.type', 'FeatureCollection')
+        ->assertJsonPath('geojson.features.0.properties.id', 'trip-1')
+        ->assertJsonPath('geojson.features.0.properties.point_count', 3)
+        ->assertJsonPath('geojson.features.0.properties.max_speed_kmh', 28)
+        ->assertJsonPath('geojson.features.0.properties.color', '#2563eb')
         ->assertJsonPath('summary.count', 1);
 
     expect($response->json('html'))
@@ -934,6 +938,10 @@ test('superadmin can display tracker trips as html and geojson', function () {
         ->toContain('Kinsuka Pecheur')
         ->toContain('Centre cité')
         ->toContain('Total : 1 trajets')
+        ->toContain('data-trip-replay')
+        ->toContain('data-trip-select="1"')
+        ->toContain('data-trip-color="1"')
+        ->toContain('x300')
         ->and($response->json('geojson.features.0.geometry.type'))->toBe('LineString');
 });
 

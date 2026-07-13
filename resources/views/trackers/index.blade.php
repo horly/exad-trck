@@ -218,7 +218,7 @@
     <script src="{{ asset('js/dashboard-controls.js') }}?v=20260529-shared-controls"></script>
     <script src="{{ asset('js/datatable-controls.js') }}?v=20260529-datatable-controls"></script>
     <script src="{{ asset('js/tracker-details.js') }}?v=20260602-details-shared"></script>
-    <script src="{{ asset('js/tracker-trips.js') }}?v=20260602-trips-shared"></script>
+    <script src="{{ asset('js/tracker-trips.js') }}?v=20260713-trip-replay"></script>
     @include('partials.realtime-alerts')
     @if ($canManageDevices)
         <script src="{{ asset('js/confirm-delete.js') }}?v=20260529-delete-confirm"></script>
