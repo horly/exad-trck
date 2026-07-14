@@ -29,6 +29,7 @@
     let latestGeojson = { type: 'FeatureCollection', features: [] };
     let selectedDeviceId = null;
     let selectedMarker = null;
+    let activePopup = null;
     let refreshTimer;
     let searchTimer;
 
@@ -244,7 +245,8 @@
     `;
 
     const openMapboxPopup = (feature) => {
-        new mapboxgl.Popup({
+        activePopup?.remove();
+        activePopup = new mapboxgl.Popup({
             closeButton: true,
             closeOnClick: true,
             maxWidth: '320px',
@@ -252,7 +254,16 @@
             .setLngLat(feature.geometry.coordinates)
             .setHTML(popupHtml(feature.properties))
             .addTo(map);
+
+        activePopup.on('close', () => {
+            activePopup = null;
+        });
     };
+
+    document.addEventListener('exad:close-map-popup', () => {
+        activePopup?.remove();
+        activePopup = null;
+    });
 
     const displayedGeojson = () => {
         if (showAllInput.checked) {

@@ -1,5 +1,5 @@
 <div class="modal fade users-modal tracker-trips-modal" id="trackerTripsModal" tabindex="-1" aria-labelledby="trackerTripsTitle" aria-hidden="true" data-trips-error="{{ __('trackers.trips_error') }}" data-trips-loading="{{ __('trackers.loading_details') }}">
-    <div class="modal-dialog modal-dialog-centered tracker-trips-dialog">
+    <div class="modal-dialog tracker-trips-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title" id="trackerTripsTitle">
@@ -55,9 +55,6 @@
                 </div>
             </div>
 
-            <div class="modal-footer">
-                <button type="button" class="btn users-cancel-button" data-bs-dismiss="modal">{{ __('trackers.close') }}</button>
-            </div>
         </div>
     </div>
 </div>

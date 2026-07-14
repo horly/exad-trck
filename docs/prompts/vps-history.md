@@ -316,12 +316,12 @@ The battery voltage field must not be greater than 100.
   - verifier les alertes temps reel
   - stabiliser ensuite UDP et les futurs decodeurs EDT/generic
 
-## 2026-07-09 - Déploiement page Abonnements
-- Déploiement ciblé vers `/var/www/exadtracking.app` avec l'utilisateur `exad-tracking`.
-- Première archive ZIP refusée fonctionnellement car les chemins avaient été aplatis à l'extraction ; correction via archive `tar.gz` conservant l'arborescence.
-- Nettoyage ciblé des fichiers mal placés à la racine du projet distant.
-- Exécution côté VPS : `composer dump-autoload --optimize`, `php artisan optimize:clear`, `php artisan migrate --force`, seeders `VehicleSubscriptionFeatureSeeder` et `VehicleSubscriptionPlanSeeder`, puis `php artisan optimize`.
-- Vérification distante : routes `GET subscriptions` et `PATCH subscriptions` disponibles.
+## 2026-07-09 - Dï¿½ploiement page Abonnements
+- Dï¿½ploiement ciblï¿½ vers `/var/www/exadtracking.app` avec l'utilisateur `exad-tracking`.
+- Premiï¿½re archive ZIP refusï¿½e fonctionnellement car les chemins avaient ï¿½tï¿½ aplatis ï¿½ l'extraction ; correction via archive `tar.gz` conservant l'arborescence.
+- Nettoyage ciblï¿½ des fichiers mal placï¿½s ï¿½ la racine du projet distant.
+- Exï¿½cution cï¿½tï¿½ VPS : `composer dump-autoload --optimize`, `php artisan optimize:clear`, `php artisan migrate --force`, seeders `VehicleSubscriptionFeatureSeeder` et `VehicleSubscriptionPlanSeeder`, puis `php artisan optimize`.
+- Vï¿½rification distante : routes `GET subscriptions` et `PATCH subscriptions` disponibles.
 
 ## 2026-07-10 - Production GPS : codec, OBD/CAN et diagnostic traceur
 - DÃ©ploiement ciblÃ© vers `/var/www/exadtracking.app` des fichiers Laravel liÃ©s Ã  la tÃ©lÃ©mÃ©trie enrichie des traceurs.
@@ -342,11 +342,11 @@ The battery voltage field must not be greater than 100.
 - Note : `route:cache` a interrompu la session SSH et n'a pas gÃ©nÃ©rÃ© de fichier de cache de routes ; les routes restent donc non cachÃ©es, ce qui est acceptable et plus sÃ»r pour Ã©viter un cache incomplet.
 
 ## 2026-07-10 - Correction mapping OBD/CAN production
-- Connexion au VPS `109.199.102.172` avec l’utilisateur `exad-tracking`.
-- Vérification du décodeur Teltonika production : `/var/www/exadtracking.app/gps-listener-server-prod/src/protocols/teltonika/decoder.js`.
-- Correction du mapping `engine_load_percent` pour lire prioritairement l’IO OBD `52` (valeur absolue de charge), avec fallback sur `31`.
-- Redémarrage du service `gps-tcp.service` après correction.
-- État vérifié : `gps-tcp.service` actif.
+- Connexion au VPS `109.199.102.172` avec lï¿½utilisateur `exad-tracking`.
+- Vï¿½rification du dï¿½codeur Teltonika production : `/var/www/exadtracking.app/gps-listener-server-prod/src/protocols/teltonika/decoder.js`.
+- Correction du mapping `engine_load_percent` pour lire prioritairement lï¿½IO OBD `52` (valeur absolue de charge), avec fallback sur `31`.
+- Redï¿½marrage du service `gps-tcp.service` aprï¿½s correction.
+- ï¿½tat vï¿½rifiï¿½ : `gps-tcp.service` actif.
 
 ## 2026-07-11 - DÃ©ploiement diagnostic traceur et OBD/CAN
 - DÃ©ploiement ciblÃ© vers `/var/www/exadtracking.app` des corrections Laravel liÃ©es au dÃ©tail traceur.
@@ -361,3 +361,11 @@ The battery voltage field must not be greater than 100.
 - VÃ©rifications distantes : syntaxe PHP valide, scripts JavaScript valides avec Node via NVM, aucune migration en attente.
 - Caches Laravel reconstruits avec `optimize:clear`, `config:cache` et `view:cache`.
 - ContrÃ´le final : `https://exadtracking.app/login` rÃ©pond en HTTP `200`, la route des trajets est prÃ©sente et les assets `20260713-trip-replay` sont dÃ©ployÃ©s.
+
+## 2026-07-14 - DÃ©ploiement du panneau latÃ©ral des trajets
+- DÃ©ploiement ciblÃ© vers `/var/www/exadtracking.app` de la fermeture coordonnÃ©e des fenÃªtres vÃ©hicule/traceur et du nouveau panneau compact des trajets.
+- Sauvegarde prÃ©alable des fichiers remplacÃ©s dans `/tmp/exadtracking-before-trip-panel-20260714.tar.gz`.
+- Reconstruction complÃ¨te des caches Laravel avec `php artisan optimize:clear` puis `php artisan optimize`.
+- VÃ©rification distante des marqueurs `20260714-trip-panel` et `closeSourceThenOpen`.
+- ContrÃ´le HTTP final : `https://exadtracking.app/css/dashboard.css?v=20260714-trip-panel` rÃ©pond en `HTTP 200` et contient les styles du panneau.
+- Ã‰tat vÃ©rifiÃ© : Laravel `12.61.0`, PHP `8.2.31`, environnement `production`, debug dÃ©sactivÃ© et maintenance inactive.

@@ -43,6 +43,10 @@
     let serverGeojson = { type: 'FeatureCollection', features: [] };
     let latestGeojson = { type: 'FeatureCollection', features: [] };
     let VehicleOverlay;
+
+    document.addEventListener('exad:close-map-popup', () => {
+        infoWindow?.close();
+    });
     const MARKER_ANIMATION_MS = 5000;
     const SELECTED_DEVICE_ZOOM = 17;
 

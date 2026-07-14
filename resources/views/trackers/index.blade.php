@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260708-dashboard-order-scope">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260714-trip-panel">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -218,7 +218,7 @@
     <script src="{{ asset('js/dashboard-controls.js') }}?v=20260529-shared-controls"></script>
     <script src="{{ asset('js/datatable-controls.js') }}?v=20260529-datatable-controls"></script>
     <script src="{{ asset('js/tracker-details.js') }}?v=20260602-details-shared"></script>
-    <script src="{{ asset('js/tracker-trips.js') }}?v=20260713-trip-replay"></script>
+    <script src="{{ asset('js/tracker-trips.js') }}?v=20260714-trip-panel"></script>
     @include('partials.realtime-alerts')
     @if ($canManageDevices)
         <script src="{{ asset('js/confirm-delete.js') }}?v=20260529-delete-confirm"></script>

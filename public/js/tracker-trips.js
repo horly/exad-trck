@@ -22,6 +22,26 @@
     const loadingHtml = `<div class="tracker-details-loading"><span></span>${modalElement.dataset.tripsLoading || submitButton.textContent}</div>`;
     const errorHtml = `<div class="tracker-details-error"><i class="fa-solid fa-triangle-exclamation"></i><span>${modalElement.dataset.tripsError || ''}</span></div>`;
 
+    const openTripsPanel = () => {
+        document.body.classList.add('trip-panel-open');
+        modal.show();
+        loadTrips();
+    };
+
+    const closeSourceThenOpen = () => {
+        document.dispatchEvent(new CustomEvent('exad:close-map-popup'));
+
+        const detailsElement = document.getElementById('trackerDetailsModal');
+
+        if (!detailsElement?.classList.contains('show')) {
+            openTripsPanel();
+            return;
+        }
+
+        detailsElement.addEventListener('hidden.bs.modal', openTripsPanel, { once: true });
+        bootstrap.Modal.getOrCreateInstance(detailsElement).hide();
+    };
+
     const setLoading = (isLoading) => {
         submitButton.disabled = isLoading;
         submitButton.classList.toggle('is-loading', isLoading);
@@ -165,6 +185,8 @@
             return;
         }
 
+        event.preventDefault();
+
         currentUrl = trigger.dataset.tripsUrl || '';
         title.textContent = trigger.dataset.tripsName
             ? `${defaultTitle} - ${trigger.dataset.tripsName}`
@@ -173,8 +195,7 @@
         periodChoices[0].checked = true;
         syncPeriod();
         results.innerHTML = waitingHtml;
-        modal.show();
-        loadTrips();
+        closeSourceThenOpen();
     });
 
     document.addEventListener('click', (event) => {
@@ -285,6 +306,7 @@
 
     modalElement.addEventListener('hidden.bs.modal', () => {
         modalElement.classList.remove('is-replay-mode');
+        document.body.classList.remove('trip-panel-open');
         document.body.classList.remove('trip-replay-active');
         document.dispatchEvent(new CustomEvent('exad:trips-cleared'));
         selectedTripIndex = null;

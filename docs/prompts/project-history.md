@@ -77,7 +77,7 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Rendre les titres et messages d'alertes multilingues : les clÃ©s et paramÃ¨tres sont stockÃ©s en `metadata`, puis traduits selon la langue active de la session pour le tableau, l'endpoint AJAX et les toasts.
 - Traduire aussi les anciennes alertes GPS systÃ¨me dÃ©jÃ  stockÃ©es en anglais (`No signal`, `Signal restored`) et forcer le rafraÃ®chissement live du tableau Alertes sur l'ordre par dÃ©faut, derniÃ¨re alerte en premier.
 - Modifier l'ordre du tableau Alertes pour placer systÃ©matiquement les alertes traitÃ©es/rÃ©solues en derniÃ¨re position, mÃªme lorsqu'un tri AJAX est appliquÃ©.
-- Ajouter un bouton cloche dans la topbar superadmin, juste avant le mode sombre, avec compteur rouge des nouvelles alertes et Mise à jour automatique lors des toasts live.
+- Ajouter un bouton cloche dans la topbar superadmin, juste avant le mode sombre, avec compteur rouge des nouvelles alertes et Mise ï¿½ jour automatique lors des toasts live.
 - RÃ©ordonner les actions de la topbar superadmin : plein Ã©cran, mode sombre, cloche alertes, langue, profil.
 - Mettre Ã  jour le footer de la sidebar partagÃ©e pour afficher `EXAD Tracking - v.1.0` partout, via les traductions dashboard.
 - Activer la page Personnalisation superadmin avec la sidebar partagÃ©e, afin que Carte, Alertes et Personnalisation affichent toutes le footer `EXAD Tracking - v.1.0`.
@@ -90,7 +90,7 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Remplacer le message vide de la page Carte par une formulation professionnelle compatible production, sans mention de serveur GPS local ni de simulation.
 
 - IntÃ©grer Mapbox localement pour la page Carte : assets `public/vendor/mapbox`, token `MAPBOX_PUBLIC_TOKEN`, route `/map`, endpoint GeoJSON `/map/devices`, layers clusterisÃ©s par statut, filtres, statistiques, popups et actualisation automatique.
-- Enrichir la gestion des traceurs avec une table `tracker_events`, des Ã©tats live dÃ©taillÃ©s sur `devices`, la gÃ©nÃ©ration automatique des Ã©vÃ©nements GPS (signal, mouvement, contact), une modale de dÃ©tails Traceur affichant Flotte, emplacement, GSM et derniers Ã©vÃ©nements, ainsi que la Mise à jour du simulateur local.
+- Enrichir la gestion des traceurs avec une table `tracker_events`, des Ã©tats live dÃ©taillÃ©s sur `devices`, la gÃ©nÃ©ration automatique des Ã©vÃ©nements GPS (signal, mouvement, contact), une modale de dÃ©tails Traceur affichant Flotte, emplacement, GSM et derniers Ã©vÃ©nements, ainsi que la Mise ï¿½ jour du simulateur local.
 - Ajouter la section Alimentation dans les dÃ©tails Traceur avec tension externe, batterie interne, niveau de batterie et contact, puis clarifier la ligne `P` comme information de parking.
 - Ajouter lâ€™historique des trajets dâ€™un Ã©quipement sur les pages Traceurs et Carte : endpoint partagÃ© `/trackers/{device}/trips`, choix de pÃ©riode, rendu timeline, rÃ©sumÃ© distance/durÃ©e et GeoJSON de tracÃ© Mapbox.
 - Remplacer les coordonnÃ©es brutes des trajets par des adresses lisibles via Mapbox Reverse Geocoding quand `positions.address` est vide, avec mÃ©morisation de lâ€™adresse trouvÃ©e en base.
@@ -189,12 +189,12 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Ajout d'une animation progressive de 5 secondes sur les marqueurs Google Maps pour Ã©viter l'effet de saut entre deux actualisations et garder le vÃ©hicule sÃ©lectionnÃ© visible pendant son dÃ©placement.
 - Correction Carte : le dernier segment de la trace suit maintenant l'icÃ´ne pendant l'animation, afin que la ligne reste toujours derriÃ¨re le vÃ©hicule en mouvement.
 - Correction Carte : moteur coupÃ© force le parking `P`, moteur allumÃ© sans mouvement affiche le carrÃ©, et l'Ã©tat mouvement n'est possible que si le moteur n'est pas coupÃ©.
-- Correction Carte : rétablissement de l'affichage Google Maps après une erreur de syntaxe JavaScript causée par un nom de variable dupliqué dans la gestion des marqueurs animés.
-- Correction Carte : l'animation du véhicule suit maintenant le même chemin que la trace, et la trace progressive ne contient plus de points futurs devant l'icône.
+- Correction Carte : rï¿½tablissement de l'affichage Google Maps aprï¿½s une erreur de syntaxe JavaScript causï¿½e par un nom de variable dupliquï¿½ dans la gestion des marqueurs animï¿½s.
+- Correction Carte : l'animation du vï¿½hicule suit maintenant le mï¿½me chemin que la trace, et la trace progressive ne contient plus de points futurs devant l'icï¿½ne.
 - Correction Carte : la popup Google Maps est plus compacte en haut et le point de statut affiche toujours le vrai statut du traceur, avec 'En ligne' en vert.
-- Correction Carte : suppression de l'espace supérieur ajouté par l'en-tête natif Google InfoWindow afin d'équilibrer le padding haut/bas de la popup véhicule.
-- Correction Carte : équilibrage du padding gauche/droite dans la popup véhicule Google Maps, avec réserve uniquement sur l'en-tête pour le bouton fermer.
-- Correction Carte : application complète du mode sombre à la popup véhicule Google Maps, incluant fond, pointe, bouton fermer et bouton secondaire.
+- Correction Carte : suppression de l'espace supï¿½rieur ajoutï¿½ par l'en-tï¿½te natif Google InfoWindow afin d'ï¿½quilibrer le padding haut/bas de la popup vï¿½hicule.
+- Correction Carte : ï¿½quilibrage du padding gauche/droite dans la popup vï¿½hicule Google Maps, avec rï¿½serve uniquement sur l'en-tï¿½te pour le bouton fermer.
+- Correction Carte : application complï¿½te du mode sombre ï¿½ la popup vï¿½hicule Google Maps, incluant fond, pointe, bouton fermer et bouton secondaire.
 - Correction Details traceur : la carte Emplacement utilise maintenant le debut reel de la session parking actuelle lorsque le moteur est coupe.
 - Le temps Parking, l'adresse, les coordonnees, l'altitude, la direction et le temps relatif affiches dans Emplacement sont bases sur le premier point de la sequence continue ignition=false, et non sur le dernier ping d'actualisation.
 - Ajout d'un test de regression pour garantir qu'un traceur deja en parking conserve l'adresse et la direction du moment ou le vehicule s'est mis en parking.
@@ -203,9 +203,9 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Ajout du menu Evenements dans la sidebar et d'un lien depuis les details traceur vers l'historique complet filtre par traceur.
 - Extension de la collecte des evenements GPS : le payload peut maintenant contenir `events` pour enregistrer des evenements comme porte ouverte, freinage brusque, acceleration brusque, virage brusque, remorquage, collision ou SOS.
 
-- Clarification métier : les alertes et les événements véhicule sont désormais séparés. Les pertes et retours de signal restent uniquement dans les alertes équipement/connexion.
-- Correction de la collecte GPS : `signal_lost` et `signal_restored` ne sont plus créés dans `tracker_events`; les événements véhicule restent réservés aux faits véhicule comme moteur allumé/coupé, déplacement, arrêt, porte ouverte, freinage brusque, etc.
-- Ajout du filtre `vehicleEvents()` pour masquer les anciens événements techniques dans le modal détails traceur et sur la page `/events`, renommée en Événements véhicules.
+- Clarification mï¿½tier : les alertes et les ï¿½vï¿½nements vï¿½hicule sont dï¿½sormais sï¿½parï¿½s. Les pertes et retours de signal restent uniquement dans les alertes ï¿½quipement/connexion.
+- Correction de la collecte GPS : `signal_lost` et `signal_restored` ne sont plus crï¿½ï¿½s dans `tracker_events`; les ï¿½vï¿½nements vï¿½hicule restent rï¿½servï¿½s aux faits vï¿½hicule comme moteur allumï¿½/coupï¿½, dï¿½placement, arrï¿½t, porte ouverte, freinage brusque, etc.
+- Ajout du filtre `vehicleEvents()` pour masquer les anciens ï¿½vï¿½nements techniques dans le modal dï¿½tails traceur et sur la page `/events`, renommï¿½e en ï¿½vï¿½nements vï¿½hicules.
 
 - Correction UX Evenements vehicule : retrait du menu Evenements vehicules de la sidebar, car les evenements se consultent uniquement depuis le traceur ou vehicule selectionne.
 - La route `/events` exige maintenant un traceur via `?device=...`; sans contexte elle redirige vers la page Traceurs avec un message.
@@ -292,66 +292,66 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Verification : php -l sidebar.blade.php, node --check dashboard-sidebar.js et php artisan test --filter=dashboard (3 tests OK).
 
 ## 2026-06-26 - Repositionnement du bouton de sidebar
-- Déplacement du bouton réduire/agrandir hors de la sidebar vers le topbar des pages principales, juste avant le titre.
-- Création du partial `resources/views/partials/sidebar-toggle.blade.php` pour réutiliser le même contrôle partout.
-- Ajustement du CSS pour supprimer le positionnement fixe du bouton, espacer le titre et préserver l’alignement des actions à droite.
-- Mise à jour du cache-busting CSS/JS en `20260626-topbar-sidebar-toggle`.
-- Vérifications : `php -l` sur les vues modifiées, `node --check public/js/dashboard-sidebar.js`, `php artisan test --filter=dashboard`.
+- Dï¿½placement du bouton rï¿½duire/agrandir hors de la sidebar vers le topbar des pages principales, juste avant le titre.
+- Crï¿½ation du partial `resources/views/partials/sidebar-toggle.blade.php` pour rï¿½utiliser le mï¿½me contrï¿½le partout.
+- Ajustement du CSS pour supprimer le positionnement fixe du bouton, espacer le titre et prï¿½server lï¿½alignement des actions ï¿½ droite.
+- Mise ï¿½ jour du cache-busting CSS/JS en `20260626-topbar-sidebar-toggle`.
+- Vï¿½rifications : `php -l` sur les vues modifiï¿½es, `node --check public/js/dashboard-sidebar.js`, `php artisan test --filter=dashboard`.
 
 ## 2026-06-26 - Ajustement espacement bouton sidebar topbar
-- Réduction du padding gauche du topbar pour rapprocher le bouton réduire/agrandir de la sidebar.
-- Augmentation de l’espace entre le bouton et le titre de page afin que l’air soit placé au bon endroit.
-- Mise à jour du cache-busting CSS/JS en `20260626-topbar-sidebar-spacing` sur les vues superadmin.
-- Vérifications : `php -l resources/views/dashboard.blade.php`, `php -l resources/views/map/index.blade.php`, `node --check public/js/dashboard-sidebar.js`, `php artisan test --filter=dashboard`.
+- Rï¿½duction du padding gauche du topbar pour rapprocher le bouton rï¿½duire/agrandir de la sidebar.
+- Augmentation de lï¿½espace entre le bouton et le titre de page afin que lï¿½air soit placï¿½ au bon endroit.
+- Mise ï¿½ jour du cache-busting CSS/JS en `20260626-topbar-sidebar-spacing` sur les vues superadmin.
+- Vï¿½rifications : `php -l resources/views/dashboard.blade.php`, `php -l resources/views/map/index.blade.php`, `node --check public/js/dashboard-sidebar.js`, `php artisan test --filter=dashboard`.
 
-## 2026-06-26 - Sidebar réduite par défaut sur tablette et mobile
-- Ajustement du script sidebar pour forcer l’état réduit au chargement dès que la résolution est inférieure ou égale à 1366px, même si un ancien état agrandi était sauvegardé.
-- Conservation du bouton réduire/agrandir : l’utilisateur peut toujours ouvrir la sidebar manuellement sur tablette ou mobile.
-- Correction CSS de l’état tablette : les textes du menu ne s’affichent que lorsque la sidebar est réellement agrandie, et restent masqués en mode réduit.
-- Mise à jour du cache-busting CSS/JS en `20260626-responsive-sidebar-default` sur les vues superadmin.
-- Vérifications : `node --check public/js/dashboard-sidebar.js`, `php -l resources/views/dashboard.blade.php`, `php -l resources/views/map/index.blade.php`, `php artisan test --filter=dashboard`.
+## 2026-06-26 - Sidebar rï¿½duite par dï¿½faut sur tablette et mobile
+- Ajustement du script sidebar pour forcer lï¿½ï¿½tat rï¿½duit au chargement dï¿½s que la rï¿½solution est infï¿½rieure ou ï¿½gale ï¿½ 1366px, mï¿½me si un ancien ï¿½tat agrandi ï¿½tait sauvegardï¿½.
+- Conservation du bouton rï¿½duire/agrandir : lï¿½utilisateur peut toujours ouvrir la sidebar manuellement sur tablette ou mobile.
+- Correction CSS de lï¿½ï¿½tat tablette : les textes du menu ne sï¿½affichent que lorsque la sidebar est rï¿½ellement agrandie, et restent masquï¿½s en mode rï¿½duit.
+- Mise ï¿½ jour du cache-busting CSS/JS en `20260626-responsive-sidebar-default` sur les vues superadmin.
+- Vï¿½rifications : `node --check public/js/dashboard-sidebar.js`, `php -l resources/views/dashboard.blade.php`, `php -l resources/views/map/index.blade.php`, `php artisan test --filter=dashboard`.
 
 ## 2026-07-07 - Dashboard corporate widgets et ordre Suivi flotte
-- Réorganisation visuelle du tableau de bord : le bloc `Suivi flotte / Derniers traceurs actifs` s’affiche maintenant juste après les widgets KPI.
-- Amélioration corporate des widgets : accent vertical par tonalité, fond premium plus sobre, hiérarchie valeur/libellé/détail renforcée, barre de progression plus nette et compatibilité dark mode.
+- Rï¿½organisation visuelle du tableau de bord : le bloc `Suivi flotte / Derniers traceurs actifs` sï¿½affiche maintenant juste aprï¿½s les widgets KPI.
+- Amï¿½lioration corporate des widgets : accent vertical par tonalitï¿½, fond premium plus sobre, hiï¿½rarchie valeur/libellï¿½/dï¿½tail renforcï¿½e, barre de progression plus nette et compatibilitï¿½ dark mode.
 - Ajustement responsive des widgets : 3 colonnes sur desktop, 2 sur tablette et 1 sur mobile.
-- Mise à jour du cache CSS dashboard vers `20260707-dashboard-corporate-widgets`.
-- Vérifications : `php artisan test --filter=dashboard` et `php -l app\Http\Controllers\DashboardController.php`.
+- Mise ï¿½ jour du cache CSS dashboard vers `20260707-dashboard-corporate-widgets`.
+- Vï¿½rifications : `php artisan test --filter=dashboard` et `php -l app\Http\Controllers\DashboardController.php`.
 
 ## 2026-07-08 - Ajustement taille marqueurs carte
-- Réduction légère des marqueurs de carte : flèche de déplacement, icône `P` parking et carré d’arrêt moteur allumé.
-- Harmonisation des tailles Google Maps et Mapbox pour garder un rendu cohérent entre fournisseurs.
-- Mise à jour du cache-busting de `map.css` et `map.js` en `20260708-map-marker-size`.
-- Vérifications : `node --check public\js\map.js` et `php -l resources\views\map\index.blade.php`.
+- Rï¿½duction lï¿½gï¿½re des marqueurs de carte : flï¿½che de dï¿½placement, icï¿½ne `P` parking et carrï¿½ dï¿½arrï¿½t moteur allumï¿½.
+- Harmonisation des tailles Google Maps et Mapbox pour garder un rendu cohï¿½rent entre fournisseurs.
+- Mise ï¿½ jour du cache-busting de `map.css` et `map.js` en `20260708-map-marker-size`.
+- Vï¿½rifications : `node --check public\js\map.js` et `php -l resources\views\map\index.blade.php`.
 
 ## 2026-07-08 - Correction ordre topbar pages superadmin
-- Correction du bug où le topbar/navigation descendait en bas des pages Utilisateurs et Carte après la réorganisation du dashboard.
-- Isolation des règles `flex/order` sur la page tableau de bord via la classe dédiée `dashboard-home-main` au lieu de les appliquer globalement à `.dashboard-main`.
-- Mise à jour du cache-busting `dashboard.css` en `20260708-dashboard-order-scope` sur les vues superadmin.
-- Vérifications : `php -l` sur les vues dashboard/users/map et `php artisan test --filter=dashboard`.
+- Correction du bug oï¿½ le topbar/navigation descendait en bas des pages Utilisateurs et Carte aprï¿½s la rï¿½organisation du dashboard.
+- Isolation des rï¿½gles `flex/order` sur la page tableau de bord via la classe dï¿½diï¿½e `dashboard-home-main` au lieu de les appliquer globalement ï¿½ `.dashboard-main`.
+- Mise ï¿½ jour du cache-busting `dashboard.css` en `20260708-dashboard-order-scope` sur les vues superadmin.
+- Vï¿½rifications : `php -l` sur les vues dashboard/users/map et `php artisan test --filter=dashboard`.
 
 ## 2026-07-08 - Tooltip ville carte mondiale
-- Normalisation du nom de ville au survol du point bleu Datamaps : première lettre en majuscule, reste en minuscule.
-- Correction des noms dont les lettres arrivent espacées afin d'afficher un nom compact, par exemple Kinshasa.
+- Normalisation du nom de ville au survol du point bleu Datamaps : premiï¿½re lettre en majuscule, reste en minuscule.
+- Correction des noms dont les lettres arrivent espacï¿½es afin d'afficher un nom compact, par exemple Kinshasa.
 - Suppression de l'espacement typographique dans le tooltip de la carte mondiale.
-- Vérifications : `node --check public\js\dashboard-charts.js`, `php -l resources\views\dashboard.blade.php`.
+- Vï¿½rifications : `node --check public\js\dashboard-charts.js`, `php -l resources\views\dashboard.blade.php`.
 
 ## 2026-07-08 - Recherche ville carte depuis dashboard
-- Correction de la recherche carte lorsqu'un point bleu du dashboard envoie une ville avec lettres espacées, par exemple `K I N S H A S A`.
+- Correction de la recherche carte lorsqu'un point bleu du dashboard envoie une ville avec lettres espacï¿½es, par exemple `K I N S H A S A`.
 - Normalisation du champ recherche carte : affichage en casse propre (`Kinshasa`) et suppression de l'espacement typographique.
-- Normalisation backend dans `MapController` pour accepter les villes espacées dans le paramètre `search`.
-- Normalisation des libellés de ville côté dashboard avant génération du lien vers la carte.
-- Vérifications : `node --check public\js\google-map.js`, `node --check public\js\dashboard-charts.js`, `php -l app\Http\Controllers\MapController.php`, `php -l app\Http\Controllers\DashboardController.php`.
-## 2026-07-08 - Gestion des abonnements véhicules
-- Création de la page superadmin `Abonnements`, accessible depuis la sidebar après `Utilisateurs`, pour gérer les plans Basique, Standard et Premium.
-- Ajout de la table `vehicle_subscription_plans` avec les fonctionnalités configurables en JSON, l’état actif, la couleur et l’ordre d’affichage.
-- Préenregistrement des plans par défaut : Basique, Standard et Premium, avec la matrice de fonctionnalités demandée.
-- Intégration des plans dans le formulaire Véhicules : le champ abonnement utilise désormais les plans actifs au lieu de valeurs codées en dur.
-- Mise à jour des flottes pour afficher les compteurs Basique, Standard et Premium.
-- Ajout des traductions françaises et anglaises de la page, des fonctionnalités et des messages.
-- Ajustement du test utilisateurs pour accepter le nouveau menu `Abonnements` tout en vérifiant que le formulaire utilisateur ne contient toujours pas de champs abonnement, grade ou statut.
-- Commandes exécutées : `php artisan migrate`, `php artisan db:seed --class=VehicleSubscriptionPlanSeeder`, `php artisan route:list --path=subscriptions`, `php artisan test --stop-on-failure`.
-- Vérifications : `php -l` sur les contrôleurs, le modèle, la migration et le seeder concernés ; suite complète OK avec 59 tests passés.
+- Normalisation backend dans `MapController` pour accepter les villes espacï¿½es dans le paramï¿½tre `search`.
+- Normalisation des libellï¿½s de ville cï¿½tï¿½ dashboard avant gï¿½nï¿½ration du lien vers la carte.
+- Vï¿½rifications : `node --check public\js\google-map.js`, `node --check public\js\dashboard-charts.js`, `php -l app\Http\Controllers\MapController.php`, `php -l app\Http\Controllers\DashboardController.php`.
+## 2026-07-08 - Gestion des abonnements vï¿½hicules
+- Crï¿½ation de la page superadmin `Abonnements`, accessible depuis la sidebar aprï¿½s `Utilisateurs`, pour gï¿½rer les plans Basique, Standard et Premium.
+- Ajout de la table `vehicle_subscription_plans` avec les fonctionnalitï¿½s configurables en JSON, lï¿½ï¿½tat actif, la couleur et lï¿½ordre dï¿½affichage.
+- Prï¿½enregistrement des plans par dï¿½faut : Basique, Standard et Premium, avec la matrice de fonctionnalitï¿½s demandï¿½e.
+- Intï¿½gration des plans dans le formulaire Vï¿½hicules : le champ abonnement utilise dï¿½sormais les plans actifs au lieu de valeurs codï¿½es en dur.
+- Mise ï¿½ jour des flottes pour afficher les compteurs Basique, Standard et Premium.
+- Ajout des traductions franï¿½aises et anglaises de la page, des fonctionnalitï¿½s et des messages.
+- Ajustement du test utilisateurs pour accepter le nouveau menu `Abonnements` tout en vï¿½rifiant que le formulaire utilisateur ne contient toujours pas de champs abonnement, grade ou statut.
+- Commandes exï¿½cutï¿½es : `php artisan migrate`, `php artisan db:seed --class=VehicleSubscriptionPlanSeeder`, `php artisan route:list --path=subscriptions`, `php artisan test --stop-on-failure`.
+- Vï¿½rifications : `php -l` sur les contrï¿½leurs, le modï¿½le, la migration et le seeder concernï¿½s ; suite complï¿½te OK avec 59 tests passï¿½s.
 
 ## 2026-07-08 - Ajout abonnement via modal uniquement
 - Retrait de la carte inline de creation d'abonnement sur la page `Abonnements`.
@@ -362,71 +362,71 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Nettoyage du CSS lie a l'ancienne carte inline et ajout du style modal.
 - Verifications : `php -l` sur le controleur, la vue et le test ; `php artisan test --stop-on-failure` OK avec 60 tests et 471 assertions.
 
-## 2026-07-08 - Bouton matrice fonctionnalités en bas
-- Déplacement du bouton de sauvegarde de la matrice des abonnements sous le tableau des fonctionnalités.
-- Renommage du libellé en `Enregistrer les fonctionnalités` côté français et `Save features` côté anglais.
-- Ajout d'un alignement bas à droite dédié via `.subscription-matrix-actions`.
-- Vérifications : `php -l resources\views\subscriptions\index.blade.php`, `php -l resources\lang\fr\subscriptions.php`, `php -l resources\lang\en\subscriptions.php`.
+## 2026-07-08 - Bouton matrice fonctionnalitï¿½s en bas
+- Dï¿½placement du bouton de sauvegarde de la matrice des abonnements sous le tableau des fonctionnalitï¿½s.
+- Renommage du libellï¿½ en `Enregistrer les fonctionnalitï¿½s` cï¿½tï¿½ franï¿½ais et `Save features` cï¿½tï¿½ anglais.
+- Ajout d'un alignement bas ï¿½ droite dï¿½diï¿½ via `.subscription-matrix-actions`.
+- Vï¿½rifications : `php -l resources\views\subscriptions\index.blade.php`, `php -l resources\lang\fr\subscriptions.php`, `php -l resources\lang\en\subscriptions.php`.
 
-## 2026-07-09 - Libellé sauvegarde abonnements
-- Rétablissement du libellé du bouton de matrice en `Enregistrer les abonnements` côté français et `Save subscriptions` côté anglais.
-- Vérifications : `php -l resources\lang\fr\subscriptions.php`, `php -l resources\lang\en\subscriptions.php`.
+## 2026-07-09 - Libellï¿½ sauvegarde abonnements
+- Rï¿½tablissement du libellï¿½ du bouton de matrice en `Enregistrer les abonnements` cï¿½tï¿½ franï¿½ais et `Save subscriptions` cï¿½tï¿½ anglais.
+- Vï¿½rifications : `php -l resources\lang\fr\subscriptions.php`, `php -l resources\lang\en\subscriptions.php`.
 
 ## 2026-07-09 - Taille checks matrice abonnements
-- Réduction des pastilles de validation de la matrice des abonnements pour un rendu plus discret.
-- Ajustement de la taille d'icône et de l'ombre portée des checks actifs.
-- Mise à jour du cache-busting CSS en `20260709-subscription-check-size`.
-- Vérification : `php -l resources\views\subscriptions\index.blade.php`.
+- Rï¿½duction des pastilles de validation de la matrice des abonnements pour un rendu plus discret.
+- Ajustement de la taille d'icï¿½ne et de l'ombre portï¿½e des checks actifs.
+- Mise ï¿½ jour du cache-busting CSS en `20260709-subscription-check-size`.
+- Vï¿½rification : `php -l resources\views\subscriptions\index.blade.php`.
 
 ## 2026-07-09 - Raffinement dashboard superadmin
-- Réorganisation DOM du tableau de bord : le bloc `Suivi flotte / Derniers traceurs actifs` est désormais placé directement après les widgets KPI, avant la carte mondiale et les graphiques.
-- Raffinement corporate des widgets KPI : cartes plus compactes, accents plus sobres, meilleure hiérarchie visuelle et rendu dark mode amélioré.
-- Amélioration de la carte mondiale Datamaps : pays plus lisibles par défaut, hover par remplissage intérieur sans bordure agressive, et conservation du clic sur les bulles vers la page Carte filtrée.
-- Mise à jour du cache-busting dashboard CSS/JS en `20260709-dashboard-refinement`.
-- Vérifications : `php -l app\Http\Controllers\DashboardController.php`, `php -l resources\views\dashboard.blade.php`, `node --check public\js\dashboard-charts.js`.
-## 2026-07-09 - Module règles d’alertes
-- Création du module superadmin `Règles alertes` pour configurer les règles de supervision inspirées Navixy.
-- Ajout de la table `alert_rules` avec séparation claire entre alertes équipement et événements véhicule.
-- Préconfiguration des règles par défaut : aucun signal, signal GSM faible, batterie faible, coupure alimentation externe, OBD déconnecté, brouillage GPS/GSM, excès de vitesse, ralenti prolongé, porte ouverte, freinage brusque, collision détectée et SOS.
-- Ajout du périmètre de règle : tous les actifs, flotte, véhicule ou traceur, avec seuil, unité, canaux, planning et état actif.
-- Création de la page `Règles alertes` avec tableau AJAX style DataTable, recherche, tri, pagination, badges de criticité, modal création/modification, confirmation de suppression et toast.
-- Ajout des traductions françaises et anglaises de tous les textes visibles du module.
-- Ajout du menu `Règles alertes` dans la sidebar superadmin juste après `Alertes`.
-- Commandes exécutées : `php artisan migrate`, `php artisan db:seed --class=AlertRuleSeeder`, `php artisan route:list --name=alert-rules`, `php artisan test --filter=dashboard`.
-- Vérifications : `php -l` sur le contrôleur, le modèle, la migration, le seeder et les vues du module.
-- Tests module règles alertes : php artisan test --stop-on-failure OK avec 61 tests et 492 assertions.
+- Rï¿½organisation DOM du tableau de bord : le bloc `Suivi flotte / Derniers traceurs actifs` est dï¿½sormais placï¿½ directement aprï¿½s les widgets KPI, avant la carte mondiale et les graphiques.
+- Raffinement corporate des widgets KPI : cartes plus compactes, accents plus sobres, meilleure hiï¿½rarchie visuelle et rendu dark mode amï¿½liorï¿½.
+- Amï¿½lioration de la carte mondiale Datamaps : pays plus lisibles par dï¿½faut, hover par remplissage intï¿½rieur sans bordure agressive, et conservation du clic sur les bulles vers la page Carte filtrï¿½e.
+- Mise ï¿½ jour du cache-busting dashboard CSS/JS en `20260709-dashboard-refinement`.
+- Vï¿½rifications : `php -l app\Http\Controllers\DashboardController.php`, `php -l resources\views\dashboard.blade.php`, `node --check public\js\dashboard-charts.js`.
+## 2026-07-09 - Module rï¿½gles dï¿½alertes
+- Crï¿½ation du module superadmin `Rï¿½gles alertes` pour configurer les rï¿½gles de supervision inspirï¿½es Navixy.
+- Ajout de la table `alert_rules` avec sï¿½paration claire entre alertes ï¿½quipement et ï¿½vï¿½nements vï¿½hicule.
+- Prï¿½configuration des rï¿½gles par dï¿½faut : aucun signal, signal GSM faible, batterie faible, coupure alimentation externe, OBD dï¿½connectï¿½, brouillage GPS/GSM, excï¿½s de vitesse, ralenti prolongï¿½, porte ouverte, freinage brusque, collision dï¿½tectï¿½e et SOS.
+- Ajout du pï¿½rimï¿½tre de rï¿½gle : tous les actifs, flotte, vï¿½hicule ou traceur, avec seuil, unitï¿½, canaux, planning et ï¿½tat actif.
+- Crï¿½ation de la page `Rï¿½gles alertes` avec tableau AJAX style DataTable, recherche, tri, pagination, badges de criticitï¿½, modal crï¿½ation/modification, confirmation de suppression et toast.
+- Ajout des traductions franï¿½aises et anglaises de tous les textes visibles du module.
+- Ajout du menu `Rï¿½gles alertes` dans la sidebar superadmin juste aprï¿½s `Alertes`.
+- Commandes exï¿½cutï¿½es : `php artisan migrate`, `php artisan db:seed --class=AlertRuleSeeder`, `php artisan route:list --name=alert-rules`, `php artisan test --filter=dashboard`.
+- Vï¿½rifications : `php -l` sur le contrï¿½leur, le modï¿½le, la migration, le seeder et les vues du module.
+- Tests module rï¿½gles alertes : php artisan test --stop-on-failure OK avec 61 tests et 492 assertions.
 
-## 2026-07-09 - Télémétrie traceur enrichie et supervision dashboard
-- Ajout d'une migration pour stocker la télémétrie avancée des traceurs : odomètre, heures moteur, capteurs, IO et payload brut.
-- Mise à jour du modèle `Device` pour caster les nouvelles données JSON et numériques.
-- Extension de la commande `gps:ingest-position` afin de sauvegarder codec, odomètre, heures moteur, capteurs, IO et données brutes envoyées par le serveur GPS.
-- Enrichissement de la fiche détail traceur : SIM, protocole, codec, satellites, odomètre, heures moteur, nombre de capteurs, nombre d'entrées/sorties et données brutes consultables.
-- Ajout de traductions FR/EN pour les nouvelles données visibles de la fiche traceur.
-- Ajout d'une supervision opérationnelle sur le tableau de bord superadmin : traceurs sans signal, vitesses élevées, ralenti moteur et batteries faibles.
+## 2026-07-09 - Tï¿½lï¿½mï¿½trie traceur enrichie et supervision dashboard
+- Ajout d'une migration pour stocker la tï¿½lï¿½mï¿½trie avancï¿½e des traceurs : odomï¿½tre, heures moteur, capteurs, IO et payload brut.
+- Mise ï¿½ jour du modï¿½le `Device` pour caster les nouvelles donnï¿½es JSON et numï¿½riques.
+- Extension de la commande `gps:ingest-position` afin de sauvegarder codec, odomï¿½tre, heures moteur, capteurs, IO et donnï¿½es brutes envoyï¿½es par le serveur GPS.
+- Enrichissement de la fiche dï¿½tail traceur : SIM, protocole, codec, satellites, odomï¿½tre, heures moteur, nombre de capteurs, nombre d'entrï¿½es/sorties et donnï¿½es brutes consultables.
+- Ajout de traductions FR/EN pour les nouvelles donnï¿½es visibles de la fiche traceur.
+- Ajout d'une supervision opï¿½rationnelle sur le tableau de bord superadmin : traceurs sans signal, vitesses ï¿½levï¿½es, ralenti moteur et batteries faibles.
 - Ajout du style responsive et dark mode pour les nouvelles cartes de supervision du dashboard.
-- Commande exécutée : `php artisan migrate`.
-- Vérifications : `php -l` sur `DashboardController`, `Device`, `routes/console.php` et fichiers de langue dashboard.
+- Commande exï¿½cutï¿½e : `php artisan migrate`.
+- Vï¿½rifications : `php -l` sur `DashboardController`, `Device`, `routes/console.php` et fichiers de langue dashboard.
 - Tests : `php artisan test --stop-on-failure` OK avec 61 tests et 492 assertions.
 ## 2026-07-09 - Module rapports superadmin
-- Création de la page superadmin `Rapports`, accessible depuis la sidebar, pour générer des rapports opérationnels.
-- Ajout des types de rapports : positions GPS, événements véhicules, alertes équipement et synthèse des flottes.
-- Ajout de filtres par période, flotte, véhicule, traceur et recherche texte, avec tableau AJAX, tri et pagination de 5 lignes.
-- Ajout des exports CSV et impression/PDF navigateur pour les rapports filtrés.
-- Ajout de la planification de rapports récurrents avec fréquence quotidienne, hebdomadaire ou mensuelle, destinataires et format.
-- Création de la table `scheduled_reports` et du modèle `ScheduledReport`.
-- Ajout des traductions françaises et anglaises du module, du modal de planification, des colonnes et des messages.
-- Ajout des styles dédiés avec support responsive et dark mode, en conservant le format visuel des autres pages superadmin.
-- Commandes exécutées : `php artisan migrate`, `php artisan route:list --name=reports`, `php artisan test tests/Feature/ReportsTest.php`, `php artisan test --stop-on-failure`.
-- Vérifications : `php -l` sur `ReportController`, `ScheduledReport`, la migration et le test.
+- Crï¿½ation de la page superadmin `Rapports`, accessible depuis la sidebar, pour gï¿½nï¿½rer des rapports opï¿½rationnels.
+- Ajout des types de rapports : positions GPS, ï¿½vï¿½nements vï¿½hicules, alertes ï¿½quipement et synthï¿½se des flottes.
+- Ajout de filtres par pï¿½riode, flotte, vï¿½hicule, traceur et recherche texte, avec tableau AJAX, tri et pagination de 5 lignes.
+- Ajout des exports CSV et impression/PDF navigateur pour les rapports filtrï¿½s.
+- Ajout de la planification de rapports rï¿½currents avec frï¿½quence quotidienne, hebdomadaire ou mensuelle, destinataires et format.
+- Crï¿½ation de la table `scheduled_reports` et du modï¿½le `ScheduledReport`.
+- Ajout des traductions franï¿½aises et anglaises du module, du modal de planification, des colonnes et des messages.
+- Ajout des styles dï¿½diï¿½s avec support responsive et dark mode, en conservant le format visuel des autres pages superadmin.
+- Commandes exï¿½cutï¿½es : `php artisan migrate`, `php artisan route:list --name=reports`, `php artisan test tests/Feature/ReportsTest.php`, `php artisan test --stop-on-failure`.
+- Vï¿½rifications : `php -l` sur `ReportController`, `ScheduledReport`, la migration et le test.
 - Tests : `php artisan test --stop-on-failure` OK avec 65 tests et 509 assertions.
 
 ## 2026-07-09 - Rapports PDF Dompdf, filtres et encodage traceur
-- Installation de `barryvdh/laravel-dompdf` pour générer les exports PDF réels des rapports.
-- Mise à jour de l'export `format=print` pour télécharger un PDF A4 paysage via Dompdf au lieu d'une page HTML imprimable.
-- Ajustement du formulaire de filtres Rapports : espacement entre recherche et boutons, bouton Filtrer au bleu du thème, exports CSV/PDF mieux séparés et responsive.
-- Correction des libellés FR double-encodés dans la fiche traceur : Odomètre, entrées/sorties, Données brutes.
-- Test renforcé : vérification que l'export PDF répond en `application/pdf`.
-- Vérifications : `php -l app/Http/Controllers/ReportController.php`, `php -l resources/lang/fr/trackers.php`, `php artisan test tests/Feature/ReportsTest.php --stop-on-failure`.
+- Installation de `barryvdh/laravel-dompdf` pour gï¿½nï¿½rer les exports PDF rï¿½els des rapports.
+- Mise ï¿½ jour de l'export `format=print` pour tï¿½lï¿½charger un PDF A4 paysage via Dompdf au lieu d'une page HTML imprimable.
+- Ajustement du formulaire de filtres Rapports : espacement entre recherche et boutons, bouton Filtrer au bleu du thï¿½me, exports CSV/PDF mieux sï¿½parï¿½s et responsive.
+- Correction des libellï¿½s FR double-encodï¿½s dans la fiche traceur : Odomï¿½tre, entrï¿½es/sorties, Donnï¿½es brutes.
+- Test renforcï¿½ : vï¿½rification que l'export PDF rï¿½pond en `application/pdf`.
+- Vï¿½rifications : `php -l app/Http/Controllers/ReportController.php`, `php -l resources/lang/fr/trackers.php`, `php artisan test tests/Feature/ReportsTest.php --stop-on-failure`.
 
 ## 2026-07-09 - Rapports PDF inline et boutons rapports
 - Changement de l'export PDF Dompdf de telechargement vers affichage inline dans le navigateur via stream().
@@ -473,15 +473,15 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Correction du formatage numÃ©rique pour conserver les valeurs `0` et lire correctement les valeurs avec espaces ou virgules comme `1 137,00 km`.
 - VÃ©rifications : `php -l routes/console.php`, `php -l app/Models/Device.php`, `node --check public/js/google-map.js`.
 
-## 2026-07-10 - Séparation Diagnostic traceur et OBD/CAN Navixy
-- Ajout du champ `devices.last_obd_runtime_seconds` pour stocker le moment d’exécution OBD sans le confondre avec les heures moteur.
-- Diagnostic traceur recentré sur l’état du boîtier : satellites, protocole, odomètre, heures moteur, entrées/sorties et capteurs.
-- Bloc OBD / CAN bus recentré sur les données véhicule : moment d’exécution, TR/MIN, vitesse OBD, papillon, température moteur, tension module, valeur absolue de charge, carburant, défauts, erreurs et kilométrage depuis réinitialisation.
-- Correction de l’extraction de la valeur absolue de charge : lecture prioritaire de l’IO Teltonika `52`, avec fallback `31`.
-- Correction du fallback `engine_seconds` : il est traité comme moment d’exécution OBD et non comme heures moteur.
-- Vérification du décodeur GPS production et redémarrage de `gps-tcp.service` après correction du mapping `engine_load_percent`.
-- Commande exécutée : `php artisan migrate`.
-- Vérifications : `php -l routes/console.php`, `php -l resources/views/trackers/partials/details.blade.php`, `php -l app/Models/Device.php`, `php -l database/migrations/2026_07_10_180000_add_obd_runtime_seconds_to_devices_table.php`.
+## 2026-07-10 - Sï¿½paration Diagnostic traceur et OBD/CAN Navixy
+- Ajout du champ `devices.last_obd_runtime_seconds` pour stocker le moment dï¿½exï¿½cution OBD sans le confondre avec les heures moteur.
+- Diagnostic traceur recentrï¿½ sur lï¿½ï¿½tat du boï¿½tier : satellites, protocole, odomï¿½tre, heures moteur, entrï¿½es/sorties et capteurs.
+- Bloc OBD / CAN bus recentrï¿½ sur les donnï¿½es vï¿½hicule : moment dï¿½exï¿½cution, TR/MIN, vitesse OBD, papillon, tempï¿½rature moteur, tension module, valeur absolue de charge, carburant, dï¿½fauts, erreurs et kilomï¿½trage depuis rï¿½initialisation.
+- Correction de lï¿½extraction de la valeur absolue de charge : lecture prioritaire de lï¿½IO Teltonika `52`, avec fallback `31`.
+- Correction du fallback `engine_seconds` : il est traitï¿½ comme moment dï¿½exï¿½cution OBD et non comme heures moteur.
+- Vï¿½rification du dï¿½codeur GPS production et redï¿½marrage de `gps-tcp.service` aprï¿½s correction du mapping `engine_load_percent`.
+- Commande exï¿½cutï¿½e : `php artisan migrate`.
+- Vï¿½rifications : `php -l routes/console.php`, `php -l resources/views/trackers/partials/details.blade.php`, `php -l app/Models/Device.php`, `php -l database/migrations/2026_07_10_180000_add_obd_runtime_seconds_to_devices_table.php`.
 
 ## 2026-07-13 - Historique dÃ©taillÃ© des trajets et replay cartographique
 - Refonte du modal `Trajets` avec une prÃ©sentation chronologique plus dÃ©taillÃ©e : adresses de dÃ©part et dâ€™arrivÃ©e, horaires, distance, durÃ©e, nombre de points GPS, vitesse moyenne et vitesse maximale.
@@ -496,3 +496,11 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - VÃ©rifications : `php -l app/Services/DeviceTripService.php`, `node --check public/js/tracker-trips.js`, `node --check public/js/google-map.js`, `git diff --check`.
 - Tests : `php artisan test --compact` OK avec 65 tests et 520 assertions.
 - Interface locale ciblÃ©e : `http://127.0.0.1:8000`.
+
+## 2026-07-14 - Panneau latÃ©ral des trajets
+- Fermeture automatique de la fiche vÃ©hicule et de la fenÃªtre cartographique avant lâ€™ouverture des trajets.
+- Transformation du grand modal centrÃ© en panneau compact alignÃ© Ã  gauche afin de conserver la carte visible pour la prÃ©visualisation et le replay.
+- RÃ©organisation des pÃ©riodes, des commandes de lecture, de la vitesse, de la progression et des cartes de trajet pour Ã©viter les chevauchements et les textes tronquÃ©s.
+- Ajout dâ€™un comportement responsive : panneau latÃ©ral sur grand Ã©cran et modal adaptÃ© sur tablette et mobile.
+- CompatibilitÃ© maintenue avec Google Maps et Mapbox pour la fermeture de la fenÃªtre source.
+- VÃ©rifications : compilation des vues Blade, feuille CSS servie en HTTP 200 sur `127.0.0.1:8000` et `php artisan test` OK avec 65 tests et 520 assertions.
