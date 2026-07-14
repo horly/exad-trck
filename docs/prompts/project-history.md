@@ -2,6 +2,16 @@
 
 Ce fichier garde une trace des demandes importantes effectuees pendant le projet.
 
+## 2026-07-14 - Panneau trajets compact et lecteur fixe
+
+- Réduction du panneau des trajets à 480 px sur ordinateur pour préserver une large zone de lecture de la carte.
+- Transformation du lecteur de parcours en barre compacte et fixe dans la zone défilable : lecture, vitesse, redémarrage, progression et durée restent visibles pendant le défilement.
+- Réorganisation des commandes de replay avec des boutons plus petits, des libellés lisibles et une hiérarchie visuelle plus nette.
+- Refonte de la liste des trajets en éléments compacts avec chronologie, départ, arrivée, distance, durée, points GPS, vitesses et sélecteur de couleur.
+- Ajout d'états de survol et de sélection plus sobres, ainsi que d'un rendu cohérent en mode sombre.
+- Ajustement responsive du panneau et des contrôles sur tablette et mobile.
+- Vérifications : `git diff --check`, compilation des vues Blade et `php artisan test --compact` OK avec 65 tests et 520 assertions.
+
 ## 2026-05-27
 
 - Creer le dossier `docs/prompts` pour y conserver l'historique des prompts de ce projet.

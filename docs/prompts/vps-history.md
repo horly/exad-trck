@@ -369,3 +369,12 @@ The battery voltage field must not be greater than 100.
 - Vérification distante des marqueurs `20260714-trip-panel` et `closeSourceThenOpen`.
 - Contrôle HTTP final : `https://exadtracking.app/css/dashboard.css?v=20260714-trip-panel` répond en `HTTP 200` et contient les styles du panneau.
 - État vérifié : Laravel `12.61.0`, PHP `8.2.31`, environnement `production`, debug désactivé et maintenance inactive.
+
+## 2026-07-14 - Déploiement de la version compacte du panneau des trajets
+- Déploiement ciblé vers `/var/www/exadtracking.app` des styles et vues du panneau de trajets compact.
+- Réduction de la largeur du panneau à `480px`, barre de lecture conservée en position visible, commandes de replay compactées et liste des trajets modernisée.
+- Fichiers déployés : `public/css/dashboard.css`, vues carte/traceurs, résultat des trajets et historique projet.
+- Sauvegarde préalable des fichiers remplacés dans `/tmp/exadtracking-before-trip-panel-compact-20260714.tar.gz`.
+- Caches Laravel reconstruits avec `php artisan optimize:clear`, `php artisan config:cache` et `php artisan view:cache`.
+- Vérifications distantes réussies : marqueur d’asset `20260714-trip-panel-compact`, styles du panneau, contrôle du replay et réponse `HTTP 200` de `https://exadtracking.app/login`.
+- État final : Laravel `12.61.0`, PHP `8.2.31`, environnement `production`, debug désactivé et maintenance inactive.

@@ -42,7 +42,14 @@
                     </select>
                 </label>
 
-                <button type="button" class="trip-replay-button" data-trip-replay-reset disabled>
+                <button
+                    type="button"
+                    class="trip-replay-button is-reset"
+                    title="{{ __('trackers.trip_reset') }}"
+                    aria-label="{{ __('trackers.trip_reset') }}"
+                    data-trip-replay-reset
+                    disabled
+                >
                     <i class="fa-solid fa-rotate-left"></i>
                     <span>{{ __('trackers.trip_reset') }}</span>
                 </button>
