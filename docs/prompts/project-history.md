@@ -514,3 +514,10 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Ajout d’un comportement responsive : panneau latéral sur grand écran et modal adapté sur tablette et mobile.
 - Compatibilité maintenue avec Google Maps et Mapbox pour la fermeture de la fenêtre source.
 - Vérifications : compilation des vues Blade, feuille CSS servie en HTTP 200 sur `127.0.0.1:8000` et `php artisan test` OK avec 65 tests et 520 assertions.
+
+## 2026-07-14 - Commandes de replay iconographiques
+- Simplification des commandes de lecture du trajet : lecture/pause, reprise et effacement sont désormais représentés uniquement par leurs icônes.
+- Conservation du texte uniquement dans le sélecteur de vitesse (`x1`, `x3`, `x10`, `x30`, `x100`, `x300`).
+- Maintien des intitulés accessibles avec `aria-label`, infobulles et libellés masqués pour les lecteurs d’écran.
+- Suppression du chevron décoratif présent dans chaque carte de trajet, la carte entière restant sélectionnable.
+- Harmonisation du format compact des commandes sur ordinateur, tablette et mobile.

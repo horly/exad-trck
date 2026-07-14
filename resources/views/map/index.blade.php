@@ -11,7 +11,7 @@
         <link rel="stylesheet" href="{{ asset('vendor/mapbox/mapbox-gl.css') }}">
     @endif
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260714-trip-panel-compact">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260714-trip-controls-icons">
     <link rel="stylesheet" href="{{ asset('css/map.css') }}?v=20260708-map-search-normalized">
 </head>
 <body class="app-font-manrope dashboard-body">
@@ -192,7 +192,7 @@
     <script src="{{ asset('js/dashboard-controls.js') }}?v=20260529-shared-controls"></script>
     @include('partials.realtime-alerts')
     <script src="{{ asset('js/tracker-details.js') }}?v=20260602-details-shared"></script>
-    <script src="{{ asset('js/tracker-trips.js') }}?v=20260714-trip-panel-compact"></script>
+    <script src="{{ asset('js/tracker-trips.js') }}?v=20260714-trip-controls-icons"></script>
     @if ($mapProvider === 'google')
         <script src="{{ asset('js/google-map.js') }}?v=20260714-trip-panel"></script>
         @if ($googleMapsApiKey !== '')

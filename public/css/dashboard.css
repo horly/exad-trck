@@ -3774,13 +3774,18 @@ body.theme-dark .alert-summary-card small {
 .trip-clear-button {
     background: transparent;
     border: 0;
+    border-radius: 7px;
     color: var(--exad-muted);
-    font-size: 0.76rem;
+    font-size: 0.8rem;
     font-weight: 820;
-    padding: 4px;
+    height: 28px;
+    justify-content: center;
+    padding: 0;
+    width: 28px;
 }
 
 .trip-clear-button:hover {
+    background: #fee2e2;
     color: #dc2626;
 }
 
@@ -3839,7 +3844,7 @@ body.theme-dark .alert-summary-card small {
 .trip-replay-controls {
     display: grid;
     gap: 6px;
-    grid-template-columns: 76px 82px 34px;
+    grid-template-columns: 34px 52px 34px;
 }
 
 .trip-replay-button,
@@ -3850,9 +3855,9 @@ body.theme-dark .alert-summary-card small {
     color: #fff;
     font-size: 0.66rem;
     font-weight: 820;
-    gap: 7px;
+    gap: 0;
     min-height: 32px;
-    padding: 5px 8px;
+    padding: 5px;
     width: 100%;
 }
 
@@ -3863,15 +3868,7 @@ body.theme-dark .alert-summary-card small {
 }
 
 .trip-speed-control {
-    justify-content: space-between;
-}
-
-.trip-replay-button.is-reset {
-    padding: 5px;
-}
-
-.trip-replay-button.is-reset span {
-    display: none;
+    justify-content: center;
 }
 
 .trip-replay-button.is-primary {
@@ -3886,11 +3883,15 @@ body.theme-dark .alert-summary-card small {
 }
 
 .trip-speed-control select {
+    appearance: none;
     background: transparent;
     border: 0;
     color: #fff;
     font: inherit;
     outline: 0;
+    text-align: center;
+    text-align-last: center;
+    width: 100%;
 }
 
 .trip-speed-control select option {
@@ -4021,8 +4022,7 @@ body.theme-dark .alert-summary-card small {
     font-weight: 880;
 }
 
-.trip-result-title small,
-.trip-result-title i {
+.trip-result-title small {
     color: #8296b1;
     font-size: 0.7rem;
     font-weight: 760;
@@ -4209,7 +4209,8 @@ body.theme-dark .alert-summary-card small {
     }
 
     .trip-replay-controls {
-        grid-template-columns: minmax(0, 1fr) 92px 34px;
+        grid-template-columns: 34px 52px 34px;
+        justify-content: start;
     }
 
     .trip-replay-controls .trip-replay-button:last-child {
@@ -4249,7 +4250,7 @@ body.theme-dark .alert-summary-card small {
     }
 
     .trip-replay-controls {
-        grid-template-columns: minmax(0, 1fr) 78px 34px;
+        grid-template-columns: 34px 52px 34px;
     }
 
     .trip-result-speeds {

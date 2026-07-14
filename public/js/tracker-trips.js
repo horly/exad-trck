@@ -292,6 +292,8 @@
         if (controls.label) {
             controls.label.textContent = isPlaying ? pauseLabel : playLabel;
         }
+        controls.toggle?.setAttribute('aria-label', isPlaying ? pauseLabel : playLabel);
+        controls.toggle?.setAttribute('title', isPlaying ? pauseLabel : playLabel);
         controls.toggle?.classList.toggle('is-playing', isPlaying);
     });
 

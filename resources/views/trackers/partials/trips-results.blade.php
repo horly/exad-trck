@@ -4,9 +4,15 @@
             <span class="trip-results-header-icon"><i class="fa-regular fa-calendar"></i></span>
             <strong>{{ $periodLabel }}</strong>
         </div>
-        <button type="button" class="trip-clear-button" data-trips-clear>
+        <button
+            type="button"
+            class="trip-clear-button"
+            title="{{ __('trackers.trips_clear') }}"
+            aria-label="{{ __('trackers.trips_clear') }}"
+            data-trips-clear
+        >
             <i class="fa-solid fa-xmark"></i>
-            <span>{{ __('trackers.trips_clear') }}</span>
+            <span class="visually-hidden">{{ __('trackers.trips_clear') }}</span>
         </button>
     </div>
 
@@ -27,15 +33,22 @@
                     data-trip-replay-toggle
                     data-play-label="{{ __('trackers.trip_play') }}"
                     data-pause-label="{{ __('trackers.trip_pause') }}"
+                    title="{{ __('trackers.trip_play') }}"
+                    aria-label="{{ __('trackers.trip_play') }}"
                     disabled
                 >
                     <i class="fa-solid fa-play" data-trip-replay-icon></i>
-                    <span data-trip-replay-label>{{ __('trackers.trip_play') }}</span>
+                    <span class="visually-hidden" data-trip-replay-label>{{ __('trackers.trip_play') }}</span>
                 </button>
 
                 <label class="trip-speed-control">
-                    <span>{{ __('trackers.trip_speed') }}</span>
-                    <select data-trip-replay-speed disabled>
+                    <span class="visually-hidden">{{ __('trackers.trip_speed') }}</span>
+                    <select
+                        title="{{ __('trackers.trip_speed') }}"
+                        aria-label="{{ __('trackers.trip_speed') }}"
+                        data-trip-replay-speed
+                        disabled
+                    >
                         @foreach ([1, 3, 10, 30, 100, 300] as $speed)
                             <option value="{{ $speed }}">x{{ $speed }}</option>
                         @endforeach
@@ -51,7 +64,7 @@
                     disabled
                 >
                     <i class="fa-solid fa-rotate-left"></i>
-                    <span>{{ __('trackers.trip_reset') }}</span>
+                    <span class="visually-hidden">{{ __('trackers.trip_reset') }}</span>
                 </button>
             </div>
 
@@ -94,7 +107,6 @@
                                     <strong>{{ __('trackers.trip_number', ['index' => $trip['index']]) }}</strong>
                                     <small>{{ $trip['date'] }}</small>
                                 </span>
-                                <i class="fa-solid fa-chevron-right"></i>
                             </span>
 
                             <span class="trip-result-stop">

@@ -378,3 +378,11 @@ The battery voltage field must not be greater than 100.
 - Caches Laravel reconstruits avec `php artisan optimize:clear`, `php artisan config:cache` et `php artisan view:cache`.
 - Vérifications distantes réussies : marqueur d’asset `20260714-trip-panel-compact`, styles du panneau, contrôle du replay et réponse `HTTP 200` de `https://exadtracking.app/login`.
 - État final : Laravel `12.61.0`, PHP `8.2.31`, environnement `production`, debug désactivé et maintenance inactive.
+
+## 2026-07-14 - Déploiement des commandes de replay iconographiques
+- Déploiement ciblé vers `/var/www/exadtracking.app` des commandes compactes du panneau de trajets.
+- Les actions lecture/pause, reprise et effacement utilisent désormais uniquement leurs icônes ; le sélecteur conserve uniquement les vitesses `x1`, `x3`, `x10`, `x30`, `x100` et `x300`.
+- Suppression du chevron décoratif des cartes de trajet, toute la carte restant sélectionnable.
+- Sauvegarde préalable des fichiers remplacés dans `/tmp/exadtracking-before-trip-icons-20260714.tar.gz`.
+- Contrôles distants réussis : syntaxe des vues Blade, nettoyage des caches, reconstruction du cache de configuration et compilation des vues.
+- Contrôle HTTP final réussi : page de connexion, CSS et JavaScript en `HTTP 200`, avec présence des marqueurs de la version `20260714-trip-controls-icons`.
