@@ -264,11 +264,16 @@ class DeviceTripService
         $payloadAddress = data_get($position->raw_data, 'payload.address');
         $currentAddress = $position->address ?: (is_string($payloadAddress) ? $payloadAddress : null);
 
-        $resolvedAddress = $this->reverseGeocoding->resolveBest(
+        // Tracker payloads can keep an old address after coordinates change.
+        // Resolve each trip boundary from its own coordinates first.
+        $resolvedAddress = $this->reverseGeocoding->resolve(
             (float) $position->latitude,
             (float) $position->longitude,
-            $currentAddress,
         );
+
+        $resolvedAddress ??= is_string($currentAddress) && trim($currentAddress) !== ''
+            ? trim($currentAddress)
+            : null;
 
         if ($resolvedAddress !== null) {
             if ($position->address !== $resolvedAddress) {

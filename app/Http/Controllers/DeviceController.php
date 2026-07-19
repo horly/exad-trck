@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Device;
+use App\Models\Driver;
+use App\Models\DriverIdentifier;
 use App\Models\Position;
 use App\Models\Vehicle;
 use App\Services\DeviceTripService;
@@ -376,10 +378,12 @@ class DeviceController extends Controller
             $reverseGeocoding,
             $locationPosition instanceof Position && $latestPosition instanceof Position && $locationPosition->is($latestPosition),
         );
+        $currentDriver = $this->currentDriverForDevice($device);
 
         return response()->json([
             'html' => view('trackers.partials.details', [
                 'device' => $device,
+                'currentDriver' => $currentDriver,
                 'latestPosition' => $locationPosition,
                 'gpsQuality' => $this->gpsQuality($device),
                 'direction' => $this->directionLabel((int) ($locationPosition?->angle ?? $device->last_angle)),
@@ -387,6 +391,26 @@ class DeviceController extends Controller
                 'parkingDuration' => $parkingStartedAt?->diffForHumans(null, true),
             ])->render(),
         ]);
+    }
+
+    private function currentDriverForDevice(Device $device): ?Driver
+    {
+        if ($device->vehicle_id === null || blank($device->last_driver_identifier_uid)) {
+            return null;
+        }
+
+        $identifier = DriverIdentifier::query()
+            ->with([
+                'driver.department:id,name,code',
+            ])
+            ->where('uid', $device->last_driver_identifier_uid)
+            ->where('active', true)
+            ->whereHas('driver.vehicles', fn ($query) => $query->whereKey($device->vehicle_id))
+            ->first();
+
+        $identifier?->driver?->setRelation('primaryIdentifier', $identifier);
+
+        return $identifier?->driver;
     }
 
     public function trips(Request $request, Device $device, DeviceTripService $tripService): JsonResponse

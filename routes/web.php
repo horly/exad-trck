@@ -5,6 +5,8 @@ use App\Http\Controllers\AlertController;
 use App\Http\Controllers\AlertRuleController;
 use App\Http\Controllers\CustomizationController;
 use App\Http\Controllers\DeviceController;
+use App\Http\Controllers\DepartmentController;
+use App\Http\Controllers\DriverController;
 use App\Http\Controllers\FleetController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\ReportController;
@@ -39,6 +41,8 @@ Route::middleware(['auth', 'superadmin'])->group(function () {
     Route::get('/subscriptions', [SubscriptionPlanController::class, 'index'])->name('subscriptions.index');
     Route::patch('/subscriptions', [SubscriptionPlanController::class, 'update'])->name('subscriptions.update');
     Route::resource('fleets', FleetController::class)->except(['show']);
+    Route::resource('drivers', DriverController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::resource('departments', DepartmentController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('vehicles', VehicleController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::get('/trackers/{device}/details', [DeviceController::class, 'details'])->name('trackers.details');
     Route::get('/trackers/{device}/trips', [DeviceController::class, 'trips'])->name('trackers.trips');

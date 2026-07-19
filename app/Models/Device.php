@@ -54,6 +54,7 @@ class Device extends Model
         'last_odometer_km',
         'last_engine_seconds',
         'last_obd_runtime_seconds',
+        'last_driver_identifier_uid',
         'last_obd_rpm',
         'last_obd_speed',
         'last_obd_throttle_percent',
@@ -122,6 +123,11 @@ class Device extends Model
     public function trackerEvents(): HasMany
     {
         return $this->hasMany(TrackerEvent::class);
+    }
+
+    public function driverSessions(): HasMany
+    {
+        return $this->hasMany(DriverSession::class);
     }
 
     public function subscription(): BelongsTo

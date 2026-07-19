@@ -521,3 +521,69 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Maintien des intitulés accessibles avec `aria-label`, infobulles et libellés masqués pour les lecteurs d’écran.
 - Suppression du chevron décoratif présent dans chaque carte de trajet, la carte entière restant sélectionnable.
 - Harmonisation du format compact des commandes sur ordinateur, tablette et mobile.
+
+## 2026-07-16 - Organisation des flottes, conducteurs et départements
+- Réorganisation de la navigation superadmin : le menu `Flottes` devient un groupe extensible partagé contenant `Flottes`, `Véhicules`, `Traceurs`, `Conducteurs` et `Départements`, sans dupliquer les éléments dans la sidebar.
+- Ajout du module `Départements` avec rattachement obligatoire à une flotte, code, description, statut, recherche AJAX, tri et pagination de 5 lignes.
+- Ajout du module `Conducteurs` avec photo, identité, flotte, département, matricule employé, badge RFID/iButton/NFC, coordonnées, adresse, mots-clés, permis de conduire et statut.
+- Remplacement de l'affectation permanente à un traceur par une sélection multiple de `Véhicules autorisés`, limitée aux véhicules de la flotte du conducteur.
+- Normalisation et unicité globale des identifiants RFID/iButton/NFC afin de préparer l'identification automatique des conducteurs par le serveur GPS.
+- Ajout des tables `departments`, `drivers`, `driver_identifiers`, `driver_vehicle` et `driver_sessions` pour préparer le suivi des prises de véhicule, changements de conducteur et fins de session.
+- Ajout des relations Eloquent entre flottes, départements, conducteurs, véhicules, traceurs et sessions conducteur.
+- Ajout des contrôleurs, Form Requests et validations d'isolation : un département et les véhicules autorisés doivent appartenir à la flotte sélectionnée.
+- Ajout des formulaires dans des modals conformes au format global de l'application, avec erreurs sous les champs, états de chargement, toasts, confirmations de suppression, responsive et mode sombre.
+- Ajout des traductions françaises et anglaises de tous les textes visibles des deux modules et de la navigation.
+- Correction du comportement du groupe `Flottes` lors de l'agrandissement de la sidebar depuis son état réduit.
+- Commande exécutée : `php artisan migrate --no-interaction`.
+- Vérifications : compilation des vues Blade avec `php artisan view:cache`, réponse HTTP locale sur `http://127.0.0.1:8000`, contrôle de syntaxe du test et contrôle d'accès invité.
+- Tests ciblés : `php artisan test tests\\Feature\\FleetOrganizationTest.php --stop-on-failure` OK avec 6 tests et 33 assertions.
+- Suite complète : `php artisan test --stop-on-failure` OK avec 71 tests et 553 assertions.
+
+## 2026-07-16 - Identification des conducteurs par badge GPS
+- Intégration de l'identification conducteur au flux réel `gps:ingest-position` pour les badges RFID, iButton et NFC transmis à la racine ou dans les données IO du traceur.
+- Normalisation automatique des identifiants reçus afin de reconnaître un même badge malgré les espaces, tirets, deux-points ou différences de casse.
+- Ouverture d'une session de conduite uniquement lorsque le conducteur est actif, appartient à la flotte du véhicule et possède une autorisation explicite sur ce véhicule.
+- Fermeture automatique de la session lors de la coupure du contact, d'un changement de conducteur ou de la présentation d'un badge refusé.
+- Enregistrement du conducteur, du badge, du véhicule, du traceur, des positions de début et de fin, des horaires et du motif de fermeture dans `driver_sessions`.
+- Correction de la lecture du véhicule après la génération des événements GPS : le service recharge désormais la relation complète afin de ne pas réutiliser une relation partielle sans `fleet_id`.
+- Ajout de tests fonctionnels couvrant l'ouverture et la fermeture d'une session autorisée ainsi que le rejet d'un badge non autorisé.
+- Tests ciblés : `php artisan test tests\\Feature\\FleetOrganizationTest.php --stop-on-failure` OK avec 8 tests et 47 assertions.
+- Suite complète : `php artisan test --stop-on-failure` OK avec 73 tests et 567 assertions.
+
+## 2026-07-17 - Finalisation du formulaire conducteur
+- Complétion du formulaire conducteur avec le numéro de sécurité sociale, les coordonnées, l’adresse, le rayon d’emplacement et toutes les informations du permis de conduire.
+- Correction du modal afin que son contenu reste défilable tout en conservant les boutons `Annuler` et `Enregistrer` visibles dans un pied de modal fixe.
+- Ajout de la prise en charge complète des nouveaux champs dans le modèle, les validations, la création, la modification et les données d’édition du modal.
+- Correction des traductions françaises et anglaises du module conducteurs, notamment des accents et libellés visibles.
+- Migration exécutée : `php artisan migrate --no-interaction`.
+- Tests ciblés : `php artisan test --compact tests/Feature/FleetOrganizationTest.php` OK avec 8 tests et 49 assertions.
+- Suite complète : `php artisan test --compact` OK avec 73 tests et 569 assertions.
+
+## 2026-07-17 - Adresses propres à chaque trajet
+- Correction de l’historique des trajets afin de géocoder séparément le point de départ et le point d’arrivée à partir de leurs coordonnées GPS réelles.
+- Une ancienne adresse conservée dans les données du traceur n’est désormais utilisée qu’en solution de repli lorsque le géocodage est indisponible.
+- Ajout d’un test de régression vérifiant que deux limites de trajet ayant des coordonnées différentes affichent bien deux adresses différentes.
+- Tests ciblés : `php artisan test --compact --filter="tracker trips"` OK avec 5 tests et 39 assertions.
+
+## 2026-07-17 - Sélecteur des véhicules autorisés conducteur
+- Remplacement du simple texte d'aide `Véhicules autorisés` par un vrai sélecteur multi-véhicules dans le modal conducteur.
+- Le sélecteur affiche uniquement les véhicules de la flotte choisie, avec recherche interne, compteur de sélection et états vides traduits.
+- Harmonisation visuelle du sélecteur avec le format des modals de l'application, y compris le mode sombre et le responsive.
+
+## 2026-07-17 - Largeur du modal conducteur
+- Réduction de la largeur maximale du modal conducteur pour un affichage plus compact.
+- Conservation du scroll interne et des actions fixes `Annuler` / `Créer` ou `Enregistrer`.
+
+## 2026-07-17 - Uniformisation des modals
+- Alignement des modals conducteur, v�hicule et d�partement sur la largeur standard du modal utilisateur (660px).
+- Conservation du comportement responsive pleine largeur sur mobile.
+
+## 2026-07-19 - UID conducteur traceur et fiche conducteur
+- Ajout du champ `devices.last_driver_identifier_uid` pour memoriser le dernier UID RFID/iButton/NFC recu par le traceur.
+- Reutilisation de la normalisation du service de sessions conducteur afin de traiter les UID recus a la racine du payload ou dans les blocs IO.
+- Mise a jour de `gps:ingest-position` pour enregistrer l'UID recu sur le traceur, y compris lorsqu'il ne correspond pas a une session conducteur autorisee.
+- Ajout de l'UID conducteur dans le bloc Diagnostic traceur du modal details.
+- Ajout d'une carte `Conducteur` dans le modal details traceur : le conducteur est affiche uniquement si l'UID recu correspond a un identifiant actif d'un conducteur autorise sur le vehicule lie au traceur ; sinon un etat `Aucun conducteur identifie` est affiche.
+- Tests cibles : `php artisan test --compact --filter="tracker details"` OK avec 3 tests et 28 assertions.
+- Tests conducteur : `php artisan test --compact tests\Feature\FleetOrganizationTest.php --stop-on-failure` OK avec 8 tests et 51 assertions.
+- Suite complete : `php artisan test --compact --stop-on-failure` OK avec 74 tests et 579 assertions.

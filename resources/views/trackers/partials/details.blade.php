@@ -286,6 +286,49 @@
 
     <article class="tracker-details-card">
         <div class="tracker-details-card-header">
+            <h3>{{ __('trackers.driver_title') }}</h3>
+            <i class="fa-solid fa-id-card-clip"></i>
+        </div>
+
+        @if ($currentDriver)
+            <dl class="tracker-details-list">
+                <div>
+                    <dt><i class="fa-solid fa-user-tie"></i></dt>
+                    <dd>{{ __('trackers.driver_name_value', ['name' => $currentDriver->full_name]) }}</dd>
+                </div>
+                <div>
+                    <dt><i class="fa-solid fa-address-card"></i></dt>
+                    <dd>{{ __('trackers.driver_employee_value', ['employee' => $currentDriver->employee_id ?: __('trackers.unknown_value')]) }}</dd>
+                </div>
+                <div>
+                    <dt><i class="fa-solid fa-building-user"></i></dt>
+                    <dd>{{ __('trackers.driver_department_value', ['department' => $currentDriver->department?->name ?: __('trackers.unknown_value')]) }}</dd>
+                </div>
+                <div>
+                    <dt><i class="fa-solid fa-key"></i></dt>
+                    <dd>{{ __('trackers.driver_identifier_uid_value', ['uid' => $currentDriver->primaryIdentifier?->uid ?: $device->last_driver_identifier_uid]) }}</dd>
+                </div>
+                <div>
+                    <dt><i class="fa-solid fa-phone"></i></dt>
+                    <dd>{{ __('trackers.driver_phone_value', ['phone' => $currentDriver->phone ?: __('trackers.unknown_value')]) }}</dd>
+                </div>
+                <div>
+                    <dt><i class="fa-solid fa-circle-check"></i></dt>
+                    <dd>{{ __('trackers.driver_status_value', ['status' => __('drivers.status_' . $currentDriver->status)]) }}</dd>
+                </div>
+            </dl>
+        @else
+            <div class="tracker-obd-empty">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>{{ __('trackers.driver_none') }}</span>
+            </div>
+        @endif
+
+        <p class="tracker-details-time">{{ $updatedAt ? $updatedAt->diffForHumans() : __('trackers.no_signal') }}</p>
+    </article>
+
+    <article class="tracker-details-card">
+        <div class="tracker-details-card-header">
             <h3>{{ __('trackers.power_title') }}</h3>
         </div>
 
@@ -366,6 +409,10 @@
             <div>
                 <dt><i class="fa-solid fa-network-wired"></i></dt>
                 <dd>{{ __('trackers.protocol_value', ['protocol' => $device->protocol ? strtoupper($device->protocol) : __('trackers.unknown_value')]) }}</dd>
+            </div>
+            <div>
+                <dt><i class="fa-solid fa-id-card-clip"></i></dt>
+                <dd>{{ __('trackers.driver_identifier_uid_value', ['uid' => $device->last_driver_identifier_uid ?: __('trackers.unknown_value')]) }}</dd>
             </div>
             <div>
                 <dt><i class="fa-solid fa-road"></i></dt>

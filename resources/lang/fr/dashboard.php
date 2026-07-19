@@ -13,6 +13,8 @@ return [
     'organizations' => 'Entreprises',
     'customization' => 'Personnalisation',
     'fleet' => 'Flottes',
+    'drivers' => 'Conducteurs',
+    'departments' => 'Départements',
     'vehicle' => 'Véhicules',
     'trackers' => 'Traceurs',
     'map' => 'Carte',

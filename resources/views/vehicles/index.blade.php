@@ -56,7 +56,7 @@
 
     @if ($canManageVehicles)
         <div class="modal fade users-modal" id="vehicleModal" tabindex="-1" aria-labelledby="vehicleModalTitle" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered users-modal-dialog">
+            <div class="modal-dialog modal-dialog-centered users-modal-dialog vehicle-modal-dialog">
                 <div class="modal-content">
                     <form method="POST" action="{{ route('vehicles.store') }}" novalidate data-validate-form data-required-message="{{ __('validation.required') }}" data-email-message="{{ __('validation.email') }}" data-vehicle-form data-loading-form data-loading-text="{{ __('vehicles.processing') }}">
                         @csrf

@@ -41,6 +41,16 @@ class Fleet extends Model
         return $this->hasMany(Vehicle::class);
     }
 
+    public function departments(): HasMany
+    {
+        return $this->hasMany(Department::class);
+    }
+
+    public function drivers(): HasMany
+    {
+        return $this->hasMany(Driver::class);
+    }
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class)

@@ -2,6 +2,8 @@
 
 use App\Models\Device;
 use App\Models\Alert;
+use App\Models\Driver;
+use App\Models\DriverIdentifier;
 use App\Models\Fleet;
 use App\Models\Position;
 use App\Models\Subscription;
@@ -723,8 +725,24 @@ test('superadmin can open tracker details with fleet and latest events', functio
         'last_external_voltage' => 12.6,
         'last_battery_voltage' => 4.05,
         'last_movement' => false,
+        'last_driver_identifier_uid' => 'ABCD1234',
         'operator_name' => 'Vodacom',
         'last_address' => 'Avenue des Ecuries, Joli Parc, Ngaliema, Kinshasa, Congo-Kinshasa',
+    ]);
+    $driver = Driver::query()->create([
+        'fleet_id' => $fleet->id,
+        'first_name' => 'David',
+        'last_name' => 'Lukusa',
+        'employee_id' => 'DRV-001',
+        'phone' => '+243810000000',
+        'status' => 'active',
+    ]);
+    $driver->vehicles()->attach($vehicle);
+    DriverIdentifier::query()->create([
+        'driver_id' => $driver->id,
+        'type' => 'ibutton',
+        'uid' => 'ABCD1234',
+        'active' => true,
     ]);
     Position::factory()->forDevice($device)->create([
         'latitude' => -4.33509,
@@ -761,6 +779,10 @@ test('superadmin can open tracker details with fleet and latest events', functio
         ->toContain('Flotte : EXAD CARS')
         ->toContain('Suzuki Swift Horly')
         ->toContain('Alimentation')
+        ->toContain('Conducteur')
+        ->toContain('Nom : David Lukusa')
+        ->toContain('Matricule : DRV-001')
+        ->toContain('Identifiant conducteur : ABCD1234')
         ->toContain('Avenue des Ecuries')
         ->toContain('altitude : 296 mètres')
         ->toContain('Parking')
@@ -1062,6 +1084,69 @@ test('tracker trips resolve missing addresses with mapbox reverse geocoding', fu
         ->not->toContain('Latitude : -4.3414000');
 
     expect($start->refresh()->address)->toBe('Avenue de l’OUA, Ngaliema, Kinshasa, Congo-Kinshasa');
+});
+
+test('tracker trips resolve each boundary from its own coordinates when stored addresses are stale', function () {
+    config([
+        'services.maps.provider' => 'google',
+        'services.google_maps.api_key' => 'AIza-test-key',
+        'services.mapbox.public_token' => '',
+    ]);
+
+    Http::fake(function ($request) {
+        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+        $address = str_starts_with((string) ($query['latlng'] ?? ''), '-4.342')
+            ? '128 Rue De Bolobo, Kinshasa, Congo-Kinshasa'
+            : 'Avenue De Kapanga, Kinshasa, Congo-Kinshasa';
+
+        return Http::response([
+            'status' => 'OK',
+            'results' => [[
+                'types' => ['street_address'],
+                'formatted_address' => $address,
+                'geometry' => ['location_type' => 'ROOFTOP'],
+                'address_components' => [
+                    ['long_name' => str($address)->before(',')->toString(), 'types' => ['route']],
+                    ['long_name' => 'Kinshasa', 'types' => ['locality']],
+                    ['long_name' => 'Congo-Kinshasa', 'types' => ['country']],
+                ],
+            ]],
+        ]);
+    });
+
+    $superadmin = User::factory()->superadmin()->create();
+    $device = Device::factory()->create();
+    $staleAddress = '196, Avenue de l Ecole, Kinshasa, Congo-Kinshasa';
+
+    Position::factory()->forDevice($device)->create([
+        'server_time' => now()->setTime(10, 0),
+        'gps_time' => now()->setTime(10, 0),
+        'latitude' => -4.3414,
+        'longitude' => 15.2867,
+        'address' => $staleAddress,
+        'movement' => true,
+        'speed' => 20,
+    ]);
+    Position::factory()->forDevice($device)->create([
+        'server_time' => now()->setTime(10, 8),
+        'gps_time' => now()->setTime(10, 8),
+        'latitude' => -4.3420,
+        'longitude' => 15.2872,
+        'address' => $staleAddress,
+        'movement' => true,
+        'speed' => 18,
+    ]);
+
+    $response = $this->actingAs($superadmin)
+        ->withHeader('X-Requested-With', 'XMLHttpRequest')
+        ->getJson(route('trackers.trips', ['device' => $device, 'period' => 'today']))
+        ->assertSuccessful();
+
+    expect($response->json('html'))
+        ->toContain('Avenue De Kapanga')
+        ->toContain('128 Rue De Bolobo')
+        ->not->toContain($staleAddress);
 });
 
 test('tracker trips improve generic addresses with google geocoding and snap path to roads', function () {

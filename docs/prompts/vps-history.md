@@ -386,3 +386,24 @@ The battery voltage field must not be greater than 100.
 - Sauvegarde préalable des fichiers remplacés dans `/tmp/exadtracking-before-trip-icons-20260714.tar.gz`.
 - Contrôles distants réussis : syntaxe des vues Blade, nettoyage des caches, reconstruction du cache de configuration et compilation des vues.
 - Contrôle HTTP final réussi : page de connexion, CSS et JavaScript en `HTTP 200`, avec présence des marqueurs de la version `20260714-trip-controls-icons`.
+
+## 2026-07-19 - Deploiement conducteurs et UID RFID/iButton/NFC
+- Deploiement cible vers `/var/www/exadtracking.app` du socle Conducteurs/Departements, des routes associees, de la sidebar Flottes extensible et du modal details traceur enrichi.
+- Ajout en production de la colonne `devices.last_driver_identifier_uid` pour memoriser le dernier UID conducteur recu depuis un traceur.
+- Migrations production executees avec succes :
+  - `2026_07_16_090000_create_departments_table`
+  - `2026_07_16_090100_create_drivers_table`
+  - `2026_07_16_090200_create_driver_identifiers_table`
+  - `2026_07_16_090300_create_driver_vehicle_table`
+  - `2026_07_16_090400_create_driver_sessions_table`
+  - `2026_07_16_235226_add_profile_fields_to_drivers_table`
+  - `2026_07_19_090000_add_last_driver_identifier_uid_to_devices_table`
+- Mise a jour de `gps:ingest-position` pour enregistrer `last_driver_identifier_uid` et retourner `driver_identifier_uid` dans la reponse JSON d'ingestion.
+- Mise a jour du serveur GPS production dans `/var/www/exadtracking.app/gps-listener-server-prod` :
+  - le decodeur Teltonika extrait maintenant un UID conducteur depuis les IO RFID/iButton/NFC connus ;
+  - l'ingestor Node transmet `driver_identifier_uid` a Laravel ;
+  - les UID 8 octets des IO conducteur sont conserves en hexadecimal pour eviter les pertes de precision.
+- Redemarrage de `gps-tcp.service` effectue avec succes ; etat verifie : `active`.
+- Sauvegarde prealable ciblee des fichiers remplaces dans `/tmp/exadtracking-before-driver-identifier-20260719`.
+- Verifications distantes reussies : syntaxe PHP sur le controleur, le modele, le service, `routes/console.php` et la vue details traceur ; `node --check` sur le decodeur et l'ingestor ; routes `drivers.*` et `trackers.details` disponibles ; migrations marquees `Ran`.
+- Controle HTTP final : `https://exadtracking.app/login` repond en `HTTP 200`.

@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Vehicle extends Model
@@ -44,6 +46,16 @@ class Vehicle extends Model
     public function device(): HasOne
     {
         return $this->hasOne(Device::class);
+    }
+
+    public function drivers(): BelongsToMany
+    {
+        return $this->belongsToMany(Driver::class)->withTimestamps();
+    }
+
+    public function driverSessions(): HasMany
+    {
+        return $this->hasMany(DriverSession::class);
     }
 
     public function scopeVisibleTo(Builder $query, User $user): Builder

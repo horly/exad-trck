@@ -2,6 +2,7 @@
     $active = $active ?? '';
     $user = auth()->user();
     $homeRoute = $user->isSuperadmin() ? route('dashboard') : route('fleets.index');
+    $fleetSectionActive = in_array($active, ['fleets', 'vehicles', 'trackers', 'drivers', 'departments'], true);
 @endphp
 
 <aside class="dashboard-sidebar">
@@ -29,20 +30,47 @@
                 <i class="fa-solid fa-layer-group"></i>
                 <span>{{ __('dashboard.subscriptions') }}</span>
             </a>
+            <div class="sidebar-nav-group {{ $fleetSectionActive ? 'is-open' : '' }}" data-sidebar-menu>
+                <button
+                    type="button"
+                    class="nav-link sidebar-nav-group-toggle {{ $fleetSectionActive ? 'active' : '' }}"
+                    aria-expanded="{{ $fleetSectionActive ? 'true' : 'false' }}"
+                    data-sidebar-menu-toggle
+                >
+                    <i class="fa-solid fa-truck-fast"></i>
+                    <span>{{ __('dashboard.fleet') }}</span>
+                    <i class="fa-solid fa-chevron-down sidebar-nav-group-chevron"></i>
+                </button>
+                <div class="sidebar-nav-submenu" data-sidebar-submenu>
+                    <a class="nav-link {{ $active === 'fleets' ? 'active' : '' }}" href="{{ route('fleets.index') }}">
+                        <i class="fa-solid fa-warehouse"></i>
+                        <span>{{ __('dashboard.fleet') }}</span>
+                    </a>
+                    <a class="nav-link {{ $active === 'vehicles' ? 'active' : '' }}" href="{{ route('vehicles.index') }}">
+                        <i class="fa-solid fa-car-side"></i>
+                        <span>{{ __('dashboard.vehicle') }}</span>
+                    </a>
+                    <a class="nav-link {{ $active === 'trackers' ? 'active' : '' }}" href="{{ route('trackers.index') }}">
+                        <i class="fa-solid fa-satellite-dish"></i>
+                        <span>{{ __('dashboard.trackers') }}</span>
+                    </a>
+                    <a class="nav-link {{ $active === 'drivers' ? 'active' : '' }}" href="{{ route('drivers.index') }}">
+                        <i class="fa-solid fa-id-card"></i>
+                        <span>{{ __('dashboard.drivers') }}</span>
+                    </a>
+                    <a class="nav-link {{ $active === 'departments' ? 'active' : '' }}" href="{{ route('departments.index') }}">
+                        <i class="fa-solid fa-sitemap"></i>
+                        <span>{{ __('dashboard.departments') }}</span>
+                    </a>
+                </div>
+            </div>
         @endif
-
-        <a class="nav-link {{ $active === 'fleets' ? 'active' : '' }}" href="{{ route('fleets.index') }}">
-            <i class="fa-solid fa-truck-fast"></i>
-            <span>{{ __('dashboard.fleet') }}</span>
-        </a>
-        <a class="nav-link {{ $active === 'vehicles' ? 'active' : '' }}" href="{{ route('vehicles.index') }}">
-            <i class="fa-solid fa-car-side"></i>
-            <span>{{ __('dashboard.vehicle') }}</span>
-        </a>
-        <a class="nav-link {{ $active === 'trackers' ? 'active' : '' }}" href="{{ route('trackers.index') }}">
-            <i class="fa-solid fa-satellite-dish"></i>
-            <span>{{ __('dashboard.trackers') }}</span>
-        </a>
+        @unless ($user->isSuperadmin())
+            <a class="nav-link {{ $active === 'fleets' ? 'active' : '' }}" href="{{ route('fleets.index') }}">
+                <i class="fa-solid fa-truck-fast"></i>
+                <span>{{ __('dashboard.fleet') }}</span>
+            </a>
+        @endunless
         <a class="nav-link {{ $active === 'map' ? 'active' : '' }}" href="{{ route('map.index') }}">
             <i class="fa-solid fa-map-location-dot"></i>
             <span>{{ __('dashboard.map') }}</span>

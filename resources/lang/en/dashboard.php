@@ -13,6 +13,8 @@ return [
     'organizations' => 'Organizations',
     'customization' => 'Customization',
     'fleet' => 'Fleets',
+    'drivers' => 'Drivers',
+    'departments' => 'Departments',
     'vehicle' => 'Vehicles',
     'trackers' => 'Trackers',
     'map' => 'Map',

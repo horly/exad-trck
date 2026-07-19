@@ -5,6 +5,7 @@ use App\Models\Device;
 use App\Models\Position;
 use App\Models\Vehicle;
 use App\Services\AlertService;
+use App\Services\DriverSessionService;
 use App\Services\ReverseGeocodingService;
 use App\Services\TrackerEventService;
 use Illuminate\Support\Carbon;
@@ -77,6 +78,15 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         'ignition' => ['nullable', 'boolean'],
         'movement' => ['nullable', 'boolean'],
         'gps_time' => ['nullable', 'date'],
+        'driver_identifier' => ['nullable', 'string', 'max:100'],
+        'driver_identifier_uid' => ['nullable', 'string', 'max:100'],
+        'driver_identifier_type' => ['nullable', 'string', 'in:rfid,ibutton,nfc'],
+        'driver_uid' => ['nullable', 'string', 'max:100'],
+        'rfid' => ['nullable', 'string', 'max:100'],
+        'rfid_uid' => ['nullable', 'string', 'max:100'],
+        'ibutton' => ['nullable', 'string', 'max:100'],
+        'ibutton_id' => ['nullable', 'string', 'max:100'],
+        'nfc_uid' => ['nullable', 'string', 'max:100'],
     ]);
 
     if ($validator->fails()) {
@@ -288,6 +298,9 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         );
     }
 
+    $driverSessionService = app(DriverSessionService::class);
+    $driverIdentifierUid = $driverSessionService->extractIdentifierUid($data);
+
     $position = Position::query()->create([
         'device_id' => $device->id,
         'imei' => $device->imei,
@@ -339,11 +352,12 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         'last_can_fuel_level_percent' => $can['fuel_level_percent'] ?? $device->last_can_fuel_level_percent,
         'last_can_total_mileage_km' => $can['total_mileage_km'] ?? $device->last_can_total_mileage_km,
         'last_obd_updated_at' => ($obd !== [] || $can !== []) ? $serverTime : $device->last_obd_updated_at,
-        'last_diagnostic_updated_at' => (array_key_exists('satellites', $validated) || array_key_exists('io', $validated) || array_key_exists('sensors', $validated))
+        'last_diagnostic_updated_at' => (array_key_exists('satellites', $validated) || array_key_exists('io', $validated) || array_key_exists('sensors', $validated) || $driverIdentifierUid !== null)
             ? $serverTime
             : $device->last_diagnostic_updated_at,
         'last_sensors' => $validated['sensors'] ?? $device->last_sensors,
         'last_io' => $validated['io'] ?? $device->last_io,
+        'last_driver_identifier_uid' => $driverIdentifierUid ?? $device->last_driver_identifier_uid,
         'last_raw_payload' => $validated['raw'] ?? $rawTelemetry,
         'last_address' => $address ?? $device->last_address,
         'codec' => $validated['codec'] ?? $device->codec,
@@ -360,16 +374,20 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         $previousIgnition,
     );
 
+    $driverSession = $driverSessionService->sync($device, $position, $data);
+
     $this->line(json_encode([
         'ok' => true,
         'device_id' => $device->id,
         'position_id' => $position->id,
         'status' => $device->status,
         'imei' => $device->imei,
+        'driver_identifier_uid' => $driverIdentifierUid,
+        'driver_session_id' => $driverSession?->id,
     ]));
 
     return 0;
-})->purpose('Ingest a simulated GPS position for a registered tracker IMEI');
+})->purpose('Ingest a GPS position for a registered tracker IMEI');
 
 Artisan::command('gps:mark-stale {--minutes=5 : Minutes without signal before a tracker becomes offline}', function (): int {
     $minutes = max(1, (int) $this->option('minutes'));

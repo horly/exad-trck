@@ -38,3 +38,22 @@ compactSidebarQuery.addEventListener?.('change', (event) => {
         applySidebarState('collapsed');
     }
 });
+
+document.querySelectorAll('[data-sidebar-menu]').forEach((menu) => {
+    const toggle = menu.querySelector('[data-sidebar-menu-toggle]');
+
+        toggle?.addEventListener('click', () => {
+            const wasCollapsed = document.body.classList.contains('sidebar-collapsed');
+
+            if (wasCollapsed) {
+                applySidebarState('expanded');
+                menu.classList.add('is-open');
+                toggle.setAttribute('aria-expanded', 'true');
+
+                return;
+            }
+
+            const isOpen = menu.classList.toggle('is-open');
+        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+});
