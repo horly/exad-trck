@@ -528,3 +528,13 @@ The battery voltage field must not be greater than 100.
 - Verification distante des marqueurs des trois modales et de l'absence de `alert-danger` dans les deux vues concernees.
 - Controle public final : `https://exadtracking.app/login` repond en HTTP 200.
 - Validation locale avant deploiement : 96 tests Laravel passes avec 813 assertions.
+
+## 2026-07-19 - Masquage du visuel de connexion sur tablette et mobile
+
+- Deploiement cible de `public/css/auth-login.css` et `resources/views/auth/login.blade.php`.
+- Le panneau bleu nuit et l'image de flotte sont desormais masques sous `992 px` ; la zone de connexion claire occupe toute la largeur et toute la hauteur utile.
+- Le prechargement de `login-fleet-night.png` est limite par `media="(min-width: 992px)"` afin d'eviter le telechargement inutile du grand visuel sur tablette et mobile.
+- Sauvegarde prealable : `/tmp/exadtracking-before-login-responsive-20260719-193124.tar.gz`.
+- Syntaxe Blade validee, caches Laravel nettoyes puis caches de configuration et de vues reconstruits ; application remise en ligne.
+- Controles publics reussis en HTTP 200 pour la connexion et le CSS versionne `20260719-login-responsive` ; breakpoint tablette, prechargement bureau et masquage du panneau verifies dans les contenus servis.
+- Validation locale avant deploiement : 97 tests Laravel passes avec 818 assertions.

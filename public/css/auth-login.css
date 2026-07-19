@@ -1032,43 +1032,24 @@ svg {
 @media (max-width: 991.98px) {
     html,
     body {
-        height: auto;
+        height: 100%;
         min-height: 100%;
         overflow: auto;
     }
 
     .login-shell {
-        flex-direction: column;
+        display: block;
         min-height: 100vh;
         overflow: visible;
     }
 
     .login-hero {
-        background-position: center 66%;
-        min-height: 280px;
-        position: relative;
-        width: 100%;
-    }
-
-    .hero-inner {
-        min-height: 280px;
-        padding: 28px 32px;
-    }
-
-    .hero-logo {
-        margin: 0;
-        width: 116px;
-    }
-
-    .hero-content,
-    .feature-list,
-    .hero-stats {
         display: none;
     }
 
     .login-panel-wrapper {
-        min-height: auto;
-        padding: 66px 24px 42px;
+        min-height: 100vh;
+        padding: 76px 24px 70px;
         width: 100%;
     }
 
@@ -1087,21 +1068,8 @@ svg {
 }
 
 @media (max-width: 575.98px) {
-    .login-hero,
-    .hero-inner {
-        min-height: 220px;
-    }
-
-    .hero-inner {
-        padding: 22px;
-    }
-
-    .hero-logo {
-        width: 104px;
-    }
-
     .login-panel-wrapper {
-        padding: 46px 20px 38px;
+        padding: 72px 20px 58px;
     }
 
     .login-card {

@@ -791,3 +791,12 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Tests de regression ajoutes pour l'entretien et les garages ; suite complete verte avec 96 tests et 813 assertions.
 - Deploiement VPS effectue apres autorisation explicite, avec sauvegarde ciblee prealable dans `/tmp/exadtracking-before-field-validation-20260719-174701.tar.gz`.
 - Caches Laravel reconstruits, application remise en ligne et controle public reussi en HTTP 200.
+
+### 2026-07-19 - Connexion sans visuel sur tablette et mobile
+- Le panneau bleu nuit et son image de flotte sont maintenant reserves aux affichages bureau a partir de `992 px`.
+- De la tablette au mobile, seule la zone de connexion claire occupe la page complete ; aucun espace n'est conserve pour le visuel masque.
+- Le prechargement de `login-fleet-night.png` est lui aussi limite aux ecrans d'au moins `992 px` afin d'eviter un telechargement inutile sur les terminaux mobiles.
+- Le formulaire, le selecteur de langue et le pied de page conservent leur comportement responsive existant.
+- Test de regression ajoute ; suite complete verte avec 97 tests et 818 assertions.
+- Deploiement VPS effectue apres autorisation explicite ; sauvegarde ciblee creee dans `/tmp/exadtracking-before-login-responsive-20260719-193124.tar.gz`.
+- Caches Laravel reconstruits et controles publics reussis en HTTP 200 pour la page de connexion et le CSS responsive.

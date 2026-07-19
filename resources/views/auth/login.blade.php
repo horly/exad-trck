@@ -6,9 +6,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ __('auth.login_title') }}</title>
     @include('partials.favicon')
-    <link rel="preload" as="image" href="{{ asset('images/login-fleet-night.png') }}">
+    <link rel="preload" as="image" href="{{ asset('images/login-fleet-night.png') }}" media="(min-width: 992px)">
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/auth-login.css') }}?v=20260719-night-fleet">
+    <link rel="stylesheet" href="{{ asset('css/auth-login.css') }}?v=20260719-login-responsive">
 </head>
 <body>
     <main class="login-shell">

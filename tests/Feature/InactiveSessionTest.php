@@ -34,6 +34,19 @@ test('login page explains an inactivity logout', function () {
     expect(public_path('images/login-fleet-night.png'))->toBeFile();
 });
 
+test('login fleet visual is limited to desktop screens', function () {
+    $this->get(route('login'))
+        ->assertSuccessful()
+        ->assertSee('media="(min-width: 992px)"', false)
+        ->assertSee('css/auth-login.css', false);
+
+    $css = file_get_contents(public_path('css/auth-login.css'));
+
+    expect($css)
+        ->toContain('@media (max-width: 991.98px)')
+        ->toMatch('/\.login-hero\s*\{\s*display:\s*none;/');
+});
+
 test('login creates a persistent remember cookie only when requested', function () {
     $user = User::factory()->superadmin()->create();
 
