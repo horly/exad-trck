@@ -42,6 +42,8 @@ class UpdateDriverRequest extends StoreDriverRequest
             'phone' => ['nullable', 'string', 'max:40'],
             'email' => ['nullable', 'email:rfc', 'max:255'],
             'address' => ['nullable', 'string', 'max:2000'],
+            'location_latitude' => ['nullable', 'required_with:location_longitude', 'numeric', 'between:-90,90'],
+            'location_longitude' => ['nullable', 'required_with:location_latitude', 'numeric', 'between:-180,180'],
             'location_radius_meters' => ['nullable', 'integer', 'min:10', 'max:10000'],
             'license_number' => ['nullable', 'string', 'max:100'],
             'license_type' => ['nullable', 'string', 'max:80'],

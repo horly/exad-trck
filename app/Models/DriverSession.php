@@ -20,6 +20,9 @@ class DriverSession extends Model
         'started_at',
         'ended_at',
         'status',
+        'geofence_status',
+        'geofence_distance_meters',
+        'geofence_updated_at',
         'metadata',
     ];
 
@@ -28,6 +31,8 @@ class DriverSession extends Model
         return [
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
+            'geofence_distance_meters' => 'integer',
+            'geofence_updated_at' => 'datetime',
             'metadata' => 'array',
         ];
     }

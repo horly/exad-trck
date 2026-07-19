@@ -78,6 +78,8 @@ return [
     'phone_placeholder' => '+243 000 000 000',
     'email_placeholder' => 'conducteur@entreprise.com',
     'address_placeholder' => 'Adresse complète',
+    'address_no_results' => 'Aucune adresse trouvée.',
+    'address_search_error' => 'La recherche d’adresse est momentanément indisponible.',
     'employee_id_label' => 'Identifiant employé',
     'identifier_rfid' => 'RFID',
     'identifier_ibutton' => 'iButton',

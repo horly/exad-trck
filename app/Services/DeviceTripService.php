@@ -10,6 +10,7 @@ use Illuminate\Support\Collection;
 class DeviceTripService
 {
     private const MAX_GAP_MINUTES = 15;
+    private const STOP_SPLIT_MINUTES = 5;
     private const MIN_TRIP_DISTANCE_KM = 0.05;
     private const TRIP_COLORS = [
         '#2563eb',
@@ -105,6 +106,7 @@ class DeviceTripService
     {
         $segments = [];
         $current = collect();
+        $pendingStops = collect();
         $previous = null;
         $lastStop = null;
 
@@ -114,13 +116,20 @@ class DeviceTripService
                 && $current->isNotEmpty()
                 && $previous->server_time?->diffInMinutes($position->server_time) > self::MAX_GAP_MINUTES
             ) {
+                $current = $current->merge($pendingStops);
                 $this->pushSegment($segments, $current);
                 $current = collect();
+                $pendingStops = collect();
             }
 
             if ($this->isMovingPosition($position)) {
                 if ($current->isEmpty() && $lastStop instanceof Position) {
                     $current->push($lastStop);
+                }
+
+                if ($pendingStops->isNotEmpty()) {
+                    $current = $current->merge($pendingStops);
+                    $pendingStops = collect();
                 }
 
                 $current->push($position);
@@ -129,18 +138,47 @@ class DeviceTripService
             }
 
             if ($current->isNotEmpty()) {
-                $current->push($position);
-                $this->pushSegment($segments, $current);
-                $current = collect();
+                $pendingStops->push($position);
+
+                if ($this->stopDurationMinutes($pendingStops) >= self::STOP_SPLIT_MINUTES) {
+                    $current = $current->merge($pendingStops);
+                    $this->pushSegment($segments, $current);
+                    $current = collect();
+                    $pendingStops = collect();
+                    $lastStop = $position;
+                }
+            } else {
+                $lastStop = $position;
             }
 
-            $lastStop = $position;
             $previous = $position;
         }
 
+        $current = $current->merge($pendingStops);
         $this->pushSegment($segments, $current);
 
         return $segments;
+    }
+
+    /**
+     * @param  Collection<int, Position>  $positions
+     */
+    private function stopDurationMinutes(Collection $positions): float
+    {
+        if ($positions->count() < 2) {
+            return 0.0;
+        }
+
+        /** @var Position $first */
+        $first = $positions->first();
+        /** @var Position $last */
+        $last = $positions->last();
+
+        if (! $first->server_time || ! $last->server_time) {
+            return 0.0;
+        }
+
+        return (float) $first->server_time->diffInMinutes($last->server_time);
     }
 
     /**

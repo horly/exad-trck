@@ -587,3 +587,35 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Tests cibles : `php artisan test --compact --filter="tracker details"` OK avec 3 tests et 28 assertions.
 - Tests conducteur : `php artisan test --compact tests\Feature\FleetOrganizationTest.php --stop-on-failure` OK avec 8 tests et 51 assertions.
 - Suite complete : `php artisan test --compact --stop-on-failure` OK avec 74 tests et 579 assertions.
+
+## 2026-07-19 - Correction liste des trajets repetes
+- Correction de la segmentation des trajets afin qu'un arret court intermediaire ne coupe plus le parcours en plusieurs trajets repetes dans la liste.
+- Les points arretes courts restent inclus dans le meme parcours ; un trajet n'est ferme qu'apres un arret durable.
+- Ajout d'un test de regression couvrant un deplacement continu avec arret court puis reprise.
+- Tests cibles : `php artisan test --compact --filter="tracker trips"` OK avec 6 tests et 46 assertions.
+- Suite complete : `php artisan test --compact --stop-on-failure` OK avec 75 tests et 586 assertions.
+
+## 2026-07-19 - Deconnexion automatique apres inactivite
+
+- La duree de session Laravel est fixee a 30 minutes.
+- L'interface deconnecte automatiquement l'utilisateur apres 30 minutes sans clic, clavier, defilement ou interaction tactile.
+- L'activite est synchronisee entre les onglets ouverts et les requetes automatiques de la carte ne prolongent pas la connexion.
+- Apres expiration, l'utilisateur est redirige vers la connexion avec un message explicatif.
+- Tests ajoutes dans `tests/Feature/InactiveSessionTest.php` ; suite complete validee avec 77 tests et 595 assertions.
+
+### Complement - fermeture du navigateur
+
+- Le cookie de session est maintenant configure avec `SESSION_EXPIRE_ON_CLOSE=true`.
+- L'option « Se souvenir de moi » a ete retiree de la connexion.
+- Fortify ignore egalement toute tentative d'envoyer manuellement `remember=1`, afin qu'aucun cookie d'authentification persistant ne soit cree.
+- Tests valides : 78 tests et 601 assertions.
+
+## 2026-07-19 - Recherche d'adresse et alerte de sortie de zone conducteur
+
+- Le champ adresse du conducteur recherche des adresses reelles via le fournisseur cartographique configure (Google en priorite, Mapbox en repli).
+- La selection d'une adresse enregistre egalement `location_latitude` et `location_longitude` sur le conducteur.
+- La migration `2026_07_19_013501_add_geofence_fields_to_drivers_and_driver_sessions_tables` ajoute les coordonnees et l'etat de geofence des sessions de conduite.
+- Chaque position GPS d'un conducteur identifie est comparee au rayon configure autour de son adresse.
+- Une alerte temps reel `geofence_exit` est creee uniquement lors du passage hors zone ; les positions suivantes ne la repetent pas.
+- Le retour dans le rayon rearme l'alerte pour une sortie ulterieure.
+- Migration locale appliquee et suite complete validee : 80 tests, 621 assertions.

@@ -1032,6 +1032,48 @@ test('tracker trips are built from stopped and parking boundaries with the posit
         ->toHaveCount(3);
 });
 
+test('tracker trips keep short stops inside one continuous trip', function () {
+    config(['services.google_maps.api_key' => '', 'services.mapbox.public_token' => '']);
+
+    $superadmin = User::factory()->superadmin()->create();
+    $device = Device::factory()->create();
+
+    $points = [
+        ['time' => now()->setTime(8, 0), 'lat' => -4.33000, 'lng' => 15.22000, 'address' => 'Depot Limete', 'movement' => false, 'speed' => 0],
+        ['time' => now()->setTime(8, 5), 'lat' => -4.33100, 'lng' => 15.22500, 'address' => 'Boulevard Lumumba', 'movement' => true, 'speed' => 28],
+        ['time' => now()->setTime(8, 12), 'lat' => -4.33300, 'lng' => 15.23000, 'address' => 'Arret court', 'movement' => false, 'speed' => 0],
+        ['time' => now()->setTime(8, 14), 'lat' => -4.33400, 'lng' => 15.23500, 'address' => 'Reprise trajet', 'movement' => true, 'speed' => 24],
+        ['time' => now()->setTime(8, 24), 'lat' => -4.34000, 'lng' => 15.25000, 'address' => 'Arrivee Gombe', 'movement' => false, 'speed' => 0],
+        ['time' => now()->setTime(8, 31), 'lat' => -4.34000, 'lng' => 15.25000, 'address' => 'Arrivee Gombe', 'movement' => false, 'speed' => 0],
+    ];
+
+    foreach ($points as $point) {
+        Position::factory()->forDevice($device)->create([
+            'server_time' => $point['time'],
+            'gps_time' => $point['time'],
+            'latitude' => $point['lat'],
+            'longitude' => $point['lng'],
+            'address' => $point['address'],
+            'movement' => $point['movement'],
+            'speed' => $point['speed'],
+        ]);
+    }
+
+    $response = $this->actingAs($superadmin)
+        ->withHeader('X-Requested-With', 'XMLHttpRequest')
+        ->getJson(route('trackers.trips', ['device' => $device, 'period' => 'today']))
+        ->assertSuccessful()
+        ->assertJsonPath('summary.count', 1);
+
+    expect($response->json('html'))
+        ->toContain('Total : 1 trajets')
+        ->toContain('Depot Limete')
+        ->toContain('Arrivee Gombe')
+        ->not->toContain('Trajet 2')
+        ->and($response->json('geojson.features.0.geometry.coordinates'))
+        ->toHaveCount(6);
+});
+
 test('tracker trips resolve missing addresses with mapbox reverse geocoding', function () {
     config([
         'services.maps.provider' => 'mapbox',

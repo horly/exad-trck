@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Alert;
 use App\Models\Department;
 use App\Models\Device;
 use App\Models\Driver;
@@ -10,6 +11,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
@@ -87,6 +89,8 @@ test('superadmin can create a driver with a normalized badge and authorized vehi
             'phone' => '+243810000000',
             'email' => 'david@example.com',
             'address' => 'Mimosas, Kinshasa',
+            'location_latitude' => -4.3250000,
+            'location_longitude' => 15.3120000,
             'location_radius_meters' => 150,
             'license_number' => 'PC-2026-001',
             'license_type' => 'C',
@@ -103,6 +107,8 @@ test('superadmin can create a driver with a normalized badge and authorized vehi
     expect($driver->full_name)->toBe('David Mwamba Lukusa')
         ->and($driver->tags)->toBe(['permanent', 'transport'])
         ->and($driver->social_security_number)->toBe('SS-243-001')
+        ->and((float) $driver->location_latitude)->toBe(-4.325)
+        ->and((float) $driver->location_longitude)->toBe(15.312)
         ->and($driver->location_radius_meters)->toBe(150)
         ->and($driver->vehicles()->pluck('vehicles.id')->sort()->values()->all())
         ->toBe(collect([$firstVehicle->id, $secondVehicle->id])->sort()->values()->all());
@@ -113,6 +119,38 @@ test('superadmin can create a driver with a normalized badge and authorized vehi
         'uid' => 'ABCD1234',
         'active' => true,
     ]);
+});
+
+test('superadmin can search real driver addresses with the configured map provider', function () {
+    config()->set('services.maps.provider', 'google');
+    config()->set('services.google_maps.api_key', 'test-google-key');
+
+    Http::fake([
+        'maps.googleapis.com/maps/api/geocode/json*' => Http::response([
+            'status' => 'OK',
+            'results' => [
+                [
+                    'formatted_address' => '32 Avenue de la Paix, Gombe, Kinshasa, RDC',
+                    'geometry' => [
+                        'location' => ['lat' => -4.3094, 'lng' => 15.2867],
+                    ],
+                ],
+            ],
+        ]),
+    ]);
+
+    $superadmin = User::factory()->superadmin()->create();
+
+    $this->actingAs($superadmin)
+        ->getJson(route('drivers.addresses.search', ['query' => 'Avenue de la Paix']))
+        ->assertSuccessful()
+        ->assertJsonPath('results.0.address', '32 Avenue de la Paix, Gombe, Kinshasa, RDC')
+        ->assertJsonPath('results.0.latitude', -4.3094)
+        ->assertJsonPath('results.0.longitude', 15.2867);
+
+    Http::assertSent(fn ($request): bool => str_starts_with($request->url(), 'https://maps.googleapis.com/maps/api/geocode/json')
+        && $request['address'] === 'Avenue de la Paix'
+        && $request['region'] === 'cd');
 });
 
 test('driver assignment rejects departments and vehicles from another fleet', function () {
@@ -238,6 +276,67 @@ test('gps ingestion opens and closes a session for an authorized driver badge', 
         ->and($session->ended_at)->not->toBeNull()
         ->and($session->end_position_id)->not->toBeNull()
         ->and($session->metadata['close_reason'])->toBe('ignition_off');
+});
+
+test('gps ingestion alerts once per driver geofence exit and rearms after reentry', function () {
+    $fleet = Fleet::factory()->create();
+    $vehicle = Vehicle::factory()->create(['fleet_id' => $fleet->id, 'name' => 'Toyota Test']);
+    $device = Device::factory()->create([
+        'vehicle_id' => $vehicle->id,
+        'fleet_id' => $fleet->id,
+        'imei' => '353201355315560',
+    ]);
+    $driver = Driver::query()->create([
+        'fleet_id' => $fleet->id,
+        'first_name' => 'David',
+        'last_name' => 'Lukusa',
+        'address' => '32 Avenue de la Paix, Kinshasa',
+        'location_latitude' => -4.325,
+        'location_longitude' => 15.312,
+        'location_radius_meters' => 150,
+        'status' => 'active',
+    ]);
+    $driver->vehicles()->attach($vehicle);
+    DriverIdentifier::query()->create([
+        'driver_id' => $driver->id,
+        'type' => 'rfid',
+        'uid' => 'GEOFENCE01',
+        'active' => true,
+    ]);
+
+    $ingest = function (float $latitude, string $time, ?string $identifier = null) use ($device): int {
+        return Artisan::call('gps:ingest-position', [
+            '--payload' => json_encode(array_filter([
+                'imei' => $device->imei,
+                'lat' => $latitude,
+                'lng' => 15.312,
+                'address' => 'Kinshasa',
+                'ignition' => true,
+                'gps_time' => $time,
+                'rfid_uid' => $identifier,
+            ], fn (mixed $value): bool => $value !== null)),
+        ]);
+    };
+
+    expect($ingest(-4.330, '2026-07-19T08:00:00+01:00', 'GEOFENCE01'))->toBe(0)
+        ->and(Alert::query()->where('type', 'geofence_exit')->count())->toBe(1);
+
+    expect($ingest(-4.331, '2026-07-19T08:01:00+01:00'))->toBe(0)
+        ->and(Alert::query()->where('type', 'geofence_exit')->count())->toBe(1);
+
+    expect($ingest(-4.3255, '2026-07-19T08:02:00+01:00'))->toBe(0)
+        ->and(DriverSession::query()->firstOrFail()->fresh()->geofence_status)->toBe('inside');
+
+    expect($ingest(-4.330, '2026-07-19T08:03:00+01:00'))->toBe(0)
+        ->and(Alert::query()->where('type', 'geofence_exit')->count())->toBe(2);
+
+    $alert = Alert::query()->where('type', 'geofence_exit')->latest()->firstOrFail();
+
+    expect($alert->vehicle_id)->toBe($vehicle->id)
+        ->and($alert->device_id)->toBe($device->id)
+        ->and($alert->metadata['driver_id'])->toBe($driver->id)
+        ->and($alert->metadata['radius_meters'])->toBe(150)
+        ->and($alert->localizedMessage())->toContain('David Lukusa');
 });
 
 test('gps ingestion rejects a badge whose driver is not authorized for the vehicle', function () {

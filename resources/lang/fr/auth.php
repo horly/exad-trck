@@ -32,6 +32,7 @@ return [
     'remember' => 'Se souvenir de moi',
     'forgot_password' => 'Mot de passe oublié ?',
     'login_button' => 'Se connecter',
+    'inactivity_logout' => "Votre session a expiré après 30 minutes d'inactivité. Veuillez vous reconnecter.",
     'processing' => 'Traitement...',
     'or' => 'ou',
     'secure_data' => 'Vos données sont sécurisées',

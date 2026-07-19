@@ -407,3 +407,23 @@ The battery voltage field must not be greater than 100.
 - Sauvegarde prealable ciblee des fichiers remplaces dans `/tmp/exadtracking-before-driver-identifier-20260719`.
 - Verifications distantes reussies : syntaxe PHP sur le controleur, le modele, le service, `routes/console.php` et la vue details traceur ; `node --check` sur le decodeur et l'ingestor ; routes `drivers.*` et `trackers.details` disponibles ; migrations marquees `Ran`.
 - Controle HTTP final : `https://exadtracking.app/login` repond en `HTTP 200`.
+
+## 2026-07-19 - Deploiement correction liste des trajets
+- Deploiement cible vers `/var/www/exadtracking.app` de `app/Services/DeviceTripService.php`.
+- Correction de la segmentation des trajets : les arrets courts intermediaires ne ferment plus immediatement un trajet, afin d'eviter les trajets repetes dans la liste alors que la trace carte est correcte.
+- Sauvegarde prealable du fichier remplace dans `/tmp/exadtracking-before-trip-list-20260719/app/Services/DeviceTripService.php`.
+- Verifications distantes reussies : `php -l app/Services/DeviceTripService.php`, presence des marqueurs `STOP_SPLIT_MINUTES`, `pendingStops` et `stopDurationMinutes`, nettoyage des caches Laravel puis `config:cache`.
+- Controle HTTP final : `https://exadtracking.app/login` repond en `HTTP 200`.
+
+## 2026-07-19 - Deploiement sessions securisees, recherche d'adresse et geofence conducteur
+
+- Deploiement cible vers `/var/www/exadtracking.app` des changements locaux en attente : modal details traceur reduit a 740 px, segmentation des trajets, deconnexion automatique et geofence conducteur.
+- Session production configuree avec `SESSION_LIFETIME=30`, `SESSION_INACTIVITY_TIMEOUT=30` et `SESSION_EXPIRE_ON_CLOSE=true` ; l'option persistante « Se souvenir de moi » est neutralisee cote Fortify.
+- Ajout de la recherche d'adresses reelles des conducteurs via Google avec repli Mapbox, et stockage des coordonnees du centre de zone.
+- Migration production executee : `2026_07_19_013501_add_geofence_fields_to_drivers_and_driver_sessions_tables`.
+- Le flux `gps:ingest-position` evalue maintenant le rayon du conducteur identifie et cree une alerte `geofence_exit` uniquement lors du passage hors zone ; le retour dans la zone rearme une sortie ulterieure.
+- Sauvegarde ciblee creee dans `/tmp/exadtracking-before-geofence-20260719.tar.gz`.
+- Verifications reussies : syntaxe PHP distante, route `drivers.addresses.search`, migration marquee `Ran`, caches config/vue reconstruits, application remise en ligne.
+- Controle HTTP : connexion, CSS et scripts d'inactivite/recherche d'adresse en HTTP 200 ; message d'expiration et largeur du modal verifies.
+- Test reel du geocodage production reussi : « Boulevard du 30 Juin, Kinshasa » retourne une adresse.
+- Validation locale avant deploiement : 80 tests et 621 assertions.

@@ -122,6 +122,8 @@
                                         "phone" => $driver->phone,
                                         "email" => $driver->email,
                                         "address" => $driver->address,
+                                        "location_latitude" => $driver->location_latitude,
+                                        "location_longitude" => $driver->location_longitude,
                                         "location_radius_meters" => $driver->location_radius_meters,
                                         "license_number" => $driver->license_number,
                                         "license_type" => $driver->license_type,

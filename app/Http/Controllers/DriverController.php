@@ -8,6 +8,7 @@ use App\Models\Department;
 use App\Models\Driver;
 use App\Models\Fleet;
 use App\Models\Vehicle;
+use App\Services\AddressSearchService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,17 @@ use Illuminate\View\View;
 
 class DriverController extends Controller
 {
+    public function searchAddresses(Request $request, AddressSearchService $addressSearch): JsonResponse
+    {
+        $validated = $request->validate([
+            'query' => ['required', 'string', 'min:3', 'max:180'],
+        ]);
+
+        return response()->json([
+            'results' => $addressSearch->search($validated['query']),
+        ]);
+    }
+
     public function index(Request $request): View|JsonResponse
     {
         $search = trim((string) $request->query('search', ''));

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Events\AlertCreated;
 use App\Models\Alert;
 use App\Models\Device;
+use App\Models\DriverSession;
 use App\Models\Position;
 use App\Models\Vehicle;
 use Illuminate\Support\Arr;
@@ -146,6 +147,56 @@ class AlertService
                 ]),
             ],
             'occurred_at' => $position->server_time,
+        ]);
+    }
+
+    public function createDriverGeofenceExitAlert(
+        DriverSession $session,
+        Device $device,
+        Position $position,
+        int $distance,
+        int $radius,
+    ): Alert {
+        $session->loadMissing(['driver', 'vehicle']);
+        $driver = $session->driver;
+        $vehicle = $session->vehicle?->name ?: $device->name ?: $device->imei;
+        $driverName = $driver?->full_name ?: __('alerts.unknown_driver');
+        $address = $driver?->address ?: __('alerts.unknown_geofence_address');
+
+        return $this->create([
+            'fleet_id' => $device->fleet_id,
+            'vehicle_id' => $device->vehicle_id,
+            'device_id' => $device->id,
+            'position_id' => $position->id,
+            'type' => 'geofence_exit',
+            'severity' => 'high',
+            'title' => __('alerts.type_geofence_exit'),
+            'message' => __('alerts.message_driver_geofence_exit', [
+                'driver' => $driverName,
+                'vehicle' => $vehicle,
+                'distance' => $distance,
+                'radius' => $radius,
+                'address' => $address,
+            ]),
+            'latitude' => $position->latitude,
+            'longitude' => $position->longitude,
+            'speed' => $position->speed,
+            'metadata' => [
+                'driver_id' => $driver?->id,
+                'driver_session_id' => $session->id,
+                'distance_meters' => $distance,
+                'radius_meters' => $radius,
+                'center_latitude' => $driver?->location_latitude,
+                'center_longitude' => $driver?->location_longitude,
+                'translation' => $this->translation('alerts.type_geofence_exit', 'alerts.message_driver_geofence_exit', [
+                    'driver' => $driverName,
+                    'vehicle' => $vehicle,
+                    'distance' => $distance,
+                    'radius' => $radius,
+                    'address' => $address,
+                ]),
+            ],
+            'occurred_at' => $position->gps_time ?? $position->server_time,
         ]);
     }
 

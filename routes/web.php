@@ -1,11 +1,11 @@
 <?php
 
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AlertController;
 use App\Http\Controllers\AlertRuleController;
 use App\Http\Controllers\CustomizationController;
-use App\Http\Controllers\DeviceController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
+use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\FleetController;
 use App\Http\Controllers\MapController;
@@ -41,6 +41,9 @@ Route::middleware(['auth', 'superadmin'])->group(function () {
     Route::get('/subscriptions', [SubscriptionPlanController::class, 'index'])->name('subscriptions.index');
     Route::patch('/subscriptions', [SubscriptionPlanController::class, 'update'])->name('subscriptions.update');
     Route::resource('fleets', FleetController::class)->except(['show']);
+    Route::get('/drivers/addresses/search', [DriverController::class, 'searchAddresses'])
+        ->middleware('throttle:30,1')
+        ->name('drivers.addresses.search');
     Route::resource('drivers', DriverController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('departments', DepartmentController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('vehicles', VehicleController::class)->only(['index', 'store', 'update', 'destroy']);

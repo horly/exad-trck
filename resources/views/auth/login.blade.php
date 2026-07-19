@@ -132,6 +132,12 @@
                     </div>
                 @endif
 
+                @if (request('reason') === 'inactive')
+                    <div class="alert alert-info" role="alert">
+                        {{ __('auth.inactivity_logout') }}
+                    </div>
+                @endif
+
                 <form method="POST" action="{{ route('login') }}" novalidate data-validate-form data-required-message="{{ __('validation.required') }}" data-email-message="{{ __('validation.email') }}" data-loading-form data-loading-text="{{ __('auth.processing') }}">
                     @csrf
 
@@ -179,11 +185,6 @@
                     </div>
 
                     <div class="login-options">
-                        <div class="form-check">
-                            <input id="remember" type="checkbox" name="remember" class="form-check-input">
-                            <label for="remember" class="form-check-label">{{ __('auth.remember') }}</label>
-                        </div>
-
                         @if (Route::has('password.request'))
                             <a class="forgot-link" href="{{ route('password.request') }}">{{ __('auth.forgot_password') }}</a>
                         @endif

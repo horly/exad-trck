@@ -1,4 +1,9 @@
-<div class="topbar-actions">
+<div
+    class="topbar-actions"
+    data-inactivity-timeout="{{ config('session.inactivity_timeout') * 60 * 1000 }}"
+    data-inactivity-user="{{ auth()->id() }}"
+    data-inactivity-login-url="{{ route('login', ['reason' => 'inactive']) }}"
+>
     <button class="icon-button" type="button" aria-label="{{ __('dashboard.fullscreen') }}" data-fullscreen-toggle>
         <i class="fa-solid fa-expand" data-fullscreen-icon></i>
     </button>
@@ -70,7 +75,7 @@
                         <span>{{ __('dashboard.user_management') }}</span>
                     </a>
                 @endif
-                <form method="POST" action="{{ route('logout') }}">
+                <form method="POST" action="{{ route('logout') }}" data-inactivity-logout>
                     @csrf
                     <button type="submit" class="user-menu-link user-menu-button">
                         <i class="fa-solid fa-arrow-right-from-bracket"></i>
@@ -81,3 +86,5 @@
         </div>
     </div>
 </div>
+
+<script src="{{ asset('js/inactivity-logout.js') }}?v=20260719-inactivity-logout"></script>

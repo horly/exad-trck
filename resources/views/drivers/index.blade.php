@@ -56,7 +56,7 @@
     <div class="modal fade users-modal driver-modal" id="driverModal" tabindex="-1" aria-labelledby="driverModalTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered driver-modal-dialog">
             <div class="modal-content">
-                <form class="driver-modal-form" method="POST" action="{{ $driverFormAction }}" enctype="multipart/form-data" novalidate data-validate-form data-required-message="{{ __('validation.required') }}" data-email-message="{{ __('validation.email') }}" data-driver-form data-loading-form data-loading-text="{{ __('drivers.processing') }}">
+                <form class="driver-modal-form" method="POST" action="{{ $driverFormAction }}" enctype="multipart/form-data" novalidate data-validate-form data-required-message="{{ __('validation.required') }}" data-email-message="{{ __('validation.email') }}" data-driver-form data-loading-form data-loading-text="{{ __('drivers.processing') }}" data-address-search-url="{{ route('drivers.addresses.search') }}">
                     @csrf
                     <input type="hidden" name="_method" value="{{ $editingDriverId ? 'PUT' : 'POST' }}" data-driver-method>
                     <input type="hidden" name="editing_driver_id" value="{{ old('editing_driver_id') }}" data-driver-id>
@@ -204,7 +204,20 @@
                         <section class="driver-form-section">
                             <div class="driver-form-section-header"><i class="fa-solid fa-location-dot"></i><h3>{{ __('drivers.location') }}</h3></div>
                             <div class="users-form-grid">
-                                <div class="users-form-full"><label for="driver_address" class="form-label">{{ __('drivers.address') }}</label><input id="driver_address" name="address" class="form-control @error('address') is-invalid @enderror" value="{{ old('address') }}" placeholder="{{ __('drivers.address_placeholder') }}" data-driver-field="address">@error('address')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror</div>
+                                <div class="users-form-full driver-address-search" data-driver-address-search data-empty-text="{{ __('drivers.address_no_results') }}" data-error-text="{{ __('drivers.address_search_error') }}">
+                                    <label for="driver_address" class="form-label">{{ __('drivers.address') }}</label>
+                                    <div class="driver-address-input-shell">
+                                        <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                                        <input id="driver_address" name="address" class="form-control @error('address') is-invalid @enderror" value="{{ old('address') }}" placeholder="{{ __('drivers.address_placeholder') }}" autocomplete="off" data-driver-field="address" data-driver-address-input aria-autocomplete="list" aria-controls="driverAddressSuggestions">
+                                        <span class="driver-address-spinner" data-driver-address-spinner hidden><i class="fa-solid fa-spinner fa-spin"></i></span>
+                                    </div>
+                                    <input type="hidden" name="location_latitude" value="{{ old('location_latitude') }}" data-driver-field="location_latitude" data-driver-address-latitude>
+                                    <input type="hidden" name="location_longitude" value="{{ old('location_longitude') }}" data-driver-field="location_longitude" data-driver-address-longitude>
+                                    <div id="driverAddressSuggestions" class="driver-address-suggestions" role="listbox" data-driver-address-suggestions hidden></div>
+                                    @error('address')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                    @error('location_latitude')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                    @error('location_longitude')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                </div>
                                 <div>
                                     <label for="driver_location_radius_meters" class="form-label">{{ __('drivers.location_radius') }}</label>
                                     <select id="driver_location_radius_meters" name="location_radius_meters" class="form-select @error('location_radius_meters') is-invalid @enderror" data-driver-field="location_radius_meters">
@@ -245,6 +258,7 @@
     <script src="{{ asset('js/confirm-delete.js') }}?v=20260529-delete-confirm"></script>
     <script src="{{ asset('js/form-validation.js') }}?v=20260529-form-validation"></script>
     <script src="{{ asset('js/form-loading.js') }}?v=20260529-form-loading"></script>
+    <script src="{{ asset('js/driver-address-search.js') }}?v=20260719-driver-geofence"></script>
     <script>
         (() => {
             const form = document.querySelector('[data-driver-form]');
@@ -374,7 +388,7 @@
                 fleet.value = driver.fleet_id || '';
                 if (vehicleSearch) vehicleSearch.value = '';
                 filterAssignments(driver.fleet_id, driver.department_id, true);
-                ['first_name', 'middle_name', 'last_name', 'employee_id', 'social_security_number', 'identifier_type', 'rfid_uid', 'phone', 'email', 'address', 'location_radius_meters', 'license_number', 'license_type', 'license_issued_at', 'license_expires_at', 'tags', 'status']
+                ['first_name', 'middle_name', 'last_name', 'employee_id', 'social_security_number', 'identifier_type', 'rfid_uid', 'phone', 'email', 'address', 'location_latitude', 'location_longitude', 'location_radius_meters', 'license_number', 'license_type', 'license_issued_at', 'license_expires_at', 'tags', 'status']
                     .forEach((name) => setField(name, driver[name]));
                 const selectedVehicles = new Set((driver.vehicle_ids || []).map(String));
                 vehicleOptions.forEach((option) => {

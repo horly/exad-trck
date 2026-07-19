@@ -25,6 +25,8 @@ class Driver extends Model
         'phone',
         'email',
         'address',
+        'location_latitude',
+        'location_longitude',
         'location_radius_meters',
         'license_number',
         'license_type',
@@ -40,6 +42,8 @@ class Driver extends Model
         return [
             'license_issued_at' => 'date',
             'license_expires_at' => 'date',
+            'location_latitude' => 'decimal:7',
+            'location_longitude' => 'decimal:7',
             'location_radius_meters' => 'integer',
             'tags' => 'array',
         ];

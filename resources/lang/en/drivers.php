@@ -78,6 +78,8 @@ return [
     'phone_placeholder' => '+243 000 000 000',
     'email_placeholder' => 'driver@company.com',
     'address_placeholder' => 'Full address',
+    'address_no_results' => 'No address found.',
+    'address_search_error' => 'Address search is temporarily unavailable.',
     'employee_id_label' => 'Employee identifier',
     'identifier_rfid' => 'RFID',
     'identifier_ibutton' => 'iButton',

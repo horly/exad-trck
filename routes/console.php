@@ -5,12 +5,13 @@ use App\Models\Device;
 use App\Models\Position;
 use App\Models\Vehicle;
 use App\Services\AlertService;
+use App\Services\DriverGeofenceService;
 use App\Services\DriverSessionService;
 use App\Services\ReverseGeocodingService;
 use App\Services\TrackerEventService;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Arr;
 use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Validator;
 
@@ -375,6 +376,7 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
     );
 
     $driverSession = $driverSessionService->sync($device, $position, $data);
+    app(DriverGeofenceService::class)->evaluate($driverSession, $device, $position);
 
     $this->line(json_encode([
         'ok' => true,
