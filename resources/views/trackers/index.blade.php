@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260714-trip-controls-icons">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260719-searchable-vehicles">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -63,7 +63,10 @@
                         <input type="hidden" name="_method" value="POST" data-tracker-method>
 
                         <div class="modal-header">
-                            <h2 class="modal-title" id="trackerModalTitle" data-tracker-title>{{ __('trackers.create_title') }}</h2>
+                            <div class="form-modal-heading">
+                                <span class="form-modal-heading-icon"><i class="fa-solid fa-satellite-dish"></i></span>
+                                <h2 class="modal-title" id="trackerModalTitle" data-tracker-title>{{ __('trackers.create_title') }}</h2>
+                            </div>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('trackers.cancel') }}"></button>
                         </div>
 
@@ -71,18 +74,27 @@
                             <div class="users-form-grid">
                                 <div>
                                     <label for="tracker_vehicle_id" class="form-label">{{ __('trackers.vehicle') }} *</label>
-                                    <select id="tracker_vehicle_id" name="vehicle_id" class="form-select @error('vehicle_id') is-invalid @enderror" required data-tracker-vehicle>
-                                        <option value="">{{ __('trackers.choose_vehicle') }}</option>
-                                        @foreach ($manageableVehicles as $vehicle)
-                                            <option
-                                                value="{{ $vehicle->id }}"
-                                                @selected((int) old('vehicle_id') === $vehicle->id)
-                                                @if (! in_array($vehicle->id, $availableVehicleIds, true)) hidden disabled data-vehicle-assigned="true" @endif
-                                            >
-                                                {{ $vehicle->name }} · {{ $vehicle->registration_number }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                    <div class="searchable-select @error('vehicle_id') is-invalid @enderror" data-searchable-select data-no-results="{{ __('trackers.no_vehicle_match') }}">
+                                        <select id="tracker_vehicle_id" name="vehicle_id" class="form-select searchable-select-native" required data-tracker-vehicle data-searchable-select-native>
+                                            <option value="">{{ __('trackers.choose_vehicle') }}</option>
+                                            @foreach ($manageableVehicles as $vehicle)
+                                                <option
+                                                    value="{{ $vehicle->id }}"
+                                                    data-search="{{ $vehicle->fleet?->name }} {{ $vehicle->fleet?->code }}"
+                                                    @selected((int) old('vehicle_id') === $vehicle->id)
+                                                    @if (! in_array($vehicle->id, $availableVehicleIds, true)) hidden disabled data-vehicle-assigned="true" @endif
+                                                >
+                                                    {{ $vehicle->name }} · {{ $vehicle->registration_number }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <button type="button" class="searchable-select-toggle" data-searchable-select-toggle aria-expanded="false"><span data-searchable-select-label>{{ __('trackers.choose_vehicle') }}</span><i class="fa-solid fa-chevron-down"></i></button>
+                                        <div class="searchable-select-panel" data-searchable-select-panel hidden>
+                                            <label class="searchable-select-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" placeholder="{{ __('trackers.search_vehicle') }}" data-searchable-select-search></label>
+                                            <div class="searchable-select-options" data-searchable-select-options></div>
+                                            <p class="searchable-select-empty" data-searchable-select-empty hidden>{{ __('trackers.no_vehicle_match') }}</p>
+                                        </div>
+                                    </div>
                                     @error('vehicle_id')
                                         <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
@@ -219,6 +231,7 @@
     <script src="{{ asset('js/datatable-controls.js') }}?v=20260529-datatable-controls"></script>
     <script src="{{ asset('js/tracker-details.js') }}?v=20260602-details-shared"></script>
     <script src="{{ asset('js/tracker-trips.js') }}?v=20260714-trip-controls-icons"></script>
+    <script src="{{ asset('js/searchable-select.js') }}?v=20260719-vehicle-search"></script>
     @include('partials.realtime-alerts')
     @if ($canManageDevices)
         <script src="{{ asset('js/confirm-delete.js') }}?v=20260529-delete-confirm"></script>
@@ -463,6 +476,7 @@
                     submit.textContent = @json(__('trackers.save'));
                     unlockCurrentVehicleForEdit(editButton.dataset.vehicleId || '');
                     fields.vehicle.value = editButton.dataset.vehicleId || '';
+                    fields.vehicle.dispatchEvent(new Event('change', { bubbles: true }));
                     fields.imei.value = editButton.dataset.imei || '';
                     fields.name.value = editButton.dataset.name || '';
                     fields.brand.value = editButton.dataset.brand || '';

@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AlertRule;
 use App\Models\Fleet;
 use App\Models\Vehicle;
 use App\Models\VehicleSubscriptionPlan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -61,7 +64,7 @@ class VehicleController extends Controller
 
         $vehicles = Vehicle::query()
             ->visibleTo($request->user())
-            ->with(['fleet:id,name,code', 'device:id,vehicle_id,imei,status'])
+            ->with(['fleet:id,name,code', 'device:id,vehicle_id,imei,status', 'speedPolicy:id,threshold_value,is_active'])
             ->select('vehicles.*')
             ->leftJoin('fleets', 'fleets.id', '=', 'vehicles.fleet_id')
             ->addSelect('fleets.name as fleet_name')
@@ -110,9 +113,13 @@ class VehicleController extends Controller
         $this->authorizeVehicleManagement($request);
 
         $data = $this->validatedVehicleData($request);
+        $speedLimit = ($value = Arr::pull($data, 'speed_limit_kmh')) !== null ? (int) $value : null;
         $data['created_by'] = $request->user()->id;
 
-        Vehicle::query()->create($data);
+        DB::transaction(function () use ($data, $speedLimit): void {
+            $vehicle = Vehicle::query()->create($data);
+            $this->syncSpeedPolicy($vehicle, $speedLimit);
+        });
 
         return redirect()
             ->route('vehicles.index')
@@ -123,7 +130,13 @@ class VehicleController extends Controller
     {
         $this->authorizeVehicleManagement($request, $vehicle);
 
-        $vehicle->update($this->validatedVehicleData($request, $vehicle));
+        $data = $this->validatedVehicleData($request, $vehicle);
+        $speedLimit = ($value = Arr::pull($data, 'speed_limit_kmh')) !== null ? (int) $value : null;
+
+        DB::transaction(function () use ($vehicle, $data, $speedLimit): void {
+            $vehicle->update($data);
+            $this->syncSpeedPolicy($vehicle, $speedLimit);
+        });
 
         return redirect()
             ->route('vehicles.index')
@@ -134,7 +147,12 @@ class VehicleController extends Controller
     {
         $this->authorizeVehicleManagement($request, $vehicle);
 
-        $vehicle->delete();
+        DB::transaction(function () use ($vehicle): void {
+            $policy = $vehicle->speedPolicy()->first();
+            $vehicle->forceFill(['speed_policy_rule_id' => null])->save();
+            $policy?->delete();
+            $vehicle->delete();
+        });
 
         return redirect()
             ->route('vehicles.index')
@@ -166,6 +184,7 @@ class VehicleController extends Controller
      *     year?: int|null,
      *     vehicle_type: string,
      *     subscription_plan: string,
+     *     speed_limit_kmh?: int|null,
      *     status: string
      * }
      */
@@ -193,8 +212,46 @@ class VehicleController extends Controller
             'year' => ['nullable', 'integer', 'min:1950', 'max:2100'],
             'vehicle_type' => ['required', Rule::in(self::VEHICLE_TYPES)],
             'subscription_plan' => ['required', Rule::in($this->activeSubscriptionPlanCodes())],
+            'speed_limit_kmh' => ['nullable', 'integer', 'min:1', 'max:300'],
             'status' => ['required', Rule::in(['active', 'inactive', 'maintenance'])],
         ]);
+    }
+
+    private function syncSpeedPolicy(Vehicle $vehicle, ?int $speedLimit): void
+    {
+        $policy = $vehicle->speedPolicy()->first();
+
+        if ($speedLimit === null) {
+            $vehicle->forceFill(['speed_policy_rule_id' => null])->save();
+            $policy?->delete();
+
+            return;
+        }
+
+        $attributes = [
+            'vehicle_id' => $vehicle->id,
+            'name' => __('vehicles.speed_policy_rule_name', ['vehicle' => $vehicle->name]),
+            'type' => 'overspeed',
+            'category' => AlertRule::CATEGORY_VEHICLE,
+            'severity' => 'high',
+            'scope_type' => AlertRule::SCOPE_VEHICLE,
+            'threshold_value' => $speedLimit,
+            'threshold_unit' => 'km/h',
+            'channels' => ['platform'],
+            'schedule_days' => [],
+            'starts_at' => null,
+            'ends_at' => null,
+            'is_active' => true,
+        ];
+
+        if ($policy === null) {
+            $policy = AlertRule::query()->create($attributes);
+            $vehicle->forceFill(['speed_policy_rule_id' => $policy->id])->save();
+
+            return;
+        }
+
+        $policy->update($attributes);
     }
 
     private function subscriptionPlansForForm()

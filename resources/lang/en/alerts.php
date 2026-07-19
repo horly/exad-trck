@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'type_maintenance_due' => 'Maintenance due soon',
+    'type_maintenance_overdue' => 'Maintenance overdue',
+    'message_maintenance_due' => '“:maintenance” is approaching its due point for :vehicle.',
+    'message_maintenance_overdue' => '“:maintenance” is overdue for :vehicle.',
     'title' => 'Alerts',
     'eyebrow' => 'Monitoring',
     'new_count' => 'New',

@@ -427,3 +427,21 @@ The battery voltage field must not be greater than 100.
 - Controle HTTP : connexion, CSS et scripts d'inactivite/recherche d'adresse en HTTP 200 ; message d'expiration et largeur du modal verifies.
 - Test reel du geocodage production reussi : « Boulevard du 30 Juin, Kinshasa » retourne une adresse.
 - Validation locale avant deploiement : 80 tests et 621 assertions.
+
+## 2026-07-19 - Deploiement Entretien, Garages, selects recherchables et politique de vitesse
+
+- Deploiement vers `/var/www/exadtracking.app` de l'ensemble des changements locaux en attente : pages Garages et Entretien, formulaires corporate, selects issus de la base recherchables, widgets Entretien, recherche d'adresse conducteur, alertes geofence et politique de vitesse par vehicule.
+- Politique de vitesse branchee dans `gps:ingest-position` : alerte `overspeed` immediate lorsque la vitesse recue est strictement superieure a la limite du vehicule, sans tolerance ni duree de confirmation.
+- Protection anti-duplication persistante par episode de depassement ; rearmement lorsque la vitesse revient a la limite ou en dessous.
+- Migrations production executees avec succes :
+  - `2026_07_19_020900_create_garages_table`
+  - `2026_07_19_020900_create_maintenance_plans_table`
+  - `2026_07_19_020901_create_maintenance_records_table`
+  - `2026_07_19_020902_create_maintenance_documents_table`
+  - `2026_07_19_100000_add_speed_policy_rule_id_to_vehicles_table`
+  - `2026_07_19_100100_create_alert_rule_states_table`
+- Autoload Composer optimise, caches Laravel nettoyes puis caches de configuration et de vues reconstruits ; signal de redemarrage gracieux envoye aux workers de queue.
+- Incident sans impact applicatif : la variable Bash du nom de sauvegarde initiale a ete interpretee par PowerShell. Laravel n'est donc pas passe en maintenance et un fichier archive parasite nomme ` app` a ete cree a la racine distante. Son chemin absolu a ete verifie puis le fichier a ete supprime. Un instantane propre post-deploiement a ete cree dans `/tmp/exadtracking-deployed-maintenance-speed-20260719-042540.tar.gz`.
+- Verifications finales : application en production, debug desactive, maintenance inactive, `gps-tcp.service` actif, routes Garages/Entretien/recherche d'adresse presentes et toutes les nouvelles migrations marquees `Ran`.
+- Controles HTTP reussis en `200` : page de connexion, `dashboard.css?v=20260719-speed-policy` et `searchable-select.js?v=20260719-database-selects`, avec marqueurs attendus presents.
+- Validation locale avant deploiement : 90 tests et 757 assertions.

@@ -619,3 +619,76 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Une alerte temps reel `geofence_exit` est creee uniquement lors du passage hors zone ; les positions suivantes ne la repetent pas.
 - Le retour dans le rayon rearme l'alerte pour une sortie ulterieure.
 - Migration locale appliquee et suite complete validee : 80 tests, 621 assertions.
+
+## 2026-07-19 - Garages et gestion des entretiens
+
+- Ajout des pages `Garages` et `Entretien` dans le sous-menu Flottes.
+- Les garages peuvent desservir plusieurs flottes et conserver leur type, leurs contacts, leur adresse geocodee, leurs specialites et leur statut.
+- Ajout de la planification des entretiens preventifs ou correctifs par date, kilometrage et heures moteur, avec rappels et repetition automatique.
+- Ajout de la cloture des interventions, de l'historique immutable, du suivi des couts et des pieces jointes.
+- Evaluation des echeances toutes les 15 minutes et apres chaque telemetrie GPS ; creation d'alertes temps reel non dupliquees lorsqu'un entretien approche ou est en retard.
+- Generalisation de la recherche d'adresse pour les conducteurs et les garages.
+- Migrations locales appliquees : `garages`, `fleet_garage`, `maintenance_plans`, `maintenance_records` et `maintenance_documents`.
+- Validation complete : 85 tests, 652 assertions. Aucun deploiement distant effectue a cette etape.
+
+### Complement - uniformisation des modals d'entretien
+
+- Les modals Garage, Planification et Cloture utilisent maintenant la largeur formulaire standard de 660 px.
+- Ajout d'une icone contextuelle bleue a cote du titre de chaque nouveau modal.
+- Le formulaire de planification adopte une presentation corporate en sections, avec corps defilable, actions fixes, interrupteur de recurrence et unites integrees aux champs.
+- Verification ciblee : 5 tests, 31 assertions.
+
+### Correction - garages globaux
+
+- Suppression de la grille `Flottes desservies` du formulaire Garage.
+- Les garages sont maintenant globaux et disponibles pour tous les vehicules, sans affectation par flotte.
+- Suppression de la table pivot locale `fleet_garage`, devenue inutile.
+- Verification ciblee : 15 tests, 107 assertions.
+
+### Complement - icones des formulaires modaux
+
+- Ajout d'une icone contextuelle a cote du titre des formulaires modaux Flotte, Vehicule, Traceur, Departement, Utilisateur, Plan d'abonnement, Regle d'alerte et Rapport planifie.
+- Les modals Conducteur, Garage, Planification et Cloture d'entretien conservent leurs icones existantes.
+- Ajout d'un test de regression couvrant les 11 modules de gestion concernes.
+- Verification ciblee : 16 tests, 129 assertions.
+
+### Complement - widgets KPI entretien
+
+- Refonte corporate des widgets Plans actifs, A traiter, Cout planifie et Cout realise.
+- Ajout d'une hierarchie KPI stable, d'icones encadrees et d'accents semantiques bleu, rouge, ambre et vert.
+- Prise en charge du responsive et du mode sombre.
+- Verification ciblee : 5 tests, 34 assertions.
+
+### Complement - recherche de vehicules dans les modals
+
+- Les champs Vehicule des formulaires Nouveau traceur et Planifier une revision utilisent maintenant un selecteur recherchable.
+- Recherche instantanee par nom, immatriculation et flotte, avec liste scrollable et etat vide traduit.
+- Conservation du select Laravel natif pour la validation, l'envoi et les regles de disponibilite des vehicules.
+- Synchronisation assuree en creation, modification et reinitialisation des formulaires.
+- Verification ciblee : 50 tests, 452 assertions.
+
+### Complement - composition des widgets entretien
+
+- Adaptation des KPI entretien au style de reference fourni : icone en haut, valeur dominante puis libelle.
+- Suppression de la barre d'accent superieure et augmentation de l'espacement vertical.
+- Conservation des couleurs semantiques et du responsive 4, 2 puis 1 colonne.
+- Verification ciblee : 6 tests, 42 assertions.
+
+### 2026-07-19 - Listes issues de la base recherchables dans tous les formulaires
+- Nouvelle convention UI : tout champ de selection alimente par la base de donnees doit proposer une recherche, y compris dans les filtres applicatifs.
+- Le composant partage `public/js/searchable-select.js` enrichit automatiquement les `<select data-searchable-database>` sans modifier leur fonctionnement natif ni leur soumission Laravel.
+- Champs couverts : flottes, departements, vehicules, traceurs, garages, administrateurs assignables et abonnements, dans les formulaires Vehicule, Conducteur, Departement, Flotte, Traceur, Entretien, Regles d'alerte, Rapports et les filtres de la carte.
+- Les listes fermees qui ne viennent pas de la base (statut, type, protocole, severite, periode, etc.) restent des selecteurs standards.
+- La hauteur du selecteur recherchable est fixee a 40 px, identique aux autres champs des modales.
+- Verification : compilation Blade reussie et suite complete `php artisan test` verte avec 88 tests et 726 assertions.
+
+### 2026-07-19 - Politique de vitesse par vehicule
+- Ajout d'une section corporate `Politique de vitesse` dans la modale de creation et modification d'un vehicule.
+- Le champ `Vitesse maximale` est optionnel, exprime en km/h et limite a une valeur comprise entre 1 et 300.
+- La valeur est synchronisee avec une regle `overspeed` dediee et liee au vehicule ; vider le champ supprime cette politique.
+- Evaluation branchee directement dans l'ingestion GPS apres l'enregistrement de chaque position.
+- Regle stricte demandee : une alerte est creee immediatement lorsque la vitesse recue est strictement superieure a la limite, sans tolerance ni duree de confirmation.
+- Protection anti-duplication par episode : une seule alerte pendant un depassement continu, rearmement des que la vitesse revient a la limite ou en dessous.
+- Ajout d'un etat persistant par regle et traceur dans `alert_rule_states` afin de conserver ce comportement entre les paquets GPS.
+- Migrations locales appliquees : `2026_07_19_100000_add_speed_policy_rule_id_to_vehicles_table` et `2026_07_19_100100_create_alert_rule_states_table`.
+- Verification : compilation Blade reussie et suite complete `php artisan test` verte avec 90 tests et 757 assertions.

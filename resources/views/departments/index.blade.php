@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260716-fleet-organization">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260719-database-selects">
 </head>
 <body class="app-font-manrope dashboard-body">
     @php
@@ -63,7 +63,10 @@
                     <input type="hidden" name="editing_department_id" value="{{ old('editing_department_id') }}" data-department-id>
 
                     <div class="modal-header">
-                        <h2 class="modal-title" id="departmentModalTitle" data-department-title>{{ $editingDepartmentId ? __('departments.edit_title') : __('departments.create_title') }}</h2>
+                        <div class="form-modal-heading">
+                            <span class="form-modal-heading-icon"><i class="fa-solid fa-sitemap"></i></span>
+                            <h2 class="modal-title" id="departmentModalTitle" data-department-title>{{ $editingDepartmentId ? __('departments.edit_title') : __('departments.create_title') }}</h2>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('departments.cancel') }}"></button>
                     </div>
 
@@ -71,7 +74,7 @@
                         <div class="users-form-grid">
                             <div>
                                 <label for="department_fleet_id" class="form-label">{{ __('departments.fleet') }} *</label>
-                                <select id="department_fleet_id" name="fleet_id" class="form-select @error('fleet_id') is-invalid @enderror" required data-department-fleet>
+                                <select id="department_fleet_id" name="fleet_id" class="form-select @error('fleet_id') is-invalid @enderror" required data-department-fleet data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-warehouse">
                                     <option value="">{{ __('departments.choose_fleet') }}</option>
                                     @foreach ($fleets as $fleet)
                                         <option value="{{ $fleet->id }}" @selected((int) old('fleet_id') === $fleet->id)>{{ $fleet->name }} &middot; {{ $fleet->code }}</option>
@@ -126,6 +129,7 @@
     <script src="{{ asset('js/confirm-delete.js') }}?v=20260529-delete-confirm"></script>
     <script src="{{ asset('js/form-validation.js') }}?v=20260529-form-validation"></script>
     <script src="{{ asset('js/form-loading.js') }}?v=20260529-form-loading"></script>
+    <script src="{{ asset('js/searchable-select.js') }}?v=20260719-database-selects"></script>
     <script>
         (() => {
             const form = document.querySelector('[data-department-form]');
@@ -168,6 +172,7 @@
                 fields.code.value = button.dataset.code || '';
                 fields.description.value = button.dataset.description || '';
                 fields.status.value = button.dataset.status || 'active';
+                fields.fleet.dispatchEvent(new Event('searchable-select:refresh'));
                 fields.title.textContent = @json(__('departments.edit_title'));
                 fields.submit.textContent = @json(__('departments.save'));
             });

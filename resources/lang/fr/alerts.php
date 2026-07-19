@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'type_maintenance_due' => 'Entretien à prévoir',
+    'type_maintenance_overdue' => 'Entretien en retard',
+    'message_maintenance_due' => '« :maintenance » approche de son échéance pour :vehicle.',
+    'message_maintenance_overdue' => '« :maintenance » est en retard pour :vehicle.',
     'title' => 'Alertes',
     'eyebrow' => 'Supervision',
     'new_count' => 'Nouvelles',

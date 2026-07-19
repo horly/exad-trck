@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260708-dashboard-order-scope">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260719-modal-title-icons">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -141,7 +141,10 @@
         <div class="modal-dialog modal-dialog-centered users-modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2 class="modal-title" id="createUserModalLabel">{{ __('users.create_title') }}</h2>
+                    <div class="form-modal-heading">
+                        <span class="form-modal-heading-icon"><i class="fa-solid fa-user-plus"></i></span>
+                        <h2 class="modal-title" id="createUserModalLabel">{{ __('users.create_title') }}</h2>
+                    </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('users.cancel') }}"></button>
                 </div>
 

@@ -57,7 +57,7 @@
             </label>
             <label>
                 <span>{{ __('reports.fleet') }}</span>
-                <select name="fleet_id" class="form-select">
+                <select name="fleet_id" class="form-select" data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-warehouse">
                     <option value="">{{ __('reports.all_fleets') }}</option>
                     @foreach ($fleets as $fleet)
                         <option value="{{ $fleet->id }}" @selected((int) $filters['fleet_id'] === $fleet->id)>{{ $fleet->name }}{{ $fleet->code ? ' · '.$fleet->code : '' }}</option>
@@ -66,7 +66,7 @@
             </label>
             <label>
                 <span>{{ __('reports.vehicle') }}</span>
-                <select name="vehicle_id" class="form-select">
+                <select name="vehicle_id" class="form-select" data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-car-side">
                     <option value="">{{ __('reports.all_vehicles') }}</option>
                     @foreach ($vehicles as $vehicle)
                         <option value="{{ $vehicle->id }}" @selected((int) $filters['vehicle_id'] === $vehicle->id)>{{ $vehicle->name }}{{ $vehicle->registration_number ? ' · '.$vehicle->registration_number : '' }}</option>
@@ -75,7 +75,7 @@
             </label>
             <label>
                 <span>{{ __('reports.tracker') }}</span>
-                <select name="device_id" class="form-select">
+                <select name="device_id" class="form-select" data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-satellite-dish">
                     <option value="">{{ __('reports.all_trackers') }}</option>
                     @foreach ($devices as $device)
                         <option value="{{ $device->id }}" @selected((int) $filters['device_id'] === $device->id)>{{ $device->name ?: $device->imei }} · {{ $device->imei }}</option>

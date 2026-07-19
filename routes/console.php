@@ -7,12 +7,15 @@ use App\Models\Vehicle;
 use App\Services\AlertService;
 use App\Services\DriverGeofenceService;
 use App\Services\DriverSessionService;
+use App\Services\MaintenanceService;
 use App\Services\ReverseGeocodingService;
+use App\Services\SpeedPolicyService;
 use App\Services\TrackerEventService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Validator;
 
 Artisan::command('inspire', function () {
@@ -377,6 +380,12 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
 
     $driverSession = $driverSessionService->sync($device, $position, $data);
     app(DriverGeofenceService::class)->evaluate($driverSession, $device, $position);
+    app(SpeedPolicyService::class)->evaluate($device, $position);
+    if ($device->vehicle_id) {
+        app(MaintenanceService::class)->evaluateVehicle(
+            Vehicle::query()->with('device')->findOrFail($device->vehicle_id),
+        );
+    }
 
     $this->line(json_encode([
         'ok' => true,
@@ -424,6 +433,15 @@ Artisan::command('gps:mark-stale {--minutes=5 : Minutes without signal before a 
 
     return 0;
 })->purpose('Mark online trackers as offline when their last signal is stale');
+
+Artisan::command('maintenance:evaluate', function (): int {
+    $evaluated = app(MaintenanceService::class)->evaluateAll();
+    $this->info("{$evaluated} maintenance plan(s) evaluated.");
+
+    return 0;
+})->purpose('Evaluate maintenance due dates, mileage and engine hours');
+
+Schedule::command('maintenance:evaluate')->everyFifteenMinutes()->withoutOverlapping();
 
 Artisan::command('alerts:demo {vehicle_id? : Optional vehicle ID used as alert context}', function (): int {
     $vehicleId = $this->argument('vehicle_id') ? (int) $this->argument('vehicle_id') : null;

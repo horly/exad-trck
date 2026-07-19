@@ -6,6 +6,7 @@ use App\Events\AlertCreated;
 use App\Models\Alert;
 use App\Models\Device;
 use App\Models\DriverSession;
+use App\Models\MaintenancePlan;
 use App\Models\Position;
 use App\Models\Vehicle;
 use Illuminate\Support\Arr;
@@ -197,6 +198,39 @@ class AlertService
                 ]),
             ],
             'occurred_at' => $position->gps_time ?? $position->server_time,
+        ]);
+    }
+
+    public function createMaintenanceAlert(MaintenancePlan $plan, bool $overdue = false): Alert
+    {
+        $plan->loadMissing(['vehicle.device', 'vehicle.fleet', 'garage']);
+        $vehicle = $plan->vehicle;
+        $titleKey = $overdue ? 'alerts.type_maintenance_overdue' : 'alerts.type_maintenance_due';
+        $messageKey = $overdue ? 'alerts.message_maintenance_overdue' : 'alerts.message_maintenance_due';
+        $replace = [
+            'maintenance' => $plan->name,
+            'vehicle' => $vehicle?->name ?: __('alerts.unknown_vehicle'),
+        ];
+
+        return $this->create([
+            'fleet_id' => $vehicle?->fleet_id,
+            'vehicle_id' => $vehicle?->id,
+            'device_id' => $vehicle?->device?->id,
+            'type' => $overdue ? 'maintenance_overdue' : 'maintenance_due',
+            'severity' => $overdue ? 'high' : 'medium',
+            'title' => __($titleKey),
+            'message' => __($messageKey, $replace),
+            'latitude' => $vehicle?->device?->last_latitude,
+            'longitude' => $vehicle?->device?->last_longitude,
+            'metadata' => [
+                'maintenance_plan_id' => $plan->id,
+                'garage_id' => $plan->garage_id,
+                'due_status' => $plan->due_status,
+                'next_due_date' => $plan->next_due_date?->toDateString(),
+                'next_due_odometer_km' => $plan->next_due_odometer_km,
+                'next_due_engine_hours' => $plan->next_due_engine_hours,
+                'translation' => $this->translation($titleKey, $messageKey, $replace),
+            ],
         ]);
     }
 

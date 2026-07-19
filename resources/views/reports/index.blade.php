@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260709-reports">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260719-database-selects">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -98,7 +98,10 @@
             <form class="modal-content" method="POST" action="{{ route('reports.schedules.store') }}" data-loading-form data-loading-text="{{ __('reports.processing') }}">
                 @csrf
                 <div class="modal-header">
-                    <h2 class="modal-title" id="scheduleReportModalLabel">{{ __('reports.schedule_modal_title') }}</h2>
+                    <div class="form-modal-heading">
+                        <span class="form-modal-heading-icon"><i class="fa-solid fa-calendar-check"></i></span>
+                        <h2 class="modal-title" id="scheduleReportModalLabel">{{ __('reports.schedule_modal_title') }}</h2>
+                    </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('reports.cancel') }}"></button>
                 </div>
                 <div class="modal-body">
@@ -172,6 +175,7 @@
     <script src="{{ asset('js/dashboard-sidebar.js') }}?v=20260626-responsive-sidebar-default"></script>
     <script src="{{ asset('js/dashboard-controls.js') }}?v=20260529-shared-controls"></script>
     <script src="{{ asset('js/form-loading.js') }}?v=20260529-loading"></script>
+    <script src="{{ asset('js/searchable-select.js') }}?v=20260719-database-selects"></script>
     <script src="{{ asset('js/datatable-controls.js') }}?v=20260709-reports"></script>
     <script src="{{ asset('js/confirm-delete.js') }}?v=20260602-confirm-delete"></script>
     @include('partials.realtime-alerts')

@@ -131,6 +131,7 @@
                                         data-vehicle-type="{{ $vehicle->vehicle_type }}"
                                         data-subscription-plan="{{ $vehicle->subscription_plan }}"
                                         data-status="{{ $vehicle->status }}"
+                                        data-speed-limit-kmh="{{ $vehicle->speedPolicy?->is_active ? (int) $vehicle->speedPolicy->threshold_value : '' }}"
                                         aria-label="{{ __('vehicles.edit') }}"
                                     >
                                         <i class="fa-regular fa-pen-to-square"></i>

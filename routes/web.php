@@ -2,13 +2,16 @@
 
 use App\Http\Controllers\AlertController;
 use App\Http\Controllers\AlertRuleController;
+use App\Http\Controllers\AddressController;
 use App\Http\Controllers\CustomizationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\FleetController;
+use App\Http\Controllers\GarageController;
 use App\Http\Controllers\MapController;
+use App\Http\Controllers\MaintenancePlanController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ServerLogController;
 use App\Http\Controllers\ServerMonitoringController;
@@ -41,11 +44,16 @@ Route::middleware(['auth', 'superadmin'])->group(function () {
     Route::get('/subscriptions', [SubscriptionPlanController::class, 'index'])->name('subscriptions.index');
     Route::patch('/subscriptions', [SubscriptionPlanController::class, 'update'])->name('subscriptions.update');
     Route::resource('fleets', FleetController::class)->except(['show']);
-    Route::get('/drivers/addresses/search', [DriverController::class, 'searchAddresses'])
+    Route::get('/addresses/search', AddressController::class)
         ->middleware('throttle:30,1')
-        ->name('drivers.addresses.search');
+        ->name('addresses.search');
     Route::resource('drivers', DriverController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('departments', DepartmentController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::resource('garages', GarageController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::patch('/maintenance/{maintenancePlan}/complete', [MaintenancePlanController::class, 'complete'])->name('maintenance.complete');
+    Route::patch('/maintenance/{maintenancePlan}/toggle', [MaintenancePlanController::class, 'toggle'])->name('maintenance.toggle');
+    Route::resource('maintenance', MaintenancePlanController::class)->only(['index', 'store', 'update', 'destroy'])
+        ->parameters(['maintenance' => 'maintenancePlan']);
     Route::resource('vehicles', VehicleController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::get('/trackers/{device}/details', [DeviceController::class, 'details'])->name('trackers.details');
     Route::get('/trackers/{device}/trips', [DeviceController::class, 'trips'])->name('trackers.trips');

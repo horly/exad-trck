@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260708-dashboard-order-scope">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260719-database-selects">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -63,7 +63,10 @@
                         <input type="hidden" name="_method" value="POST" data-fleet-method>
 
                         <div class="modal-header">
-                            <h2 class="modal-title" id="fleetModalTitle" data-fleet-title>{{ __('fleets.create_title') }}</h2>
+                            <div class="form-modal-heading">
+                                <span class="form-modal-heading-icon"><i class="fa-solid fa-warehouse"></i></span>
+                                <h2 class="modal-title" id="fleetModalTitle" data-fleet-title>{{ __('fleets.create_title') }}</h2>
+                            </div>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('fleets.cancel') }}"></button>
                         </div>
 
@@ -106,7 +109,7 @@
 
                                 <div>
                                     <label for="fleet_admin" class="form-label">{{ __('fleets.initial_admin') }} *</label>
-                                    <select id="fleet_admin" name="admin_id" class="form-select @error('admin_id') is-invalid @enderror" data-fleet-admin @disabled(! auth()->user()->isSuperadmin())>
+                                    <select id="fleet_admin" name="admin_id" class="form-select @error('admin_id') is-invalid @enderror" data-fleet-admin data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-user-shield" @disabled(! auth()->user()->isSuperadmin())>
                                         @if (auth()->user()->isSuperadmin())
                                             <option value="">{{ __('fleets.choose_admin') }}</option>
                                         @endif
@@ -146,6 +149,7 @@
         <script src="{{ asset('js/confirm-delete.js') }}?v=20260529-delete-confirm"></script>
         <script src="{{ asset('js/form-validation.js') }}?v=20260529-form-validation"></script>
         <script src="{{ asset('js/form-loading.js') }}?v=20260529-form-loading"></script>
+        <script src="{{ asset('js/searchable-select.js') }}?v=20260719-database-selects"></script>
         <script>
             (() => {
                 const form = document.querySelector('[data-fleet-form]');
@@ -191,9 +195,10 @@
                     code.value = editButton.dataset.code || '';
                     description.value = editButton.dataset.description || '';
                     status.value = editButton.dataset.status || 'active';
-                    if (admin && !admin.disabled) {
-                        admin.value = editButton.dataset.admin || '';
-                    }
+                        if (admin && !admin.disabled) {
+                            admin.value = editButton.dataset.admin || '';
+                            admin.dispatchEvent(new Event('searchable-select:refresh'));
+                        }
                 });
 
                 @if ($errors->any())

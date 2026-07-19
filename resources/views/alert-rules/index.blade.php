@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260709-alert-rules">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260719-database-selects">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -84,7 +84,10 @@
                     <input type="hidden" name="_method" value="POST" data-method-field>
 
                     <div class="modal-header">
-                        <h2 class="modal-title" id="alertRuleModalTitle">{{ __('alert_rules.create_rule') }}</h2>
+                        <div class="form-modal-heading">
+                            <span class="form-modal-heading-icon"><i class="fa-solid fa-bell"></i></span>
+                            <h2 class="modal-title" id="alertRuleModalTitle">{{ __('alert_rules.create_rule') }}</h2>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('alert_rules.cancel') }}"></button>
                     </div>
 
@@ -159,7 +162,7 @@
 
                             <div data-scope-field="fleet" hidden>
                                 <label for="rule_fleet_id" class="form-label">{{ __('alert_rules.fleet') }} *</label>
-                                <select id="rule_fleet_id" name="fleet_id" class="form-select @error('fleet_id') is-invalid @enderror">
+                                <select id="rule_fleet_id" name="fleet_id" class="form-select @error('fleet_id') is-invalid @enderror" data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-warehouse">
                                     <option value="">{{ __('alert_rules.select_fleet') }}</option>
                                     @foreach ($fleets as $fleet)
                                         <option value="{{ $fleet->id }}">{{ $fleet->name }}{{ $fleet->code ? ' · '.$fleet->code : '' }}</option>
@@ -172,7 +175,7 @@
 
                             <div data-scope-field="vehicle" hidden>
                                 <label for="rule_vehicle_id" class="form-label">{{ __('alert_rules.vehicle') }} *</label>
-                                <select id="rule_vehicle_id" name="vehicle_id" class="form-select @error('vehicle_id') is-invalid @enderror">
+                                <select id="rule_vehicle_id" name="vehicle_id" class="form-select @error('vehicle_id') is-invalid @enderror" data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-car-side">
                                     <option value="">{{ __('alert_rules.select_vehicle') }}</option>
                                     @foreach ($vehicles as $vehicle)
                                         <option value="{{ $vehicle->id }}">{{ $vehicle->name }}{{ $vehicle->registration_number ? ' · '.$vehicle->registration_number : '' }}</option>
@@ -185,7 +188,7 @@
 
                             <div data-scope-field="device" hidden>
                                 <label for="rule_device_id" class="form-label">{{ __('alert_rules.device') }} *</label>
-                                <select id="rule_device_id" name="device_id" class="form-select @error('device_id') is-invalid @enderror">
+                                <select id="rule_device_id" name="device_id" class="form-select @error('device_id') is-invalid @enderror" data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-satellite-dish">
                                     <option value="">{{ __('alert_rules.select_device') }}</option>
                                     @foreach ($devices as $device)
                                         <option value="{{ $device->id }}">{{ $device->name ?: $device->imei }} · {{ $device->imei }}</option>
@@ -301,6 +304,7 @@
     <script src="{{ asset('js/datatable-controls.js') }}?v=20260709-alert-rules"></script>
     <script src="{{ asset('js/form-loading.js') }}?v=20260529-form-loading"></script>
     <script src="{{ asset('js/confirm-delete.js') }}?v=20260602-alert-rules"></script>
+    <script src="{{ asset('js/searchable-select.js') }}?v=20260719-database-selects"></script>
     @include('partials.realtime-alerts')
     <script>
         const alertRuleModal = document.getElementById('alertRuleModal');
@@ -316,6 +320,7 @@
             const field = alertRuleForm?.querySelector(`[name="${name}"]`);
             if (field) {
                 field.value = value || '';
+                field.dispatchEvent(new Event('searchable-select:refresh'));
             }
         }
 

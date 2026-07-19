@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260716-fleet-organization">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260719-database-selects">
 </head>
 <body class="app-font-manrope dashboard-body">
     @php
@@ -56,7 +56,7 @@
     <div class="modal fade users-modal driver-modal" id="driverModal" tabindex="-1" aria-labelledby="driverModalTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered driver-modal-dialog">
             <div class="modal-content">
-                <form class="driver-modal-form" method="POST" action="{{ $driverFormAction }}" enctype="multipart/form-data" novalidate data-validate-form data-required-message="{{ __('validation.required') }}" data-email-message="{{ __('validation.email') }}" data-driver-form data-loading-form data-loading-text="{{ __('drivers.processing') }}" data-address-search-url="{{ route('drivers.addresses.search') }}">
+                <form class="driver-modal-form" method="POST" action="{{ $driverFormAction }}" enctype="multipart/form-data" novalidate data-validate-form data-required-message="{{ __('validation.required') }}" data-email-message="{{ __('validation.email') }}" data-driver-form data-loading-form data-loading-text="{{ __('drivers.processing') }}" data-address-search-url="{{ route('addresses.search') }}">
                     @csrf
                     <input type="hidden" name="_method" value="{{ $editingDriverId ? 'PUT' : 'POST' }}" data-driver-method>
                     <input type="hidden" name="editing_driver_id" value="{{ old('editing_driver_id') }}" data-driver-id>
@@ -120,7 +120,7 @@
                             <div class="users-form-grid">
                                 <div>
                                     <label for="driver_fleet_id" class="form-label">{{ __('drivers.fleet') }} *</label>
-                                    <select id="driver_fleet_id" name="fleet_id" class="form-select @error('fleet_id') is-invalid @enderror" required data-driver-fleet>
+                                    <select id="driver_fleet_id" name="fleet_id" class="form-select @error('fleet_id') is-invalid @enderror" required data-driver-fleet data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-warehouse">
                                         <option value="">{{ __('drivers.choose_fleet') }}</option>
                                         @foreach ($fleets as $fleet)
                                             <option value="{{ $fleet->id }}" @selected((int) old('fleet_id') === $fleet->id)>{{ $fleet->name }} &middot; {{ $fleet->code }}</option>
@@ -130,7 +130,7 @@
                                 </div>
                                 <div>
                                     <label for="driver_department_id" class="form-label">{{ __('drivers.department') }}</label>
-                                    <select id="driver_department_id" name="department_id" class="form-select @error('department_id') is-invalid @enderror" data-driver-department>
+                                    <select id="driver_department_id" name="department_id" class="form-select @error('department_id') is-invalid @enderror" data-driver-department data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-sitemap">
                                         <option value="">{{ __('drivers.choose_department') }}</option>
                                         @foreach ($departmentsForForm as $department)
                                             <option value="{{ $department->id }}" data-fleet-id="{{ $department->fleet_id }}" @selected((int) old('department_id') === $department->id)>{{ $department->name }}{{ $department->code ? ' - '.$department->code : '' }}</option>
@@ -258,6 +258,7 @@
     <script src="{{ asset('js/confirm-delete.js') }}?v=20260529-delete-confirm"></script>
     <script src="{{ asset('js/form-validation.js') }}?v=20260529-form-validation"></script>
     <script src="{{ asset('js/form-loading.js') }}?v=20260529-form-loading"></script>
+    <script src="{{ asset('js/searchable-select.js') }}?v=20260719-database-selects"></script>
     <script src="{{ asset('js/driver-address-search.js') }}?v=20260719-driver-geofence"></script>
     <script>
         (() => {
@@ -339,6 +340,7 @@
                     noVehicle.hidden = visibleVehicles > 0;
                 }
 
+                department.dispatchEvent(new Event('searchable-select:refresh'));
                 updateVehicleCount();
             };
 
@@ -386,6 +388,7 @@
                 title.textContent = @json(__('drivers.edit_title'));
                 submit.textContent = @json(__('drivers.save'));
                 fleet.value = driver.fleet_id || '';
+                fleet.dispatchEvent(new Event('searchable-select:refresh'));
                 if (vehicleSearch) vehicleSearch.value = '';
                 filterAssignments(driver.fleet_id, driver.department_id, true);
                 ['first_name', 'middle_name', 'last_name', 'employee_id', 'social_security_number', 'identifier_type', 'rfid_uid', 'phone', 'email', 'address', 'location_latitude', 'location_longitude', 'location_radius_meters', 'license_number', 'license_type', 'license_issued_at', 'license_expires_at', 'tags', 'status']

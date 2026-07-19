@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260708-dashboard-order-scope">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260719-speed-policy">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -63,7 +63,10 @@
                         <input type="hidden" name="_method" value="POST" data-vehicle-method>
 
                         <div class="modal-header">
-                            <h2 class="modal-title" id="vehicleModalTitle" data-vehicle-title>{{ __('vehicles.create_title') }}</h2>
+                            <div class="form-modal-heading">
+                                <span class="form-modal-heading-icon"><i class="fa-solid fa-car-side"></i></span>
+                                <h2 class="modal-title" id="vehicleModalTitle" data-vehicle-title>{{ __('vehicles.create_title') }}</h2>
+                            </div>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('vehicles.cancel') }}"></button>
                         </div>
 
@@ -71,7 +74,7 @@
                             <div class="users-form-grid">
                                 <div>
                                     <label for="vehicle_fleet_id" class="form-label">{{ __('vehicles.fleet') }} *</label>
-                                    <select id="vehicle_fleet_id" name="fleet_id" class="form-select @error('fleet_id') is-invalid @enderror" required data-vehicle-fleet>
+                                    <select id="vehicle_fleet_id" name="fleet_id" class="form-select @error('fleet_id') is-invalid @enderror" required data-vehicle-fleet data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-warehouse">
                                         <option value="">{{ __('vehicles.choose_fleet') }}</option>
                                         @foreach ($manageableFleets as $fleet)
                                             <option value="{{ $fleet->id }}" @selected((int) old('fleet_id') === $fleet->id)>
@@ -146,7 +149,7 @@
 
                                 <div>
                                     <label for="vehicle_subscription_plan" class="form-label">{{ __('vehicles.subscription_plan') }} *</label>
-                                    <select id="vehicle_subscription_plan" name="subscription_plan" class="form-select @error('subscription_plan') is-invalid @enderror" required data-vehicle-plan>
+                                    <select id="vehicle_subscription_plan" name="subscription_plan" class="form-select @error('subscription_plan') is-invalid @enderror" required data-vehicle-plan data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-layer-group">
                                         @foreach ($subscriptionPlans as $plan)
                                             <option value="{{ $plan->code }}" @selected(old('subscription_plan', 'basic') === $plan->code)>{{ $plan->name }}</option>
                                         @endforeach
@@ -164,6 +167,22 @@
                                         <option value="maintenance" @selected(old('status') === 'maintenance')>{{ __('vehicles.status_maintenance') }}</option>
                                     </select>
                                     @error('status')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="users-form-full vehicle-policy-heading">
+                                    <span><i class="fa-solid fa-gauge-high"></i></span>
+                                    <h3>{{ __('vehicles.speed_policy') }}</h3>
+                                </div>
+
+                                <div>
+                                    <label for="vehicle_speed_limit_kmh" class="form-label">{{ __('vehicles.speed_limit') }}</label>
+                                    <div class="vehicle-speed-policy-input">
+                                        <input id="vehicle_speed_limit_kmh" type="number" min="1" max="300" step="1" name="speed_limit_kmh" class="form-control @error('speed_limit_kmh') is-invalid @enderror" value="{{ old('speed_limit_kmh') }}" placeholder="{{ __('vehicles.speed_limit_placeholder') }}" data-vehicle-speed-limit>
+                                        <span>km/h</span>
+                                    </div>
+                                    @error('speed_limit_kmh')
                                         <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
                                 </div>
@@ -189,6 +208,7 @@
         <script src="{{ asset('js/confirm-delete.js') }}?v=20260529-delete-confirm"></script>
         <script src="{{ asset('js/form-validation.js') }}?v=20260529-form-validation"></script>
         <script src="{{ asset('js/form-loading.js') }}?v=20260529-form-loading"></script>
+        <script src="{{ asset('js/searchable-select.js') }}?v=20260719-database-selects"></script>
         <script>
             (() => {
                 const form = document.querySelector('[data-vehicle-form]');
@@ -210,6 +230,7 @@
                     type: form.querySelector('[data-vehicle-type]'),
                     plan: form.querySelector('[data-vehicle-plan]'),
                     status: form.querySelector('[data-vehicle-status]'),
+                    speedLimit: form.querySelector('[data-vehicle-speed-limit]'),
                 };
                 const storeAction = @json(route('vehicles.store'));
                 const legacyTypes = {
@@ -234,6 +255,7 @@
                         fields.type.value = 'passenger_car';
                         fields.plan.value = 'basic';
                         fields.status.value = 'active';
+                        fields.speedLimit.value = '';
                         return;
                     }
 
@@ -257,6 +279,9 @@
                     fields.type.value = legacyTypes[vehicleType] || vehicleType;
                     fields.plan.value = editButton.dataset.subscriptionPlan || 'basic';
                     fields.status.value = editButton.dataset.status || 'active';
+                    fields.speedLimit.value = editButton.dataset.speedLimitKmh || '';
+                    fields.fleet.dispatchEvent(new Event('searchable-select:refresh'));
+                    fields.plan.dispatchEvent(new Event('searchable-select:refresh'));
                 });
 
                 @if ($errors->any())

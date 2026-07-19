@@ -19,7 +19,7 @@ test('fleet organization pages are reserved to superadmin users', function () {
     $superadmin = User::factory()->superadmin()->create();
     $admin = User::factory()->admin()->create();
 
-    foreach ([route('drivers.index'), route('departments.index')] as $url) {
+    foreach ([route('drivers.index'), route('departments.index'), route('garages.index'), route('maintenance.index')] as $url) {
         $this->actingAs($superadmin)->get($url)->assertSuccessful();
         $this->actingAs($admin)->get($url)->assertForbidden();
     }
@@ -36,7 +36,58 @@ test('sidebar exposes fleet resources as one expandable navigation group', funct
         ->assertSee(route('vehicles.index'), false)
         ->assertSee(route('trackers.index'), false)
         ->assertSee(route('drivers.index'), false)
-        ->assertSee(route('departments.index'), false);
+        ->assertSee(route('departments.index'), false)
+        ->assertSee(route('garages.index'), false)
+        ->assertSee(route('maintenance.index'), false);
+});
+
+test('every management form modal displays a contextual title icon', function () {
+    $superadmin = User::factory()->superadmin()->create();
+
+    foreach ([
+        'users.index' => 'fa-user-plus',
+        'subscriptions.index' => 'fa-layer-group',
+        'fleets.index' => 'fa-warehouse',
+        'vehicles.index' => 'fa-car-side',
+        'trackers.index' => 'fa-satellite-dish',
+        'drivers.index' => 'fa-id-card',
+        'departments.index' => 'fa-sitemap',
+        'garages.index' => 'fa-screwdriver-wrench',
+        'maintenance.index' => 'fa-clipboard-check',
+        'alert-rules.index' => 'fa-bell',
+        'reports.index' => 'fa-calendar-check',
+    ] as $routeName => $icon) {
+        $this->actingAs($superadmin)
+            ->get(route($routeName))
+            ->assertSuccessful()
+            ->assertSee($icon, false);
+    }
+});
+
+test('database backed selects are searchable and match standard field height', function () {
+    $superadmin = User::factory()->superadmin()->create();
+
+    foreach ([
+        'vehicles.index' => 2,
+        'departments.index' => 1,
+        'drivers.index' => 2,
+        'fleets.index' => 1,
+        'maintenance.index' => 2,
+        'alert-rules.index' => 3,
+        'reports.index' => 3,
+        'map.index' => 1,
+    ] as $routeName => $minimumSearchableFields) {
+        $response = $this->actingAs($superadmin)->get(route($routeName));
+
+        $response->assertSuccessful()->assertSee('js/searchable-select.js', false);
+        expect(substr_count($response->getContent(), 'data-searchable-database'))
+            ->toBeGreaterThanOrEqual($minimumSearchableFields);
+    }
+
+    $dashboardCss = file_get_contents(public_path('css/dashboard.css'));
+    expect($dashboardCss)->toContain('.searchable-select-toggle {')
+        ->toContain('height: 40px;')
+        ->toContain('min-height: 40px;');
 });
 
 test('superadmin can create a department in a fleet', function () {
@@ -142,7 +193,7 @@ test('superadmin can search real driver addresses with the configured map provid
     $superadmin = User::factory()->superadmin()->create();
 
     $this->actingAs($superadmin)
-        ->getJson(route('drivers.addresses.search', ['query' => 'Avenue de la Paix']))
+        ->getJson(route('addresses.search', ['query' => 'Avenue de la Paix']))
         ->assertSuccessful()
         ->assertJsonPath('results.0.address', '32 Avenue de la Paix, Gombe, Kinshasa, RDC')
         ->assertJsonPath('results.0.latitude', -4.3094)

@@ -43,6 +43,11 @@ class Vehicle extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function speedPolicy(): BelongsTo
+    {
+        return $this->belongsTo(AlertRule::class, 'speed_policy_rule_id');
+    }
+
     public function device(): HasOne
     {
         return $this->hasOne(Device::class);
@@ -56,6 +61,16 @@ class Vehicle extends Model
     public function driverSessions(): HasMany
     {
         return $this->hasMany(DriverSession::class);
+    }
+
+    public function maintenancePlans(): HasMany
+    {
+        return $this->hasMany(MaintenancePlan::class);
+    }
+
+    public function maintenanceRecords(): HasMany
+    {
+        return $this->hasMany(MaintenanceRecord::class);
     }
 
     public function scopeVisibleTo(Builder $query, User $user): Builder

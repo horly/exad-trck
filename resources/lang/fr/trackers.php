@@ -64,6 +64,8 @@ return [
     'create_title' => 'Nouveau traceur',
     'edit_title' => 'Modifier le traceur',
     'choose_vehicle' => 'Choisir un véhicule',
+    'search_vehicle' => 'Rechercher un véhicule...',
+    'no_vehicle_match' => 'Aucun véhicule ne correspond à cette recherche.',
     'choose_brand' => 'Choisir une marque',
     'choose_model' => 'Choisir un modèle',
     'no_model_result' => 'Aucun modèle trouvé.',

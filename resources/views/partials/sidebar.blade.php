@@ -2,7 +2,7 @@
     $active = $active ?? '';
     $user = auth()->user();
     $homeRoute = $user->isSuperadmin() ? route('dashboard') : route('fleets.index');
-    $fleetSectionActive = in_array($active, ['fleets', 'vehicles', 'trackers', 'drivers', 'departments'], true);
+    $fleetSectionActive = in_array($active, ['fleets', 'vehicles', 'trackers', 'drivers', 'departments', 'garages', 'maintenance'], true);
 @endphp
 
 <aside class="dashboard-sidebar">
@@ -61,6 +61,14 @@
                     <a class="nav-link {{ $active === 'departments' ? 'active' : '' }}" href="{{ route('departments.index') }}">
                         <i class="fa-solid fa-sitemap"></i>
                         <span>{{ __('dashboard.departments') }}</span>
+                    </a>
+                    <a class="nav-link {{ $active === 'garages' ? 'active' : '' }}" href="{{ route('garages.index') }}">
+                        <i class="fa-solid fa-screwdriver-wrench"></i>
+                        <span>{{ __('dashboard.garages') }}</span>
+                    </a>
+                    <a class="nav-link {{ $active === 'maintenance' ? 'active' : '' }}" href="{{ route('maintenance.index') }}">
+                        <i class="fa-solid fa-clipboard-check"></i>
+                        <span>{{ __('dashboard.maintenance') }}</span>
                     </a>
                 </div>
             </div>

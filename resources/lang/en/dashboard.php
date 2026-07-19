@@ -15,6 +15,8 @@ return [
     'fleet' => 'Fleets',
     'drivers' => 'Drivers',
     'departments' => 'Departments',
+    'garages' => 'Garages',
+    'maintenance' => 'Maintenance',
     'vehicle' => 'Vehicles',
     'trackers' => 'Trackers',
     'map' => 'Map',

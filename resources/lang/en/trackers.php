@@ -64,6 +64,8 @@ return [
     'create_title' => 'New tracker',
     'edit_title' => 'Edit tracker',
     'choose_vehicle' => 'Choose a vehicle',
+    'search_vehicle' => 'Search for a vehicle...',
+    'no_vehicle_match' => 'No vehicle matches this search.',
     'choose_brand' => 'Choose a brand',
     'choose_model' => 'Choose a model',
     'no_model_result' => 'No model found.',

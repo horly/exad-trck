@@ -11,7 +11,7 @@
         <link rel="stylesheet" href="{{ asset('vendor/mapbox/mapbox-gl.css') }}">
     @endif
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260714-trip-controls-icons">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260719-database-selects">
     <link rel="stylesheet" href="{{ asset('css/map.css') }}?v=20260708-map-search-normalized">
 </head>
 <body class="app-font-manrope dashboard-body">
@@ -98,7 +98,7 @@
 
                         <label class="map-filter">
                             <span><i class="fa-solid fa-layer-group"></i>{{ __('trackers.fleet') }}</span>
-                            <select class="form-select" data-map-fleet>
+                            <select class="form-select" data-map-fleet data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-warehouse">
                                 <option value="">{{ __('map.all_fleets') }}</option>
                                 @foreach ($fleets as $fleet)
                                     <option value="{{ $fleet->id }}">{{ $fleet->name }} · {{ $fleet->code }}</option>
@@ -190,6 +190,7 @@
     @endif
     <script src="{{ asset('js/dashboard-sidebar.js') }}?v=20260626-responsive-sidebar-default"></script>
     <script src="{{ asset('js/dashboard-controls.js') }}?v=20260529-shared-controls"></script>
+    <script src="{{ asset('js/searchable-select.js') }}?v=20260719-database-selects"></script>
     @include('partials.realtime-alerts')
     <script src="{{ asset('js/tracker-details.js') }}?v=20260602-details-shared"></script>
     <script src="{{ asset('js/tracker-trips.js') }}?v=20260714-trip-controls-icons"></script>
