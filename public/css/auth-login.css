@@ -477,6 +477,24 @@ svg {
     font-weight: 700;
 }
 
+.remember-option {
+    align-items: center;
+    color: var(--exad-text);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.63rem;
+    font-weight: 700;
+    gap: 7px;
+    margin: 0;
+}
+
+.remember-option .form-check-input {
+    flex: 0 0 14px;
+    height: 14px;
+    margin: 0;
+    width: 14px;
+}
+
 .forgot-link {
     color: var(--exad-blue);
     text-decoration: none;

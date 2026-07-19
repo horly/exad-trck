@@ -185,6 +185,10 @@
                     </div>
 
                     <div class="login-options">
+                        <label class="remember-option" for="remember">
+                            <input id="remember" class="form-check-input" type="checkbox" name="remember" value="1" @checked(old('remember'))>
+                            <span>{{ __('auth.remember') }}</span>
+                        </label>
                         @if (Route::has('password.request'))
                             <a class="forgot-link" href="{{ route('password.request') }}">{{ __('auth.forgot_password') }}</a>
                         @endif

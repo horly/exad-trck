@@ -25,11 +25,23 @@ test('authenticated pages configure automatic logout after thirty minutes of ina
 test('login page explains an inactivity logout', function () {
     $this->get(route('login', ['reason' => 'inactive']))
         ->assertSuccessful()
+        ->assertSee('css/auth-login.css', false)
+        ->assertSee('name="remember"', false)
+        ->assertSee(__('auth.remember'))
         ->assertSee("Votre session a expiré après 30 minutes d'inactivité.");
 });
 
-test('login never creates a persistent remember cookie', function () {
+test('login creates a persistent remember cookie only when requested', function () {
     $user = User::factory()->superadmin()->create();
+
+    $this->post(route('login'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ])
+        ->assertRedirect()
+        ->assertCookieMissing(Auth::guard()->getRecallerName());
+
+    Auth::logout();
 
     $this->post(route('login'), [
         'email' => $user->email,
@@ -37,7 +49,7 @@ test('login never creates a persistent remember cookie', function () {
         'remember' => '1',
     ])
         ->assertRedirect()
-        ->assertCookieMissing(Auth::guard()->getRecallerName());
+        ->assertCookie(Auth::guard()->getRecallerName());
 
     $this->assertAuthenticatedAs($user);
 });

@@ -575,7 +575,7 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Conservation du scroll interne et des actions fixes `Annuler` / `CrÃ©er` ou `Enregistrer`.
 
 ## 2026-07-17 - Uniformisation des modals
-- Alignement des modals conducteur, véhicule et département sur la largeur standard du modal utilisateur (660px).
+- Alignement des modals conducteur, vï¿½hicule et dï¿½partement sur la largeur standard du modal utilisateur (660px).
 - Conservation du comportement responsive pleine largeur sur mobile.
 
 ## 2026-07-19 - UID conducteur traceur et fiche conducteur
@@ -721,3 +721,35 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Xterm recalcule ses colonnes et lignes lors du changement de mode, conserve le focus et revient sur la derniere sortie.
 - Augmentation de l'espace inferieur du terminal afin que la derniere ligne et le curseur restent entierement visibles.
 - Assets recompiles avec Vite ; verification locale complete : 93 tests Laravel passes avec 781 assertions et 3 tests Node.js passes.
+
+### 2026-07-19 - Refonte corporate de la connexion et option Se souvenir de moi
+- Refonte de la page de connexion en ecran d'acces professionnel : scene flotte plein cadre a gauche et panneau d'authentification blanc pleine hauteur a droite.
+- Nouveau visuel original `public/images/login-fleet-corporate.png`, genere pour EXAD Tracking : flotte realiste sur un axe metropolitain, reperes GPS discrets et zone calme pour le formulaire.
+- Simplification du contenu promotionnel, hierarchie typographique plus nette, champs de 48 px, focus accessible, bouton de connexion renforce et indicateurs de securite sobres.
+- Responsive verifie en Chrome : rendu bureau 1920x900 et viewport mobile reel de 390 px sans debordement horizontal.
+- Ajout de la case `Se souvenir de moi` au formulaire Fortify. Sans selection, aucun cookie persistant n'est cree ; avec selection, Laravel emet le cookie de rappel.
+- La protection existante reste active : une session ouverte est toujours deconnectee apres 30 minutes d'inactivite. Le rappel permet surtout de retrouver la connexion apres fermeture du navigateur avant cette expiration.
+- Tests mis a jour dans `InactiveSessionTest` ; suite complete verte avec 93 tests et 786 assertions.
+
+#### Ajustement local de la direction visuelle
+- Conservation stricte de la police monospace historique et de tous les textes initiaux de la page de connexion.
+- Retrait des nouveaux libelles editoriaux ajoutes lors de la premiere refonte et restauration des quatre benefices ainsi que des quatre indicateurs d'origine.
+- Remplacement du grand fond translucide par une colonne editoriale opaque, continue et sans effet de carte ; le visuel de flotte dispose maintenant de sa propre zone sans passer derriere les textes.
+- Reorganisation des quatre indicateurs d'origine dans une grille 2 x 2 stable et rapprochement de l'ensemble fonctionnel pour supprimer les coupures et chevauchements visuels.
+- Conservation de la nouvelle photographie, du panneau d'authentification corporate et de l'option `Se souvenir de moi`.
+- Verification visuelle locale aux formats bureau 1920x900 et mobile 500x900. Cette correction n'a pas ete deployee sur le VPS.
+- Verification technique : compilation Blade reussie et suite complete verte avec 93 tests et 786 assertions.
+
+#### Restauration locale du design d'origine
+- Abandon integral de la nouvelle direction visuelle apres validation utilisateur.
+- Restauration de l'ancien fond mondial avec flotte, de la carte de connexion, des dimensions, espacements, textes et de la police d'origine.
+- Suppression locale de l'image generee `login-fleet-corporate.png` et de tous les styles propres a la refonte.
+- Conservation exclusive de la fonctionnalite `Se souvenir de moi`, integree sobrement dans le formulaire historique.
+- Verification visuelle locale au format bureau 1920x900. Aucun deploiement VPS effectue.
+- Verification technique : compilation Blade reussie et suite complete verte avec 93 tests et 786 assertions.
+
+#### Deploiement de la restauration d'origine
+- Restauration deployee sur le VPS apres autorisation explicite : ancien fond, carte, typographie, contenus et dimensions de connexion remis en production.
+- L'option `Se souvenir de moi` reste la seule evolution fonctionnelle conservee sur cet ecran.
+- Sauvegarde distante creee avant remplacement : `/tmp/exadtracking-before-login-restore-20260719-140916.tar.gz`.
+- Caches Laravel reconstruits et controles publics de la page et du CSS reussis en HTTP 200.

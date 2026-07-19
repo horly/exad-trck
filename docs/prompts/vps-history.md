@@ -481,3 +481,25 @@ The battery voltage field must not be greater than 100.
 - Caches Laravel nettoyes puis caches de configuration et de vues reconstruits ; syntaxe de l'asset JavaScript validee.
 - Controles production : login, CSS et JavaScript en HTTP 200, marqueurs `contextmenu` et `server-console-panel:fullscreen` presents, service `exad-server-console.service` actif.
 - Validation locale avant deploiement : 93 tests Laravel avec 781 assertions et 3 tests Node.js passes.
+
+## 2026-07-19 - Deploiement de la connexion corporate et du rappel utilisateur
+
+- Deploiement cible de la nouvelle page de connexion, du visuel flotte `login-fleet-corporate.png` et du comportement Fortify `Se souvenir de moi`.
+- Nouveau rendu production : scene routiere de flotte plein cadre sur la zone produit et panneau d'authentification blanc pleine hauteur, avec responsive mobile sans debordement horizontal.
+- Le formulaire transmet maintenant `remember=1` uniquement lorsque la case est cochee. Fortify conserve les controles de compte actif et le rate limiting, puis demande a Laravel de creer le cookie de rappel.
+- Sans selection de la case, aucun cookie de rappel persistant n'est emis. La deconnexion automatique apres 30 minutes d'inactivite d'une session ouverte reste active.
+- Sauvegarde prealable : `/tmp/exadtracking-before-corporate-login-20260719-133238.tar.gz`.
+- Syntaxe PHP distante validee sur le fournisseur Fortify, la vue et les traductions ; caches Laravel nettoyes puis caches de configuration et de vues reconstruits.
+- Controles publics reussis : page de connexion et CSS en HTTP 200, nouvelle image en HTTP 200 avec 1 955 045 octets, marqueurs `remember` et `login-fleet-corporate.png` presents, Apache actif.
+- Validation locale : rendu Chrome bureau 1920x900, viewport mobile 390 px sans debordement, suite complete verte avec 93 tests et 786 assertions.
+
+## 2026-07-19 - Restauration du design de connexion d'origine
+
+- Restauration ciblee de l'ecran de connexion historique : ancien fond `login-vehicle-bg.png`, carte centree, police monospace, textes, indicateurs et dimensions d'origine.
+- Conservation de la seule evolution fonctionnelle `Se souvenir de moi` : le formulaire transmet `remember=1` lorsqu'elle est cochee et Fortify peut creer le cookie de rappel.
+- Fichiers deployes : `app/Providers/FortifyServiceProvider.php`, `public/css/auth-login.css` et `resources/views/auth/login.blade.php`.
+- Sauvegarde prealable : `/tmp/exadtracking-before-login-restore-20260719-140916.tar.gz`.
+- Premier passage interrompu sans indisponibilite persistante : `unzip` a retourne un avertissement sur les separateurs Windows apres extraction. Le garde-fou a immediatement remis Laravel en ligne ; les fichiers extraits ont ensuite ete verifies, leurs permissions corrigees et le deploiement finalise.
+- Syntaxe PHP valide, caches Laravel nettoyes puis caches de configuration et de vues reconstruits ; Apache actif et maintenance inactive.
+- Controles publics reussis en HTTP 200 : page de connexion avec `remember-option` et CSS avec le marqueur du fond historique `login-vehicle-bg.png`.
+- Validation locale avant deploiement : 93 tests Laravel passes avec 786 assertions.

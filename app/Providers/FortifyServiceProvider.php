@@ -42,8 +42,6 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::loginView(fn () => view('auth.login'));
 
         Fortify::authenticateUsing(function (Request $request): ?User {
-            $request->request->remove('remember');
-
             $email = Str::lower((string) $request->input(Fortify::username()));
             $user = User::query()->where('email', $email)->first();
 
