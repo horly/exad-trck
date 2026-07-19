@@ -26,9 +26,12 @@ test('login page explains an inactivity logout', function () {
     $this->get(route('login', ['reason' => 'inactive']))
         ->assertSuccessful()
         ->assertSee('css/auth-login.css', false)
+        ->assertSee('images/login-fleet-night.png', false)
         ->assertSee('name="remember"', false)
         ->assertSee(__('auth.remember'))
         ->assertSee("Votre session a expiré après 30 minutes d'inactivité.");
+
+    expect(public_path('images/login-fleet-night.png'))->toBeFile();
 });
 
 test('login creates a persistent remember cookie only when requested', function () {

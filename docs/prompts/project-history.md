@@ -753,3 +753,31 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - L'option `Se souvenir de moi` reste la seule evolution fonctionnelle conservee sur cet ecran.
 - Sauvegarde distante creee avant remplacement : `/tmp/exadtracking-before-login-restore-20260719-140916.tar.gz`.
 - Caches Laravel reconstruits et controles publics de la page et du CSS reussis en HTTP 200.
+
+### 2026-07-19 - Nouvelle direction bleu nuit de la page de connexion
+- Nouvelle composition locale conforme a la reference utilisateur : panneau flotte bleu nuit a gauche et espace d'authentification clair sans carte flottante a droite.
+- Conservation de la police monospace, de tous les textes historiques et de l'option `Se souvenir de moi`.
+- Ajout du visuel original `public/images/login-fleet-night.png` : carte mondiale connectee, flotte realiste et zone sombre reservee au contenu HTML.
+- Les quatre benefices restent affiches avec des icones cyan et les quatre indicateurs sont alignes dans une bande sombre stable en bas du panneau.
+- Le formulaire utilise des champs de 46 px et un bouton bleu corporate, tandis que le pied de page est limite au panneau droit.
+- Responsive verifie localement aux formats 1920x900, 1257x710 et mobile 500x900.
+- Aucun deploiement VPS effectue pour cette nouvelle direction visuelle.
+- Verification technique : compilation Blade reussie et suite complete verte avec 93 tests et 788 assertions.
+
+#### Ajustement des proportions de connexion
+- Passage de la composition bureau a `62%` pour le visuel flotte et `38%` pour la zone d'authentification afin de mieux exposer l'arriere-plan.
+- Reduction du formulaire a 390 px maximum, des champs a 42 px et du bouton de connexion a 44 px.
+- Remplacement du cadenas encadre de l'indicateur de securite par une icone bouclier-cadenas bleue, plus nette et sans boite decorative.
+- Controle visuel local reussi aux formats 1257x710 et mobile 500x900. Aucun deploiement VPS effectue.
+
+#### Recomposition du visuel flotte
+- Le fond `login-fleet-night.png` a ete regenere avec une composition reculee : les six vehicules disposent maintenant de marges et restent entierement visibles.
+- La flotte et la carte connectee sont concentrees a droite, tandis que les textes utilisent une zone bleu nuit uniforme et sans details concurrents a gauche.
+- Retour a un affichage CSS plein cadre `cover`, sans reduction artificielle, raccord de couleur ni bande visible.
+- Cadrage valide localement aux formats 1920x918, 1257x710 et mobile 500x900. Aucun deploiement VPS effectue.
+
+#### Deploiement de la connexion bleu nuit
+- Nouvelle direction visuelle deployee sur le VPS apres autorisation explicite, avec le fond flotte recompose et la repartition bureau `62/38`.
+- Sauvegarde distante creee avant remplacement : `/tmp/exadtracking-before-login-night-20260719-150609.tar.gz`.
+- Caches Laravel reconstruits ; page, CSS et image controles publiquement en HTTP 200.
+- Apache actif, maintenance inactive et fonctionnalite `Se souvenir de moi` conservee.

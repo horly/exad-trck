@@ -503,3 +503,16 @@ The battery voltage field must not be greater than 100.
 - Syntaxe PHP valide, caches Laravel nettoyes puis caches de configuration et de vues reconstruits ; Apache actif et maintenance inactive.
 - Controles publics reussis en HTTP 200 : page de connexion avec `remember-option` et CSS avec le marqueur du fond historique `login-vehicle-bg.png`.
 - Validation locale avant deploiement : 93 tests Laravel passes avec 786 assertions.
+
+## 2026-07-19 - Deploiement de la connexion bleu nuit
+
+- Deploiement cible de la nouvelle direction visuelle de la page de connexion : panneau flotte bleu nuit a gauche et zone d'authentification claire sans carte flottante a droite.
+- Repartition bureau configuree a `62%` pour le visuel et `38%` pour la connexion ; formulaire limite a 390 px, champs de 42 px et bouton de 44 px.
+- Ajout du fond original `public/images/login-fleet-night.png`, recompose afin de conserver les six vehicules entierement visibles et une zone sombre sans details concurrents sous les textes.
+- Conservation de la police, des textes historiques, des quatre benefices, des quatre indicateurs et de l'option `Se souvenir de moi`.
+- Remplacement du cadenas encadre par un indicateur bouclier-cadenas bleu sans boite decorative.
+- Fichiers deployes : `public/css/auth-login.css`, `public/images/login-fleet-night.png` et `resources/views/auth/login.blade.php`.
+- Sauvegarde prealable : `/tmp/exadtracking-before-login-night-20260719-150609.tar.gz`.
+- Syntaxe Blade valide, caches Laravel nettoyes puis caches de configuration et de vues reconstruits ; Apache actif et maintenance inactive.
+- Controles publics reussis en HTTP 200 pour la page, le CSS versionne `20260719-night-fleet` et l'image de fond.
+- Validation locale avant deploiement : 93 tests Laravel passes avec 788 assertions ; rendus verifies en 1920x918, 1257x710 et 500x900.

@@ -6,8 +6,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ __('auth.login_title') }}</title>
     @include('partials.favicon')
+    <link rel="preload" as="image" href="{{ asset('images/login-fleet-night.png') }}">
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/auth-login.css') }}?v=20260529-form-loading">
+    <link rel="stylesheet" href="{{ asset('css/auth-login.css') }}?v=20260719-night-fleet">
 </head>
 <body>
     <main class="login-shell">
@@ -201,7 +202,10 @@
 
                 <div class="security-note">
                     <span class="security-icon">
-                        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 10V8a5 5 0 0 1 10 0v2"/><path d="M5.5 10h13v10h-13z"/></svg>
+                        <svg aria-hidden="true" viewBox="0 0 24 24">
+                            <path d="M12 3 5.5 5.8v5.3c0 4.2 2.6 7.8 6.5 9.2 3.9-1.4 6.5-5 6.5-9.2V5.8L12 3Z"/>
+                            <path d="M9.3 12h5.4v4.1H9.3zM10.4 12v-1.2a1.6 1.6 0 0 1 3.2 0V12"/>
+                        </svg>
                     </span>
                     <div>
                         <strong>{{ __('auth.secure_data') }}</strong>
