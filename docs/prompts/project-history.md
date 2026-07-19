@@ -713,3 +713,11 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - La passerelle force maintenant l'algorithme `ssh-ed25519`, normalise uniquement le suffixe Base64 `=` et conserve la comparaison stricte avec l'empreinte epinglee.
 - Ajout d'un journal technique du niveau d'erreur SSH sans mot de passe ni saisie terminal.
 - Validation production de bout en bout reussie : ticket, WebSocket, SSH, pseudo-terminal, commande `whoami`, utilisateur `exad-tracking`, puis fermeture immediate.
+
+### 2026-07-19 - Presse-papiers, plein ecran et cadrage de la console SSH
+- Le clic droit dans le terminal colle le contenu du presse-papiers directement dans la session SSH active.
+- Lorsqu'un texte du terminal est selectionne, le clic droit copie cette selection dans le presse-papiers au lieu de la coller.
+- Ajout d'un bouton iconographique pour basculer le panneau Console en plein ecran et revenir a l'affichage normal.
+- Xterm recalcule ses colonnes et lignes lors du changement de mode, conserve le focus et revient sur la derniere sortie.
+- Augmentation de l'espace inferieur du terminal afin que la derniere ligne et le curseur restent entierement visibles.
+- Assets recompiles avec Vite ; verification locale complete : 93 tests Laravel passes avec 781 assertions et 3 tests Node.js passes.

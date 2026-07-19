@@ -12,6 +12,7 @@ if (operations && root) {
     const state = root.querySelector('[data-console-state]');
     const connectButton = root.querySelector('[data-console-connect]');
     const disconnectButton = root.querySelector('[data-console-disconnect]');
+    const fullscreenButton = root.querySelector('[data-console-fullscreen]');
     const modalElement = document.querySelector('[data-console-auth-modal]');
     const form = modalElement?.querySelector('[data-console-auth-form]');
     const usernameInput = modalElement?.querySelector('[data-console-username]');
@@ -77,6 +78,12 @@ if (operations && root) {
         disconnectButton.hidden = !connected && !connecting;
     };
 
+    const sendInput = (data) => {
+        if (connected && typeof data === 'string' && data && socket?.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'input', data }));
+        }
+    };
+
     const closeSession = (message = null) => {
         intentionalClose = true;
         if (socket?.readyState === WebSocket.OPEN) {
@@ -130,11 +137,50 @@ if (operations && root) {
     connectButton.addEventListener('click', openAuthentication);
     disconnectButton.addEventListener('click', () => closeSession());
 
-    terminal.onData((data) => {
-        if (connected && socket?.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ type: 'input', data }));
+    terminal.onData(sendInput);
+
+    terminalElement.addEventListener('contextmenu', async (event) => {
+        event.preventDefault();
+        if (!connected) return;
+
+        try {
+            if (terminal.hasSelection()) {
+                await navigator.clipboard.writeText(terminal.getSelection());
+                terminal.clearSelection();
+            } else {
+                sendInput(await navigator.clipboard.readText());
+            }
+        } catch {
+            // Clipboard permissions remain controlled by the browser.
+        } finally {
+            terminal.focus();
         }
     });
+
+    const syncFullscreenButton = () => {
+        const fullscreen = document.fullscreenElement === root;
+        const label = fullscreen
+            ? root.dataset.exitFullscreenLabel || 'Exit full screen'
+            : root.dataset.fullscreenLabel || 'Full screen';
+        fullscreenButton.querySelector('i').className = `fa-solid ${fullscreen ? 'fa-compress' : 'fa-expand'}`;
+        fullscreenButton.title = label;
+        fullscreenButton.setAttribute('aria-label', label);
+        requestAnimationFrame(() => {
+            resize();
+            terminal.scrollToBottom();
+            terminal.focus();
+        });
+    };
+
+    fullscreenButton.addEventListener('click', async () => {
+        try {
+            if (document.fullscreenElement === root) await document.exitFullscreen();
+            else await root.requestFullscreen();
+        } catch {
+            // Fullscreen availability is controlled by the browser.
+        }
+    });
+    document.addEventListener('fullscreenchange', syncFullscreenButton);
 
     const resize = () => {
         if (operations.querySelector('[data-server-section="console"]')?.classList.contains('active')) fitAddon.fit();

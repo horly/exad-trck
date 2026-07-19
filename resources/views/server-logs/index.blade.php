@@ -9,8 +9,8 @@
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260719-server-console">
-    <link rel="stylesheet" href="{{ asset('vendor/server-console/server-console.css') }}?v=20260719-server-console">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260719-server-console-tools">
+    <link rel="stylesheet" href="{{ asset('vendor/server-console/server-console.css') }}?v=20260719-server-console-tools">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -85,10 +85,13 @@
                         data-connected-label="{{ __('server_logs.console_connected') }}"
                         data-authentication-error="{{ __('server_logs.console_authentication_error') }}"
                         data-unavailable-label="{{ __('server_logs.console_unavailable') }}"
+                        data-fullscreen-label="{{ __('server_logs.console_fullscreen') }}"
+                        data-exit-fullscreen-label="{{ __('server_logs.console_exit_fullscreen') }}"
                     >
                         <div class="server-console-toolbar">
                             <span class="server-console-state is-disconnected" data-console-state><i class="fa-solid fa-circle"></i><span>{{ __('server_logs.console_disconnected') }}</span></span>
                             <div class="server-console-actions">
+                                <button type="button" class="server-log-button server-console-icon-button" data-console-fullscreen title="{{ __('server_logs.console_fullscreen') }}" aria-label="{{ __('server_logs.console_fullscreen') }}"><i class="fa-solid fa-expand"></i></button>
                                 <button type="button" class="server-log-button" data-console-connect><i class="fa-solid fa-plug"></i><span>{{ __('server_logs.console_connect') }}</span></button>
                                 <button type="button" class="server-log-button server-console-disconnect" data-console-disconnect hidden><i class="fa-solid fa-power-off"></i><span>{{ __('server_logs.console_disconnect') }}</span></button>
                             </div>
@@ -125,7 +128,7 @@
     <script src="{{ asset('js/dashboard-sidebar.js') }}?v=20260626-responsive-sidebar-default"></script>
     <script src="{{ asset('js/dashboard-controls.js') }}?v=20260529-shared-controls"></script>
     <script src="{{ asset('js/server-logs.js') }}?v=20260604-server-logs"></script>
-    <script type="module" src="{{ asset('vendor/server-console/server-console.js') }}?v=20260719-server-console"></script>
+    <script type="module" src="{{ asset('vendor/server-console/server-console.js') }}?v=20260719-server-console-tools"></script>
     @include('partials.realtime-alerts')
 </body>
 </html>

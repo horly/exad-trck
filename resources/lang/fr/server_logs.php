@@ -28,6 +28,8 @@ return [
     'console_tab' => 'Console',
     'console_connect' => 'Ouvrir la session',
     'console_disconnect' => 'Fermer la session',
+    'console_fullscreen' => 'Plein ecran',
+    'console_exit_fullscreen' => 'Quitter le plein ecran',
     'console_disconnected' => 'Session fermée',
     'console_connecting' => 'Connexion en cours',
     'console_connected' => 'Connecté en tant que :user',

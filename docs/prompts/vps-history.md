@@ -469,3 +469,15 @@ The battery voltage field must not be greater than 100.
 - Sauvegarde du fichier precedent : `/tmp/server-console-server-before-ed25519-20260719.js`.
 - Validation reelle de bout en bout reussie avec un client ephemere : ticket HMAC, WebSocket, authentification SSH, ouverture PTY, execution de `whoami`, resultat `exad-tracking`, puis fermeture immediate de la session.
 - Service `exad-server-console.service` verifie actif apres correction. Le client de test temporaire a ete supprime.
+
+## 2026-07-19 - Deploiement des outils de confort de la console SSH
+
+- Deploiement cible des interactions presse-papiers, du mode plein ecran et du correctif de cadrage inferieur du terminal Xterm.
+- Clic droit sans selection : lecture du presse-papiers du navigateur et collage direct dans la session SSH active, y compris pour une invite de mot de passe `sudo`.
+- Clic droit avec selection terminal : copie de la selection dans le presse-papiers.
+- Ajout d'un bouton iconographique plein ecran avec bascule `expand/compress`, recalcul des dimensions PTY et retour du focus au terminal.
+- Augmentation de la marge inferieure afin que la derniere ligne et le curseur restent visibles.
+- Sauvegarde prealable : `/tmp/exadtracking-before-console-tools-20260719-130240.tar.gz`.
+- Caches Laravel nettoyes puis caches de configuration et de vues reconstruits ; syntaxe de l'asset JavaScript validee.
+- Controles production : login, CSS et JavaScript en HTTP 200, marqueurs `contextmenu` et `server-console-panel:fullscreen` presents, service `exad-server-console.service` actif.
+- Validation locale avant deploiement : 93 tests Laravel avec 781 assertions et 3 tests Node.js passes.

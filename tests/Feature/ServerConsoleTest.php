@@ -16,6 +16,9 @@ test('server operations page exposes logs and the secured console interface', fu
         ->assertSee('data-server-console', false)
         ->assertSee('data-console-auth-modal', false)
         ->assertSee('fa-terminal', false)
+        ->assertSee('data-console-fullscreen', false)
+        ->assertSee('fa-expand', false)
+        ->assertSee(__('server_logs.console_fullscreen'))
         ->assertSee(route('server-logs.console-ticket'), false)
         ->assertSee('vendor/server-console/server-console.js', false)
         ->assertDontSee('SERVER_CONSOLE_TICKET_SECRET', false);

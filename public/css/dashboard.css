@@ -5864,6 +5864,14 @@ body.theme-dark .alert-summary-card small {
 
 .server-console-actions { display: flex; gap: 10px; }
 
+.server-console-icon-button {
+    flex: 0 0 42px;
+    height: 40px;
+    justify-content: center;
+    padding: 0;
+    width: 42px;
+}
+
 .server-console-state {
     align-items: center;
     background: #f1f5f9;
@@ -5890,7 +5898,28 @@ body.theme-dark .alert-summary-card small {
     height: clamp(440px, calc(100vh - 315px), 720px);
     min-height: 440px;
     overflow: hidden;
-    padding: 12px;
+    padding: 12px 12px 18px;
+}
+
+.server-console-terminal .xterm { height: 100%; }
+
+.server-console-panel:fullscreen {
+    background: #fff;
+    border: 0;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 18px;
+    width: 100vw;
+}
+
+.server-console-panel:fullscreen .server-console-toolbar { flex: 0 0 auto; }
+
+.server-console-panel:fullscreen .server-console-terminal {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
 }
 
 .server-console-auth-dialog { max-width: 660px; }
@@ -6281,6 +6310,7 @@ body.theme-dark .alert-summary-card small {
     .server-operation-tab { flex: 1; min-width: 0; }
     .server-console-toolbar { align-items: stretch; flex-direction: column; }
     .server-console-actions { display: grid; grid-template-columns: 1fr 1fr; }
+    .server-console-icon-button { width: auto; }
     .server-console-terminal { height: 60vh; min-height: 390px; }
 
     .server-log-tab,
