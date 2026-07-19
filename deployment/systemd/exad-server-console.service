@@ -1,0 +1,30 @@
+[Unit]
+Description=EXAD Tracking secure server console gateway
+After=network-online.target ssh.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=exad-tracking
+Group=exad-tracking
+WorkingDirectory=/var/www/exadtracking.app/server-console-gateway
+EnvironmentFile=/etc/exad-server-console.env
+ExecStart=/bin/bash -lc 'source /home/exad-tracking/.nvm/nvm.sh && exec node /var/www/exadtracking.app/server-console-gateway/src/server.js'
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

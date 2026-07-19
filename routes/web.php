@@ -14,6 +14,7 @@ use App\Http\Controllers\MapController;
 use App\Http\Controllers\MaintenancePlanController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ServerLogController;
+use App\Http\Controllers\ServerConsoleTicketController;
 use App\Http\Controllers\ServerMonitoringController;
 use App\Http\Controllers\SubscriptionPlanController;
 use App\Http\Controllers\TrackerEventController;
@@ -72,6 +73,9 @@ Route::middleware(['auth', 'superadmin'])->group(function () {
     Route::delete('/reports/schedules/{scheduledReport}', [ReportController::class, 'destroySchedule'])->name('reports.schedules.destroy');
     Route::get('/server-logs', [ServerLogController::class, 'index'])->name('server-logs.index');
     Route::get('/server-logs/content', [ServerLogController::class, 'content'])->name('server-logs.content');
+    Route::post('/server-logs/console-ticket', ServerConsoleTicketController::class)
+        ->middleware('throttle:5,1')
+        ->name('server-logs.console-ticket');
     Route::get('/server-monitoring', [ServerMonitoringController::class, 'index'])->name('server-monitoring.index');
     Route::get('/server-monitoring/metrics', [ServerMonitoringController::class, 'metrics'])->name('server-monitoring.metrics');
     Route::get('/customization', CustomizationController::class)->name('customization.index');

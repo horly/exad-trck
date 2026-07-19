@@ -445,3 +445,27 @@ The battery voltage field must not be greater than 100.
 - Verifications finales : application en production, debug desactive, maintenance inactive, `gps-tcp.service` actif, routes Garages/Entretien/recherche d'adresse presentes et toutes les nouvelles migrations marquees `Ran`.
 - Controles HTTP reussis en `200` : page de connexion, `dashboard.css?v=20260719-speed-policy` et `searchable-select.js?v=20260719-database-selects`, avec marqueurs attendus presents.
 - Validation locale avant deploiement : 90 tests et 757 assertions.
+
+## 2026-07-19 - Deploiement et activation de la console SSH Web
+
+- Deploiement cible vers `/var/www/exadtracking.app` des onglets Logs/Console, du terminal Xterm, du controleur de tickets Laravel et de la passerelle Node.js SSH/WebSocket.
+- Sauvegarde prealable des fichiers remplaces dans `/tmp/exadtracking-before-server-console-20260719-050543.tar.gz`.
+- Dependances de la passerelle installees avec `npm ci --omit=dev` : audit sans vulnerabilite, 3 tests Node.js passes et syntaxe validee.
+- Activation effectuee apres confirmation explicite du risque par l'utilisateur : le compte SSH autorise `exad-tracking` appartient au groupe `sudo`.
+- Secret HMAC aleatoire genere directement sur le VPS et conserve dans `/etc/exad-server-console.env` avec permissions `0640`, proprietaire `root` et groupe `exad-tracking`. Aucun mot de passe SSH n'est stocke par l'application.
+- Empreinte de la cle hote SSH locale configuree et verifiee par la passerelle ; origine autorisee limitee a `https://exadtracking.app`.
+- Installation et activation de `exad-server-console.service` ; service actif, active au demarrage et lie uniquement a `127.0.0.1:5091`.
+- Activation des modules Apache `proxy_http` et `proxy_wstunnel`, puis activation du proxy `/server-console/socket` et rechargement Apache avec syntaxe valide.
+- Laravel production configure avec `SERVER_CONSOLE_ENABLED=true`, URL de passerelle locale, ticket de 30 secondes et utilisateur autorise `exad-tracking` ; caches de configuration et de vues reconstruits.
+- Verifications finales : routes Logs/Console presentes, page de connexion et assets console en HTTP 200, negotiation WebSocket publique en HTTP 101, Apache et service console actifs.
+- La session SSH se ferme au changement d'onglet ou de page, a la fermeture du navigateur, a la perte WebSocket et apres 30 minutes d'inactivite.
+
+### Correction du refus de connexion de la console SSH Web
+
+- Les tentatives superadmin atteignaient correctement la passerelle avec un ticket valide, mais SSH coupait au niveau `handshake` avant la verification du mot de passe.
+- Cause identifiee : Node.js calculait l'empreinte SHA-256 ED25519 avec un suffixe Base64 `=`, tandis que la valeur OpenSSH configuree omettait ce remplissage. Les empreintes etaient identiques mais la comparaison textuelle stricte les considerait differentes.
+- Correctif deploye dans `server-console-gateway/src/server.js` : algorithme hote force a `ssh-ed25519` et suppression du seul remplissage final Base64 avant comparaison.
+- L'epingle de cle hote reste stricte ; aucun contournement ou acceptation automatique de cle n'a ete ajoute.
+- Sauvegarde du fichier precedent : `/tmp/server-console-server-before-ed25519-20260719.js`.
+- Validation reelle de bout en bout reussie avec un client ephemere : ticket HMAC, WebSocket, authentification SSH, ouverture PTY, execution de `whoami`, resultat `exad-tracking`, puis fermeture immediate de la session.
+- Service `exad-server-console.service` verifie actif apres correction. Le client de test temporaire a ete supprime.

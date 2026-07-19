@@ -692,3 +692,24 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Ajout d'un etat persistant par regle et traceur dans `alert_rule_states` afin de conserver ce comportement entre les paquets GPS.
 - Migrations locales appliquees : `2026_07_19_100000_add_speed_policy_rule_id_to_vehicles_table` et `2026_07_19_100100_create_alert_rule_states_table`.
 - Verification : compilation Blade reussie et suite complete `php artisan test` verte avec 90 tests et 757 assertions.
+
+### 2026-07-19 - Console SSH securisee dans les logs serveur
+- La page Logs serveur propose maintenant deux onglets : `Logs`, qui conserve l'ecran existant, et `Console`, qui ouvre un terminal SSH interactif.
+- L'acces reste reserve aux superadministrateurs et exige la saisie du compte Linux autorise `exad-tracking` ainsi que de son mot de passe.
+- Laravel emet un ticket HMAC a usage unique valable 30 secondes ; le mot de passe Linux est transmis directement par WebSocket a la passerelle SSH et n'est jamais envoye, stocke ou journalise par Laravel.
+- La passerelle Node.js est liee a `127.0.0.1`, verifie l'origine Web, l'empreinte de la cle hote SSH, le nom d'utilisateur autorise, l'expiration et le rejeu du ticket.
+- La session SSH et son pseudo-terminal sont fermes lors de la deconnexion, du passage a l'onglet Logs, d'un changement de page, de la fermeture du navigateur, d'une perte WebSocket ou apres 30 minutes d'inactivite.
+- Ajout des exemples de configuration systemd, Apache et environnement dans `deployment/` et `server-console-gateway/`. La fonctionnalite reste desactivee tant que `SERVER_CONSOLE_ENABLED` et les secrets ne sont pas configures sur le VPS.
+- Verification locale : compilation Vite reussie, 3 tests Node.js passes et suite Laravel complete verte avec 93 tests et 778 assertions. Aucun deploiement distant effectue a cette etape.
+
+#### Deploiement production
+- Fonctionnalite deployee et activee sur le VPS apres confirmation explicite du risque lie a une console Web utilisant un compte Linux membre de `sudo`.
+- Service `exad-server-console.service` actif et active au demarrage ; passerelle liee uniquement a `127.0.0.1:5091`.
+- Proxy WebSocket Apache active sur `/server-console/socket` et configuration Laravel production activee avec un secret genere uniquement sur le serveur.
+- Controles production reussis : login et assets en HTTP 200, negotiation WebSocket en HTTP 101.
+
+#### Correction de l'authentification SSH Web
+- Correction du refus avant authentification provoque par la difference de remplissage Base64 entre l'empreinte SHA-256 calculee par Node.js et celle affichee par OpenSSH.
+- La passerelle force maintenant l'algorithme `ssh-ed25519`, normalise uniquement le suffixe Base64 `=` et conserve la comparaison stricte avec l'empreinte epinglee.
+- Ajout d'un journal technique du niveau d'erreur SSH sans mot de passe ni saisie terminal.
+- Validation production de bout en bout reussie : ticket, WebSocket, SSH, pseudo-terminal, commande `whoami`, utilisateur `exad-tracking`, puis fermeture immediate.
