@@ -33,6 +33,27 @@ test('superadmin can create a garage without assigning fleets', function () {
     expect($garage->specialties)->toBe(['Mécanique', 'pneus']);
 });
 
+test('garage validation errors are displayed beside their fields', function () {
+    $user = User::factory()->superadmin()->create();
+
+    $this->actingAs($user)
+        ->from(route('garages.index'))
+        ->post(route('garages.store'), [
+            'name' => '',
+            'type' => 'internal',
+            'status' => 'active',
+        ])
+        ->assertRedirect(route('garages.index'))
+        ->assertSessionHasErrors(['name']);
+
+    $this->actingAs($user)
+        ->get(route('garages.index'))
+        ->assertSuccessful()
+        ->assertSee('data-garage-validation-errors', false)
+        ->assertSee('data-field-error="name"', false)
+        ->assertDontSee('class="alert alert-danger"', false);
+});
+
 test('garage and maintenance pages are restricted and exposed in the fleet menu', function () {
     $superadmin = User::factory()->superadmin()->create();
     $admin = User::factory()->admin()->create();
@@ -94,6 +115,64 @@ test('a preventive plan stores conditions and documents', function () {
         ->and((float) $plan->next_due_odometer_km)->toBe(25000.0)
         ->and($plan->documents)->toHaveCount(1);
     Storage::disk('public')->assertExists($plan->documents->first()->path);
+});
+
+test('maintenance validation errors are displayed beside their fields', function () {
+    $user = User::factory()->superadmin()->create();
+    $fleet = Fleet::factory()->create();
+    $vehicle = Vehicle::factory()->create(['fleet_id' => $fleet->id]);
+
+    $response = $this->actingAs($user)
+        ->from(route('maintenance.index'))
+        ->post(route('maintenance.store'), [
+            'vehicle_id' => $vehicle->id,
+            'name' => 'Entretien moteur',
+            'maintenance_type' => 'preventive',
+        ]);
+
+    $response
+        ->assertRedirect(route('maintenance.index'))
+        ->assertSessionHasErrors(['next_due_date']);
+
+    $this->actingAs($user)
+        ->get(route('maintenance.index'))
+        ->assertSuccessful()
+        ->assertSee('data-maintenance-validation-errors', false)
+        ->assertSee('data-field-error="next_due_date"', false)
+        ->assertSee('name="next_due_date"', false)
+        ->assertDontSee('class="alert alert-danger"', false);
+});
+
+test('maintenance completion errors reopen the completion modal', function () {
+    $user = User::factory()->superadmin()->create();
+    $fleet = Fleet::factory()->create();
+    $vehicle = Vehicle::factory()->create(['fleet_id' => $fleet->id]);
+    $plan = MaintenancePlan::query()->create([
+        'vehicle_id' => $vehicle->id,
+        'created_by' => $user->id,
+        'name' => 'Revision annuelle',
+        'maintenance_type' => 'preventive',
+        'next_due_date' => '2026-08-01',
+        'status' => 'active',
+        'due_status' => 'scheduled',
+    ]);
+
+    $this->actingAs($user)
+        ->from(route('maintenance.index'))
+        ->patch(route('maintenance.complete', $plan), [
+            'maintenance_plan_id' => $plan->id,
+            'maintenance_plan_name' => $plan->name,
+            'performed_at' => '',
+        ])
+        ->assertRedirect(route('maintenance.index'))
+        ->assertSessionHasErrorsIn('completion', ['performed_at']);
+
+    $this->actingAs($user)
+        ->get(route('maintenance.index'))
+        ->assertSuccessful()
+        ->assertSee('data-completion-validation-errors', false)
+        ->assertSee('data-field-error="performed_at"', false)
+        ->assertDontSee('data-maintenance-validation-errors', false);
 });
 
 test('maintenance evaluator creates one alert when telemetry reaches a threshold', function () {

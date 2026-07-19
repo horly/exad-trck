@@ -6,6 +6,8 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class CompleteMaintenancePlanRequest extends FormRequest
 {
+    protected $errorBag = 'completion';
+
     public function authorize(): bool
     {
         return (bool) $this->user()?->isSuperadmin();

@@ -6,14 +6,21 @@
     const title = form.querySelector('[data-garage-title]');
     const submit = form.querySelector('[data-garage-submit]');
     const storeAction = form.action;
+    const clearValidationErrors = () => {
+        form.querySelectorAll('.is-invalid').forEach((element) => element.classList.remove('is-invalid'));
+        form.querySelectorAll('[data-field-error]').forEach((element) => element.remove());
+        form.removeAttribute('data-garage-validation-errors');
+    };
     document.addEventListener('click', (event) => {
         if (event.target.closest('[data-garage-create]')) {
+            clearValidationErrors();
             form.reset(); form.action = storeAction; field('method').value = 'POST';
             title.textContent = title.dataset.createLabel; submit.textContent = submit.dataset.createLabel;
             return;
         }
         const button = event.target.closest('[data-garage-edit]');
         if (!button) return;
+        clearValidationErrors();
         const garage = JSON.parse(button.dataset.garage);
         form.reset(); form.action = button.dataset.action; field('method').value = 'PUT';
         Object.entries(garage).forEach(([key, value]) => { const input = field(key); if (input) input.value = Array.isArray(value) ? value.join(', ') : (value ?? ''); });
@@ -41,7 +48,7 @@
         }, 350);
     });
     document.addEventListener('click', (event) => { if (!event.target.closest('.maintenance-address-field')) results.hidden = true; });
-    if (document.querySelector('.alert-danger')) bootstrap.Modal.getOrCreateInstance(modal).show();
+    if (form.hasAttribute('data-garage-validation-errors')) bootstrap.Modal.getOrCreateInstance(modal).show();
     const toast = document.querySelector('[data-app-toast]');
     toast?.querySelector('[data-app-toast-close]')?.addEventListener('click', () => toast.classList.add('is-hiding'));
     if (toast) setTimeout(() => toast.classList.add('is-hiding'), 5200);

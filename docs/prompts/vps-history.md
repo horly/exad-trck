@@ -516,3 +516,15 @@ The battery voltage field must not be greater than 100.
 - Syntaxe Blade valide, caches Laravel nettoyes puis caches de configuration et de vues reconstruits ; Apache actif et maintenance inactive.
 - Controles publics reussis en HTTP 200 pour la page, le CSS versionne `20260719-night-fleet` et l'image de fond.
 - Validation locale avant deploiement : 93 tests Laravel passes avec 788 assertions ; rendus verifies en 1920x918, 1257x710 et 500x900.
+
+## 2026-07-19 - Deploiement de la validation contextuelle des modales
+
+- Deploiement cible des erreurs rattachees aux champs dans les formulaires `Planifier une revision`, `Cloturer une revision` et `Garage`.
+- Suppression des bandeaux d'erreur globaux des pages Entretien et Garages ; chaque champ invalide affiche maintenant son etat rouge et son message immediatement dessous.
+- Conservation des anciennes valeurs apres validation et reouverture automatique de la modale concernee.
+- Separation des erreurs de cloture dans le sac Laravel `completion` afin qu'elles ne puissent pas ouvrir la modale de planification.
+- Sauvegarde prealable : `/tmp/exadtracking-before-field-validation-20260719-174701.tar.gz`.
+- Syntaxe PHP validee, caches Laravel nettoyes puis caches de configuration et de vues reconstruits ; environnement `production`, debug desactive et maintenance inactive.
+- Verification distante des marqueurs des trois modales et de l'absence de `alert-danger` dans les deux vues concernees.
+- Controle public final : `https://exadtracking.app/login` repond en HTTP 200.
+- Validation locale avant deploiement : 96 tests Laravel passes avec 813 assertions.

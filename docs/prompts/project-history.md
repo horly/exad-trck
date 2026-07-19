@@ -781,3 +781,13 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Sauvegarde distante creee avant remplacement : `/tmp/exadtracking-before-login-night-20260719-150609.tar.gz`.
 - Caches Laravel reconstruits ; page, CSS et image controles publiquement en HTTP 200.
 - Apache actif, maintenance inactive et fonctionnalite `Se souvenir de moi` conservee.
+
+### 2026-07-19 - Validation contextuelle des formulaires modaux
+- Regle d'interface retenue : les erreurs de validation doivent toujours apparaitre sur le champ concerne, avec son etat invalide et un message immediatement dessous ; aucun bandeau global ne doit remplacer cette indication.
+- Application de la regle aux formulaires `Planifier une revision`, `Cloturer une revision` et `Garage`, les dernieres modales d'entretien qui n'affichaient pas encore toutes leurs erreurs sur les champs.
+- Les modales concernees se rouvrent automatiquement apres un echec, conservent les valeurs saisies et retirent les anciens etats invalides lors d'une nouvelle creation ou edition.
+- L'erreur metier exigeant au moins une echeance preventive est maintenant affichee sous le champ `Prochaine echeance` par date, auquel elle est rattachee par le serveur.
+- Les erreurs de cloture utilisent un sac dedie afin de rouvrir la modale de cloture, sans interagir avec celle de planification.
+- Tests de regression ajoutes pour l'entretien et les garages ; suite complete verte avec 96 tests et 813 assertions.
+- Deploiement VPS effectue apres autorisation explicite, avec sauvegarde ciblee prealable dans `/tmp/exadtracking-before-field-validation-20260719-174701.tar.gz`.
+- Caches Laravel reconstruits, application remise en ligne et controle public reussi en HTTP 200.
