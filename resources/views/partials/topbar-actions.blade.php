@@ -48,7 +48,7 @@
 
     <div class="dropdown">
         <button class="user-pill dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <span class="user-avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</span>
+            <span class="user-avatar">@if(auth()->user()->profilePhotoUrl())<img class="rounded-circle" src="{{ auth()->user()->profilePhotoUrl() }}" alt="{{ auth()->user()->name }}" width="44" height="44">@else{{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}@endif</span>
             <strong>{{ auth()->user()->name }}</strong>
         </button>
         <div class="dropdown-menu dropdown-menu-end user-menu">
@@ -65,7 +65,7 @@
                         <span>{{ __('dashboard.title') }}</span>
                     </a>
                 @endif
-                <a href="#" class="user-menu-link">
+                <a href="{{ route('profile.show') }}" class="user-menu-link">
                     <i class="fa-solid fa-circle-user"></i>
                     <span>{{ __('dashboard.profile') }}</span>
                 </a>

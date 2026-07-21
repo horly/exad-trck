@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Alert;
 use App\Models\Device;
 use App\Models\Position;
 use App\Models\Vehicle;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -15,6 +17,12 @@ class DashboardController extends Controller
     public function __invoke(): View
     {
         $user = request()->user();
+        $canViewMap = $user->hasClientPermission(User::PERMISSION_MAP_VIEW);
+
+        if (! $user->isSuperadmin()) {
+            return $this->clientDashboard($user, $canViewMap);
+        }
+
         $period = $this->selectedPeriod();
         $periodWindow = $this->periodWindow($period);
 
@@ -41,6 +49,9 @@ class DashboardController extends Controller
             ->count();
 
         return view('dashboard', [
+            'fleet' => $user->fleet,
+            'isClientDashboard' => ! $user->isSuperadmin(),
+            'canViewMap' => $canViewMap,
             'period' => $period,
             'periodWindow' => $periodWindow,
             'summary' => [
@@ -59,7 +70,7 @@ class DashboardController extends Controller
                 'status' => $this->deviceStatusDistribution($user),
                 'fleet' => $this->fleetDistribution($user),
                 'health' => $this->signalHealth($user),
-                'map' => $this->trackerMap($user),
+                'map' => $canViewMap ? $this->trackerMap($user) : ['clusters' => [], 'total' => 0],
                 'emptyText' => __('dashboard.no_chart_data'),
                 'period' => [
                     'key' => $period,
@@ -76,6 +87,59 @@ class DashboardController extends Controller
                     'worldMap' => __('dashboard.tracker_world_map'),
                 ],
             ],
+        ]);
+    }
+
+    private function clientDashboard(User $user, bool $canViewMap): View
+    {
+        $fleet = $user->fleet;
+        $fleetId = $fleet?->id ?? 0;
+        $baseVehicles = Vehicle::query()->where('fleet_id', $fleetId);
+        $vehicles = Vehicle::query()
+            ->where('fleet_id', $fleetId)
+            ->with([
+                'fleet:id,name,code',
+                'device:id,vehicle_id,status,last_speed,last_seen_at,last_ignition,last_movement',
+            ])
+            ->latest('updated_at')
+            ->limit(8)
+            ->get();
+
+        $online = (clone $baseVehicles)
+            ->whereHas('device', fn ($query) => $query->where('status', 'online'))
+            ->count();
+        $moving = (clone $baseVehicles)
+            ->whereHas('device', fn ($query) => $query
+                ->where('status', 'online')
+                ->where('last_speed', '>', 0))
+            ->count();
+        $withoutSignal = (clone $baseVehicles)
+            ->where(function ($query): void {
+                $query
+                    ->whereDoesntHave('device')
+                    ->orWhereHas('device', fn ($query) => $query->where('status', '!=', 'online'));
+            })
+            ->count();
+
+        return view('dashboard-client', [
+            'fleet' => $fleet,
+            'isSuperadminPreview' => request()->attributes->getBoolean('client_preview'),
+            'canViewMap' => $canViewMap,
+            'canGenerateReports' => $user->hasClientPermission(User::PERMISSION_REPORTS_GENERATE),
+            'canManageMaintenance' => $user->hasClientPermission(User::PERMISSION_MAINTENANCE_MANAGE),
+            'summary' => [
+                'vehicles_total' => (clone $baseVehicles)->count(),
+                'vehicles_online' => $online,
+                'vehicles_moving' => $moving,
+                'vehicles_attention' => $withoutSignal,
+            ],
+            'vehicles' => $vehicles,
+            'recentAlerts' => Alert::query()
+                ->where('fleet_id', $fleetId)
+                ->with('vehicle:id,name,registration_number')
+                ->latest('occurred_at')
+                ->limit(5)
+                ->get(),
         ]);
     }
 

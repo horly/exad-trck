@@ -3,12 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('reports.title') }} - EXAD Tracking</title>
+    <title>{{ __('reports.title') }} - {{ $applicationSettings->app_name }}</title>
     @include('partials.favicon')
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260719-database-selects">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260721-client-preview-icons">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -143,9 +143,13 @@
                     <input type="hidden" name="period" value="{{ $filters['period'] }}">
                     <input type="hidden" name="date_from" value="{{ $filters['date_from']->toDateString() }}">
                     <input type="hidden" name="date_to" value="{{ $filters['date_to']->toDateString() }}">
-                    <input type="hidden" name="fleet_id" value="{{ $filters['fleet_id'] }}">
+                    @if ($showTechnicalDetails)
+                        <input type="hidden" name="fleet_id" value="{{ $filters['fleet_id'] }}">
+                    @endif
                     <input type="hidden" name="vehicle_id" value="{{ $filters['vehicle_id'] }}">
-                    <input type="hidden" name="device_id" value="{{ $filters['device_id'] }}">
+                    @if ($showTechnicalDetails)
+                        <input type="hidden" name="device_id" value="{{ $filters['device_id'] }}">
+                    @endif
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn users-cancel-button" data-bs-dismiss="modal">{{ __('reports.cancel') }}</button>

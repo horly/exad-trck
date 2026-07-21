@@ -60,7 +60,7 @@ class VehicleController extends Controller
             ? (string) $request->query('sort')
             : null;
         $direction = $request->query('direction') === 'asc' ? 'asc' : 'desc';
-        $canManageVehicles = $request->user()->isSuperadmin() || $request->user()->isAdmin();
+        $canManageVehicles = $request->user()->isSuperadmin();
 
         $vehicles = Vehicle::query()
             ->visibleTo($request->user())
@@ -68,16 +68,20 @@ class VehicleController extends Controller
             ->select('vehicles.*')
             ->leftJoin('fleets', 'fleets.id', '=', 'vehicles.fleet_id')
             ->addSelect('fleets.name as fleet_name')
-            ->when($search !== '', function ($query) use ($search): void {
-                $query->where(function ($query) use ($search): void {
+            ->when($search !== '', function ($query) use ($search, $request): void {
+                $query->where(function ($query) use ($search, $request): void {
                     $query->where('vehicles.name', 'like', "%{$search}%")
-                        ->orWhere('registration_number', 'like', "%{$search}%")
-                        ->orWhere('brand', 'like', "%{$search}%")
-                        ->orWhere('model', 'like', "%{$search}%")
-                        ->orWhere('vehicle_type', 'like', "%{$search}%")
-                        ->orWhere('subscription_plan', 'like', "%{$search}%")
-                        ->orWhere('vehicles.status', 'like', "%{$search}%")
-                        ->orWhere('fleets.name', 'like', "%{$search}%");
+                        ->orWhere('registration_number', 'like', "%{$search}%");
+
+                    if ($request->user()->isSuperadmin()) {
+                        $query
+                            ->orWhere('brand', 'like', "%{$search}%")
+                            ->orWhere('model', 'like', "%{$search}%")
+                            ->orWhere('vehicle_type', 'like', "%{$search}%")
+                            ->orWhere('subscription_plan', 'like', "%{$search}%")
+                            ->orWhere('vehicles.status', 'like', "%{$search}%")
+                            ->orWhere('fleets.name', 'like', "%{$search}%");
+                    }
                 });
             })
             ->when($sort !== null, function ($query) use ($sortableColumns, $sort, $direction): void {
@@ -164,7 +168,7 @@ class VehicleController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($user->isSuperadmin() || $user->isAdmin(), 403);
+        abort_unless($user->isSuperadmin(), 403);
 
         if ($vehicle === null || $user->isSuperadmin()) {
             return;

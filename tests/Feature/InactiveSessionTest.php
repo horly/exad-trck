@@ -2,7 +2,9 @@
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 uses(RefreshDatabase::class);
 
@@ -23,15 +25,45 @@ test('authenticated pages configure automatic logout after thirty minutes of ina
 });
 
 test('login page explains an inactivity logout', function () {
-    $this->get(route('login', ['reason' => 'inactive']))
+    $response = $this->get(route('login', ['reason' => 'inactive']));
+
+    $response
         ->assertSuccessful()
         ->assertSee('css/auth-login.css', false)
         ->assertSee('images/login-fleet-night.png', false)
         ->assertSee('name="remember"', false)
+        ->assertSee('data-login-session', false)
+        ->assertSee(route('auth.csrf-token'), false)
+        ->assertSee('js/login-session.js', false)
         ->assertSee(__('auth.remember'))
-        ->assertSee("Votre session a expiré après 30 minutes d'inactivité.");
+        ->assertSee(__('auth.inactivity_logout'));
 
+    expect($response->headers->get('Cache-Control'))->toContain('no-store');
     expect(public_path('images/login-fleet-night.png'))->toBeFile();
+});
+
+test('login csrf token can be refreshed without caching the response', function () {
+    $response = $this->getJson(route('auth.csrf-token'));
+
+    $response
+        ->assertSuccessful()
+        ->assertJsonPath('token', fn (string $token): bool => $token !== '');
+
+    expect($response->headers->get('Cache-Control'))->toContain('no-store');
+});
+
+test('an expired browser csrf token returns to a fresh login instead of showing 419', function () {
+    Route::get('/_test/expired-session', fn () => throw new TokenMismatchException);
+
+    $this->get('/_test/expired-session')
+        ->assertRedirect(route('login', ['reason' => 'expired']));
+
+    $this->getJson('/_test/expired-session')
+        ->assertStatus(419);
+
+    $this->get(route('login', ['reason' => 'expired']))
+        ->assertSuccessful()
+        ->assertSee(__('auth.session_expired'));
 });
 
 test('login fleet visual is limited to desktop screens', function () {

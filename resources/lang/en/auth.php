@@ -33,6 +33,7 @@ return [
     'forgot_password' => 'Forgot password?',
     'login_button' => 'Sign in',
     'inactivity_logout' => 'Your session expired after 30 minutes of inactivity. Please sign in again.',
+    'session_expired' => 'Your session has expired. Please sign in again.',
     'processing' => 'Processing...',
     'or' => 'or',
     'secure_data' => 'Your data is secure',

@@ -70,7 +70,14 @@
                     <tr>
                         <td>{{ $fleets->firstItem() + $loop->index }}</td>
                         <td>
-                            <strong>{{ $fleet->name }}</strong>
+                            <a
+                                class="fleet-dashboard-link"
+                                href="{{ route('fleets.dashboard', $fleet) }}"
+                                aria-label="{{ __('fleets.open_client_dashboard', ['fleet' => $fleet->name]) }}"
+                            >
+                                <strong>{{ $fleet->name }}</strong>
+                                <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                            </a>
                             <span class="technical-code">{{ $fleet->code }} · {{ $fleet->description ?: __('fleets.no_description') }}</span>
                         </td>
                         <td>

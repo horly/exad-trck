@@ -124,7 +124,7 @@
             params.set('status', statusFilter.value);
         }
 
-        if (fleetFilter.value) {
+        if (fleetFilter?.value) {
             params.set('fleet_id', fleetFilter.value);
         }
 
@@ -144,7 +144,7 @@
             statusFilter.value = params.get('status') || '';
         }
 
-        if (params.has('fleet_id')) {
+        if (fleetFilter && params.has('fleet_id')) {
             fleetFilter.value = params.get('fleet_id') || '';
         }
 
@@ -199,13 +199,33 @@
         </span>
     `;
 
-    const popupHtml = (properties) => `
+    const popupHtml = (properties) => {
+        const showTechnicalDetails = Boolean(config.technicalDetails && properties.technical_details);
+        const trackerRow = showTechnicalDetails ? `
+                <div class="map-popup-row">
+                    <span>${escapeHtml(messages.tracker)}</span>
+                    <strong>${escapeHtml(properties.brand)} · ${escapeHtml(properties.model)}</strong>
+                </div>
+        ` : '';
+        const detailsButton = properties.details_url ? `
+                <button
+                    type="button"
+                    class="map-popup-action-button"
+                    data-tracker-details
+                    data-details-url="${escapeHtml(properties.details_url)}"
+                >
+                    <i class="fa-regular fa-clock"></i>
+                    <span>${escapeHtml(messages.details)}</span>
+                </button>
+        ` : '';
+
+        return `
         <div class="map-popup">
             <div class="map-popup-header">
                 <span class="map-popup-dot status-${escapeHtml(properties.status || markerState(properties))}"></span>
                 <div>
                     <strong class="map-popup-title">${escapeHtml(properties.vehicle)}</strong>
-                    <span class="map-popup-subtitle">${escapeHtml(properties.status_label)} · ${escapeHtml(properties.imei)}</span>
+                    <span class="map-popup-subtitle">${escapeHtml(properties.status_label)}${showTechnicalDetails ? ` · ${escapeHtml(properties.imei)}` : ''}</span>
                 </div>
             </div>
             <div class="map-popup-grid">
@@ -213,10 +233,7 @@
                     <span>${escapeHtml(messages.registration)}</span>
                     <strong>${escapeHtml(properties.registration)}</strong>
                 </div>
-                <div class="map-popup-row">
-                    <span>${escapeHtml(messages.tracker)}</span>
-                    <strong>${escapeHtml(properties.brand)} · ${escapeHtml(properties.model)}</strong>
-                </div>
+                ${trackerRow}
                 <div class="map-popup-row">
                     <span>${escapeHtml(messages.fleet)}</span>
                     <strong>${escapeHtml(properties.fleet)} · ${escapeHtml(properties.fleet_code)}</strong>
@@ -231,15 +248,7 @@
                 </div>
             </div>
             <div class="map-popup-actions">
-                <button
-                    type="button"
-                    class="map-popup-action-button"
-                    data-tracker-details
-                    data-details-url="${escapeHtml(properties.details_url)}"
-                >
-                    <i class="fa-regular fa-clock"></i>
-                    <span>${escapeHtml(messages.details)}</span>
-                </button>
+                ${detailsButton}
                 <button
                     type="button"
                     class="map-popup-action-button"
@@ -253,6 +262,7 @@
             </div>
         </div>
     `;
+    };
 
     const clearMarkers = () => {
         markerRegistry.forEach((marker) => marker.setMap(null));
@@ -588,7 +598,7 @@
                 <span class="map-result-icon state-${escapeHtml(markerState(properties))}">${escapeHtml(markerGlyph(properties))}</span>
                 <span class="map-result-body">
                     <strong class="map-result-title">${escapeHtml(properties.vehicle)} ${escapeHtml(properties.registration)}</strong>
-                    <span class="map-result-meta">${escapeHtml(properties.imei)} · ${escapeHtml(properties.fleet)} · ${escapeHtml(properties.status_label)}</span>
+                    <span class="map-result-meta">${config.technicalDetails ? `${escapeHtml(properties.imei)} · ` : ''}${escapeHtml(properties.fleet)} · ${escapeHtml(properties.status_label)}</span>
                 </span>
             `;
             item.addEventListener('click', () => {
@@ -1077,7 +1087,7 @@
         selectedDeviceId = null;
         loadDevices({ fit: showAllInput.checked });
     });
-    fleetFilter.addEventListener('change', () => {
+    fleetFilter?.addEventListener('change', () => {
         selectedDeviceId = null;
         loadDevices({ fit: showAllInput.checked });
     });

@@ -3,12 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('fleets.title') }} - EXAD Tracking</title>
+    <title>{{ __('fleets.title') }} - {{ $applicationSettings->app_name }}</title>
     @include('partials.favicon')
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260719-database-selects">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260721-client-preview-icons">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -108,20 +108,15 @@
                                 </div>
 
                                 <div>
-                                    <label for="fleet_admin" class="form-label">{{ __('fleets.initial_admin') }} *</label>
-                                    <select id="fleet_admin" name="admin_id" class="form-select @error('admin_id') is-invalid @enderror" data-fleet-admin data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-user-shield" @disabled(! auth()->user()->isSuperadmin())>
-                                        @if (auth()->user()->isSuperadmin())
-                                            <option value="">{{ __('fleets.choose_admin') }}</option>
-                                        @endif
+                                    <label for="fleet_admin" class="form-label">{{ __('fleets.initial_admin') }}</label>
+                                    <select id="fleet_admin" name="admin_id" class="form-select @error('admin_id') is-invalid @enderror" data-fleet-admin data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-user-shield">
+                                        <option value="">{{ __('fleets.choose_admin') }}</option>
                                         @foreach ($assignableAdmins as $assignableAdmin)
-                                            <option value="{{ $assignableAdmin->id }}" @selected((int) old('admin_id', auth()->user()->isAdmin() ? auth()->id() : null) === $assignableAdmin->id)>
+                                            <option value="{{ $assignableAdmin->id }}" @selected((int) old('admin_id') === $assignableAdmin->id)>
                                                 {{ $assignableAdmin->name }} · {{ $assignableAdmin->email }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    @if (! auth()->user()->isSuperadmin())
-                                        <input type="hidden" name="admin_id" value="{{ auth()->id() }}">
-                                    @endif
                                     <small class="technical-code d-block mt-2">{{ __('fleets.initial_admin_hint') }}</small>
                                     @error('admin_id')
                                         <div class="invalid-feedback d-block">{{ $message }}</div>

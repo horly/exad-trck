@@ -800,3 +800,167 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Test de regression ajoute ; suite complete verte avec 97 tests et 818 assertions.
 - Deploiement VPS effectue apres autorisation explicite ; sauvegarde ciblee creee dans `/tmp/exadtracking-before-login-responsive-20260719-193124.tar.gz`.
 - Caches Laravel reconstruits et controles publics reussis en HTTP 200 pour la page de connexion et le CSS responsive.
+
+### 2026-07-19 - Page Profil, photo recadree et authentification a deux facteurs
+- Ajout d'une page `Mon profil` accessible aux trois roles authentifies depuis le menu utilisateur global, sans information d'abonnement dans son contenu.
+- Interface corporate responsive composee de sections Photo, Authentification a deux facteurs, Informations personnelles, Adresse e-mail et Mot de passe ; disposition en deux colonnes sur bureau et une colonne sur tablette/mobile, avec prise en charge du theme sombre.
+- Ajout de Cropper.js `1.6.2` en dependance locale et dans `public/vendor/cropperjs` : recadrage carre, apercu circulaire, zoom, rotation, reinitialisation et export WebP `512 x 512` avant envoi.
+- Ajout de `profile_photo_path` aux utilisateurs, stockage public des photos, remplacement/suppression de l'ancien fichier et affichage de la photo dans la topbar ainsi que la liste des utilisateurs, avec repli sur l'initiale.
+- Separation securisee des mises a jour : nom/telephone/adresse, e-mail exigeant le mot de passe actuel et mot de passe gere par Fortify.
+- Alignement des regles serveur de mot de passe avec l'interface : 12 caracteres minimum, majuscule, minuscule, lettre, chiffre, symbole et confirmation.
+- Activation du moteur 2FA TOTP de Fortify avec confirmation obligatoire. La fonctionnalite reste desactivee par defaut et ne s'active qu'apres choix de l'utilisateur, verification du mot de passe, scan du QR Code et validation d'un code a six chiffres.
+- Ajout de la desactivation protegee par mot de passe, de l'affichage/regeneration proteges des huit codes de recuperation et des vues Fortify de confirmation du mot de passe et de defi 2FA.
+- Traductions francaises et anglaises ajoutees pour toute la page, les messages Fortify et les etats de securite.
+- Migration locale `2026_07_19_200000_add_profile_photo_path_to_users_table` executee et lien `public/storage` cree.
+- Verification locale : scripts JavaScript valides, vues Blade compilees et suite complete verte avec 106 tests et 903 assertions.
+- Aucun deploiement VPS effectue.
+
+#### Validation interactive du mot de passe du profil
+- Alignement du formulaire de changement de mot de passe sur le comportement interactif de la modale `Nouvel utilisateur`.
+- Les criteres restent neutres avant la saisie, deviennent rouges lorsqu'ils ne sont pas satisfaits et verts des qu'ils sont valides.
+- Les champs nouveau mot de passe et confirmation affichent eux aussi leur etat en temps reel ; la correspondance est recalculee lors de toute modification de l'un des deux champs.
+- Ajout d'une zone d'annonce accessible pour les criteres et maintien de la validation Fortify cote serveur.
+- Verification locale : JavaScript valide, vues Blade compilees et suite complete verte avec 107 tests et 914 assertions.
+- Aucun deploiement VPS effectue.
+
+### 2026-07-19 - Personnalisation globale de l'application
+- Remplacement de l'ecran vide de personnalisation par un formulaire corporate responsive reserve au superadmin.
+- Ajout des sections Identite de l'application, Identite visuelle, Couleurs de l'application et Informations de support.
+- Conformement a la demande, aucun champ `Slogan`, `Description` ou `Texte de copyright` n'a ete ajoute dans l'interface, la validation ou la base de donnees.
+- Ajout de la migration locale `2026_07_19_210000_create_application_settings_table` et du modele singleton `ApplicationSetting` avec les valeurs EXAD par defaut.
+- Les reglages disponibles sont : nom, nom court, site web, logo, favicon, sept couleurs de theme, e-mail support et telephone support.
+- Les fichiers logo et favicon sont valides, stockes sur le disque public et remplaces sans conserver les anciennes versions. Les formats SVG ne sont pas acceptes afin d'eviter de servir un contenu actif non nettoye depuis le domaine de l'application.
+- Ajout d'une previsualisation immediate des images et des couleurs, ainsi que d'une commande restaurant la palette EXAD avant enregistrement.
+- Propagation reelle du nom, du nom court, du logo et du favicon dans la connexion, la sidebar, les defis d'authentification, les rapports et les titres des pages.
+- Propagation des couleurs via les variables CSS communes pour la navigation laterale, les boutons, les avatars et les accents de l'application, avec prise en charge du theme sombre.
+- Les erreurs de validation sont affichees directement sous les champs concernes et les formulaires conservent les valeurs apres echec.
+- Migration executee localement en lot 30. JavaScript valide, vues Blade compilees et suite complete verte avec 112 tests et 963 assertions.
+- Aucun deploiement VPS effectue.
+
+#### Deploiement du Profil et de la Personnalisation
+- Deploiement VPS effectue apres autorisation explicite de l'ensemble Profil, Cropper.js, 2FA Fortify et Personnalisation globale.
+- Migrations production executees : `2026_07_19_200000_add_profile_photo_path_to_users_table` et `2026_07_19_210000_create_application_settings_table`.
+- Sauvegarde distante prealable : `/tmp/exadtracking-before-profile-customization-20260719-231801.tar.gz`.
+- Autoload Composer optimise, caches Laravel nettoyes puis caches de configuration et de vues reconstruits ; signal de redemarrage envoye aux workers de queue.
+- Le premier passage s'est arrete au controle JavaScript car Node.js n'est pas present dans le `PATH` non interactif root. Le garde-fou a automatiquement remis Laravel en ligne, puis le deploiement a repris sans reextraction a partir de l'autoload et des migrations.
+- Verification production reussie : application hors maintenance, lien `public/storage` actif, routes Profil/2FA/Personnalisation presentes, Apache, listener GPS et console Web actifs.
+- Controles publics reussis en HTTPS 200 pour la connexion, le CSS et le JavaScript de personnalisation ainsi que Cropper.js.
+
+### 2026-07-19 - Tolerance des angles GPS hors plage
+- Diagnostic du traceur Teltonika IMEI `353201355315547`, affiche hors ligne dans EXAD Tracking alors qu'il reste joignable sur Navixy.
+- Les journaux de production confirment que l'IMEI est reconnu, mais qu'un relevé Codec8 Extended est refuse par Laravel lorsque son angle depasse `359`. Le rejet du relevé empeche la mise a jour de `last_seen_at` et l'ACK de donnees, puis le traceur est classe hors ligne apres cinq minutes.
+- Les lignes `codec8_extended records=1 ACK=1` visibles autour des connexions recentes appartiennent a d'autres IMEI ; le traceur concerne effectue actuellement plusieurs connexions IMEI courtes sans nouveau relevé exploitable.
+- Correction locale de `gps:ingest-position` : un angle `360` est normalise a `0`, tandis qu'une valeur entiere hors plage est consideree indisponible et remplacee par le dernier cap fiable du traceur. Les controles stricts restent inchanges pour l'IMEI, les coordonnees, la vitesse et la date GPS.
+- Tests de regression ajoutes pour `65535` et `360`. Suite complete verte avec 112 tests et 968 assertions.
+- Aucun deploiement VPS effectue ; la correction reste locale dans l'attente d'une autorisation explicite.
+
+#### Deploiement et retablissement du traceur
+- Correctif deploye sur le VPS le 20 juillet 2026 apres autorisation explicite, uniquement dans `routes/console.php`.
+- Sauvegarde distante prealable : `/tmp/exadtracking-before-gps-angle-20260720-105618.php`.
+- Les caches Laravel ont ete reconstruits et `gps-tcp.service` redemarre apres validation de la syntaxe PHP.
+- Le traceur `353201355315547` a immediatement repris l'envoi de lots Codec8 Extended avec `records=2 ACK=2` et son statut est repasse a `online`.
+- Le journal d'erreurs est reste de taille identique pendant le controle post-deploiement : aucun nouveau rejet d'angle n'a ete genere.
+- Le traceur vide encore son historique dans l'ordre `Oldest`; les positions GPS anciennes avancent progressivement tandis que `last_seen_at` reste actuel.
+- Verification finale : listener GPS actif, application hors maintenance et connexion publique en HTTPS 200.
+
+### 2026-07-20 - Separation du rattrapage GPS et de l'etat en direct
+- Le rattrapage du traceur `353201355315547` a revele que les positions archivees, envoyees dans un ordre variable, remplaçaient les coordonnees et le mouvement affiches en direct. `last_position_at` pouvait meme regresser vers une heure GPS plus ancienne.
+- Ajout local d'un garde-fou : une position de plus de 15 minutes ou anterieure a la derniere position live reste enregistree dans `positions`, mais ne modifie plus l'etat courant du traceur.
+- Les positions de rattrapage ne declenchent plus les evenements de mouvement/allumage, les sessions conducteur, les alertes de georeperage, les politiques de vitesse ni l'evaluation d'entretien.
+- `last_seen_at` et le statut de connexion continuent d'etre actualises afin de conserver le traceur en ligne pendant la synchronisation de son historique.
+- Tests ajoutes pour un relevé vieux de 14 heures et un relevé recent reçu hors ordre. Les anciens tests GPS a dates fixes utilisent maintenant des temps relatifs et restent stables apres un changement de jour.
+- Suite complete verte avec 113 tests et 982 assertions.
+- Aucun deploiement VPS effectue pour ce second correctif dans l'attente d'une autorisation explicite.
+
+#### Tolerance des sentinelles de telemetrie GPS
+- Une nouvelle interruption du rattrapage a ete identifiee sur une altitude hors plage, apres le traitement des anciens angles invalides.
+- L'ingestion locale ignore maintenant les valeurs sentinelles entieres hors plage pour la vitesse, l'altitude, les satellites, le signal GSM et le niveau de batterie, sans rejeter les coordonnees ni bloquer l'ACK du paquet.
+- Les valeurs non numeriques restent refusees par la validation afin de ne pas masquer un payload structurellement incorrect.
+- Le test de regression couvre dans un meme relevé les sentinelles `65535` et `255`, tout en verifiant la conservation du dernier cap valide et l'enregistrement de la position.
+- Suite complete toujours verte avec 113 tests et 982 assertions. Aucun deploiement VPS effectue.
+
+#### Deploiement du rattrapage GPS protege
+- Correctif combine deploye sur le VPS le 20 juillet 2026 apres autorisation explicite, uniquement dans `routes/console.php`.
+- Sauvegarde distante prealable : `/tmp/exadtracking-before-gps-replay-20260720-121350.php`.
+- Les sentinelles hors plage de vitesse, altitude, satellites, GSM et batterie ne bloquent plus l'ACK des paquets.
+- Les archives de plus de 15 minutes et les positions reçues hors ordre restent stockees sans remplacer l'etat live ni declencher les traitements temps reel.
+- Verification production : reprise continue de `records=2 ACK=2`, traceur `online`, `last_seen_at` actuel et aucune croissance du journal d'erreurs pendant le controle.
+- Preuve de separation : la derniere archive stockee a progresse jusqu'a 23:14:09 UTC, tandis que `last_position_at` est reste fige a 22:49:59 UTC au lieu de rejouer le trajet sur la carte.
+- Listener GPS actif, application hors maintenance et connexion HTTPS en HTTP 200.
+- Validation locale avant deploiement : 113 tests Laravel passes avec 982 assertions.
+
+### 2026-07-21 - Logo interne configurable
+- Ajout d'un logo interne distinct du logo principal dans la page Personnalisation, avec une carte dediee, un apercu sur le fond reel de la sidebar et une previsualisation immediate du fichier choisi.
+- Le logo interne est reserve a l'en-tete de la sidebar. Tant qu'aucun fichier n'est configure, l'application conserve automatiquement le comportement precedent en utilisant le logo principal adapte aux surfaces sombres.
+- Ajout du champ nullable `internal_logo_path` dans `application_settings`, avec une migration reversible, une validation image et un stockage separe dans `application-branding/internal-logo`.
+- Le remplacement d'un logo interne supprime l'ancien fichier du disque public sans modifier le logo principal ni le favicon.
+- La grille d'identite visuelle affiche trois cartes sur grand ecran, deux sur les ecrans intermediaires et une sur tablette/mobile.
+- Migration executee localement et suite complete verte avec 114 tests et 991 assertions.
+- Aucun deploiement VPS effectue dans l'attente d'une autorisation explicite.
+
+### 2026-07-21 - Espace client cloisonne par flotte
+- Ajout d'une affectation directe `fleet_id` pour les comptes admin et utilisateur, avec migration automatique des affectations historiques depuis `fleet_user` puis depuis l'ancien abonnement lorsque necessaire.
+- Chaque admin et utilisateur client ne voit desormais que sa flotte. Le dashboard, les vehicules, les traceurs, les positions, les alertes, les evenements et les rapports reutilisent ce cloisonnement dans leurs requetes serveur.
+- Le dashboard client affiche les indicateurs de sa flotte et masque la carte lorsque l'utilisateur simple ne possede pas l'autorisation correspondante.
+- Les admins disposent automatiquement des quatre capacites client : carte, rapports, garages et entretiens. Les utilisateurs simples recoivent seulement les autorisations choisies par leur admin.
+- La gestion des flottes, vehicules, traceurs, conducteurs et departements reste reservee au superadmin, en interface comme dans les routes d'ecriture.
+- Un admin peut maintenant creer, modifier et supprimer uniquement les utilisateurs simples de sa propre flotte. Il ne peut ni promouvoir un utilisateur, ni choisir une autre flotte, ni administrer un compte externe a sa flotte.
+- Le formulaire superadmin de creation d'utilisateur exige une flotte consultable par recherche. Le formulaire admin affiche sa flotte en lecture seule et propose quatre controles corporate pour les autorisations.
+- Les garages crees par un client appartiennent a sa flotte. Les garages globaux du superadmin restent consultables et utilisables pour l'entretien, mais ne peuvent pas etre modifies par un client.
+- Les alertes client sont actualisees par interrogation periodique de l'endpoint deja filtre par flotte, tandis que le canal WebSocket prive du superadmin reste inaccessible aux autres roles.
+- La connexion de tous les roles redirige maintenant vers le dashboard adapte au compte.
+- Migration locale `2026_07_21_010000_add_client_fleet_access_fields` executee avec succes.
+- Tests de securite croisee ajoutes ; suite complete verte avec 120 tests et 1037 assertions.
+- Aucun deploiement VPS effectue dans l'attente d'une autorisation explicite.
+
+#### Interface client orientee vehicules et masquage des traceurs
+- Le menu `Traceurs` est maintenant reserve au superadmin. Les routes de liste, de details et de trajets par identifiant de traceur sont egalement protegees par le middleware superadmin.
+- La liste des vehicules client remplace l'IMEI par un statut de suivi `En ligne` ou `Hors ligne` et conserve `Aucun traceur` lorsqu'aucun equipement n'est rattache.
+- Un dashboard client distinct remplace le dashboard technique : indicateurs et tableau centres sur les vehicules de la flotte, alertes recentes et raccourcis limites aux permissions du compte, sans nom, modele, IMEI ni identifiant de traceur.
+- La carte client ignore tout filtre de flotte forge, masque le selecteur de flotte et limite la recherche au nom du vehicule et a l'immatriculation. Le GeoJSON ne retourne plus les proprietes techniques du traceur et utilise un identifiant public base sur le vehicule.
+- Les trajets client passent par la nouvelle route `/vehicles/{vehicle}/trips`. L'identifiant interne du traceur n'apparait plus dans l'URL fournie a la carte, tandis que le serveur resout l'equipement apres controle de la flotte visible.
+- Les evenements client n'affichent plus la colonne traceur. Les alertes de perte et de reprise de signal emploient des messages centres sur le vehicule et la recherche client n'interroge plus le nom ou l'IMEI du traceur.
+- Les rapports HTML, CSV et PDF masquent le filtre traceur, les colonnes techniques, les compteurs de traceurs et les donnees IMEI pour les clients. Les parametres `fleet_id` et `device_id` envoyes manuellement sont ignores et les planifications refusent les vehicules hors flotte.
+- Le superadmin conserve l'ensemble des vues, filtres, recherches, exports et routes techniques existants.
+- Verification locale : syntaxe PHP et JavaScript valide, routes controlees, vues Blade compilees et suite complete verte avec 122 tests et 1085 assertions.
+- Aucun deploiement VPS effectue ; ces changements restent locaux jusqu'a une autorisation explicite.
+
+#### Correction de l'ordre visuel du dashboard client
+- Les blocs Etat des vehicules, Alertes recentes et Actions rapides heritaient du conteneur flexible du dashboard superadmin sans posseder d'ordre explicite. Ils apparaissaient donc avant l'en-tete et les indicateurs client.
+- Ajout d'un ordre CSS propre au dashboard client : en-tete, indicateurs, etat des vehicules, puis alertes et actions rapides.
+- Le separateur des metadonnees d'alertes utilise maintenant une entite HTML stable afin d'eviter les caracteres mal encodes.
+- Test de regression ajoute sur l'ordre structurel et les regles CSS ; vues Blade compilees et suite complete verte avec 123 tests et 1091 assertions.
+- Aucun deploiement VPS effectue.
+
+#### Reconnexion apres expiration de session sans erreur 419
+- Les pages d'authentification ne sont plus conservees dans le cache du navigateur afin d'eviter la restauration d'un formulaire contenant un ancien jeton CSRF.
+- Le formulaire de connexion renouvelle son jeton CSRF juste avant l'envoi et recharge automatiquement la page lorsqu'elle provient du cache de navigation arriere.
+- Les erreurs CSRF 419 restantes sur une requete navigateur redirigent vers une page de connexion fraiche avec un message d'expiration, tandis que les requetes JSON conservent leur reponse 419 habituelle.
+- Ajout d'un endpoint public limite au renouvellement du jeton de session, avec des en-tetes interdisant sa mise en cache.
+- Tests de regression ajoutes pour les en-tetes de cache, le renouvellement CSRF, la redirection apres expiration et le maintien du statut 419 pour les appels JSON. Suite complete verte avec 125 tests et 1103 assertions.
+- Aucun deploiement VPS effectue.
+
+#### Details du traceur accessibles depuis la carte client
+- Le bouton `Historique et details` et le modal `Details du traceur` sont de nouveau disponibles dans la popup de carte des comptes clients autorises a consulter la carte.
+- Une nouvelle route basee sur le vehicule resout le traceur apres controle de la flotte visible ; l'identifiant interne du traceur n'apparait donc ni dans le GeoJSON ni dans l'URL client.
+- Le contenu client du modal masque le modele, l'IMEI et retire le filtre d'evenements contenant l'identifiant du traceur. Le nom technique du traceur reste absent, tandis que les informations operationnelles, le conducteur, l'alimentation, la localisation et les diagnostics restent disponibles.
+- Le superadmin conserve le modal complet, l'IMEI et ses routes techniques existantes.
+- Tests de regression ajoutes pour le rendu client, l'absence de modele, d'IMEI et d'ID technique, ainsi que le refus d'un vehicule appartenant a une autre flotte. Suite complete verte avec 125 tests et 1115 assertions.
+- Aucun deploiement VPS effectue.
+
+#### Espace client complet en lecture seule depuis les flottes
+- Le nom de chaque flotte dans la colonne `Flotte` est maintenant un lien qui active le contexte client de cette flotte puis ouvre son tableau de bord.
+- Le superadmin accede ensuite a l'ensemble de l'espace client : tableau de bord, utilisateurs, vehicules, carte, alertes, evenements, garages, entretiens et rapports. Toutes les donnees restent strictement limitees a la flotte selectionnee.
+- Le role et la flotte sont projetes uniquement pendant chaque requete. L'identite reelle, le role superadmin et les donnees du compte en base ne sont jamais modifies et sont restaures apres traitement.
+- Le contexte `Lecture seule` reste visible dans la sidebar avec le nom de la flotte et un bouton pour quitter l'espace client et revenir a la liste des flottes.
+- Toutes les requetes d'ecriture sont refusees cote serveur avec une reponse 403 pendant cet apercu. Les boutons et formulaires de modification sont egalement masques dans l'interface, tandis que la deconnexion et la sortie de l'apercu restent accessibles.
+- Tests de regression etendus au lien, a la navigation, a l'isolation des utilisateurs, vehicules et donnees cartographiques, au blocage des ecritures, a la sortie du contexte et au refus des comptes clients. Suite complete verte avec 126 tests et 1150 assertions.
+- L'icone de contexte et l'icone de sortie de la sidebar sont maintenant centrees dans leurs zones d'action, sans etre affectees par les regles d'ellipse reservees aux libelles.
+- Deploiement VPS effectue le 21 juillet 2026 apres autorisation explicite, avec l'ensemble de l'espace client cloisonne, le logo interne configurable, les correctifs de session et le contexte superadmin en lecture seule.
+- Migrations production executees : `2026_07_21_000000_add_internal_logo_path_to_application_settings_table` et `2026_07_21_010000_add_client_fleet_access_fields`.
+- Sauvegarde distante prealable : `/tmp/exadtracking-before-client-space-20260721-201730.tar.gz`.
+- La premiere tentative de sauvegarde s'est arretee avant la maintenance et avant toute extraction a cause d'un separateur de ligne mal echappe. La relance corrigee a ensuite termine normalement sans indisponibilite residuelle.
+- Les permissions issues de l'archive Windows ont ete normalisees apres extraction a `0644` pour les fichiers et `0755` pour les dossiers, avec `exad-tracking:www-data` comme proprietaire et groupe.
+- Autoload Composer optimise, caches Laravel nettoyes et reconstruits, migrations appliquees et workers de queue signales pour redemarrage.
+- Verifications production reussies : routes `fleets.dashboard` et `client-preview.exit`, application hors maintenance, Apache, listener GPS et console Web actifs, page de connexion et CSS en HTTPS 200, marqueurs de lecture seule et de centrage des icones presents.
+- Validation locale avant deploiement : 126 tests Laravel passes avec 1150 assertions.

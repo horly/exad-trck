@@ -71,7 +71,7 @@
                         <td>{{ $users->firstItem() + $loop->index }}</td>
                         <td>
                             <div class="users-identity">
-                                <span class="users-avatar">{{ strtoupper(substr($user->name, 0, 1)) }}</span>
+                                <span class="users-avatar">@if($user->profilePhotoUrl())<img class="rounded-circle" src="{{ $user->profilePhotoUrl() }}" alt="{{ $user->name }}" width="34" height="34">@else{{ mb_strtoupper(mb_substr($user->name, 0, 1)) }}@endif</span>
                                 <strong>{{ $user->name }}</strong>
                             </div>
                         </td>
@@ -109,6 +109,8 @@
                                         data-name="{{ $user->name }}"
                                         data-email="{{ $user->email }}"
                                         data-role="{{ $user->role->value }}"
+                                        data-fleet-id="{{ $user->fleet_id }}"
+                                        data-permissions='@json($user->permissions ?? [])'
                                         data-phone="{{ $user->phone }}"
                                         data-address="{{ $user->address }}"
                                     >

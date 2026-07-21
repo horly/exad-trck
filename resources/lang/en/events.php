@@ -26,4 +26,5 @@ return [
     'unknown_fleet' => 'No fleet',
     'previous' => 'Previous',
     'next' => 'Next',
+    'client_context' => 'Vehicle events for fleet :fleet',
 ];

@@ -240,7 +240,7 @@ class DeviceController extends Controller
             ? (string) $request->query('sort')
             : null;
         $direction = $request->query('direction') === 'asc' ? 'asc' : 'desc';
-        $canManageDevices = $request->user()->isSuperadmin() || $request->user()->isAdmin();
+        $canManageDevices = $request->user()->isSuperadmin();
 
         $devices = Device::query()
             ->visibleTo($request->user())
@@ -337,6 +337,26 @@ class DeviceController extends Controller
             403
         );
 
+        return $this->detailsResponse($device, $reverseGeocoding, true);
+    }
+
+    public function vehicleDetails(Request $request, Vehicle $vehicle, ReverseGeocodingService $reverseGeocoding): JsonResponse
+    {
+        abort_unless(
+            Vehicle::query()->visibleTo($request->user())->whereKey($vehicle->id)->exists(),
+            403
+        );
+
+        $device = Device::query()
+            ->visibleTo($request->user())
+            ->where('vehicle_id', $vehicle->id)
+            ->firstOrFail();
+
+        return $this->detailsResponse($device, $reverseGeocoding, $request->user()->isSuperadmin());
+    }
+
+    private function detailsResponse(Device $device, ReverseGeocodingService $reverseGeocoding, bool $showTechnicalDetails): JsonResponse
+    {
         $device->load([
             'fleet:id,name,code',
             'vehicle:id,fleet_id,name,registration_number',
@@ -389,6 +409,7 @@ class DeviceController extends Controller
                 'direction' => $this->directionLabel((int) ($locationPosition?->angle ?? $device->last_angle)),
                 'locationUpdatedAt' => $locationUpdatedAt,
                 'parkingDuration' => $parkingStartedAt?->diffForHumans(null, true),
+                'showTechnicalDetails' => $showTechnicalDetails,
             ])->render(),
         ]);
     }
@@ -420,6 +441,26 @@ class DeviceController extends Controller
             403
         );
 
+        return $this->tripResponse($request, $device, $tripService);
+    }
+
+    public function vehicleTrips(Request $request, Vehicle $vehicle, DeviceTripService $tripService): JsonResponse
+    {
+        abort_unless(
+            Vehicle::query()->visibleTo($request->user())->whereKey($vehicle->id)->exists(),
+            403
+        );
+
+        $device = Device::query()
+            ->visibleTo($request->user())
+            ->where('vehicle_id', $vehicle->id)
+            ->firstOrFail();
+
+        return $this->tripResponse($request, $device, $tripService);
+    }
+
+    private function tripResponse(Request $request, Device $device, DeviceTripService $tripService): JsonResponse
+    {
         [$from, $to, $periodLabel] = $this->tripPeriod($request);
         $device->load(['fleet:id,name,code', 'vehicle:id,fleet_id,name,registration_number']);
         $payload = $tripService->build($device, $from, $to);
@@ -445,7 +486,7 @@ class DeviceController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($user->isSuperadmin() || $user->isAdmin(), 403);
+        abort_unless($user->isSuperadmin(), 403);
 
         if ($device === null || $user->isSuperadmin()) {
             return;

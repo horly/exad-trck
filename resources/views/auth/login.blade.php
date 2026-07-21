@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ __('auth.login_title') }}</title>
+    <title>{{ str_replace('EXAD Tracking', $applicationSettings->app_name, __('auth.login_title')) }}</title>
     @include('partials.favicon')
     <link rel="preload" as="image" href="{{ asset('images/login-fleet-night.png') }}" media="(min-width: 992px)">
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
@@ -46,10 +46,10 @@
 
         <section class="login-hero">
             <div class="hero-inner">
-                <img class="hero-logo" src="{{ asset('images/logo-exad-cropped.png') }}" alt="EXAD Tracking">
+                <img class="hero-logo" src="{{ $applicationSettings->logoUrl() }}" alt="{{ $applicationSettings->app_name }}">
 
                 <div class="hero-content">
-                    <h1>{{ __('auth.hero_title') }}</h1>
+                    <h1>{{ $applicationSettings->app_name }}</h1>
                     <h2>{{ __('auth.hero_subtitle') }}</h2>
                     <span class="hero-rule"></span>
                     <p>{{ __('auth.hero_description') }}</p>
@@ -122,8 +122,8 @@
         <section class="login-panel-wrapper">
             <div class="login-card">
                 <div class="login-card-header">
-                    <img class="login-logo" src="{{ asset('images/logo-exad-cropped.png') }}" alt="EXAD Tracking">
-                    <h2>{{ __('auth.login_title') }}</h2>
+                    <img class="login-logo" src="{{ $applicationSettings->logoUrl() }}" alt="{{ $applicationSettings->app_name }}">
+                    <h2>{{ str_replace('EXAD Tracking', $applicationSettings->app_name, __('auth.login_title')) }}</h2>
                     <p>{{ __('auth.login_subtitle') }}</p>
                 </div>
 
@@ -133,13 +133,13 @@
                     </div>
                 @endif
 
-                @if (request('reason') === 'inactive')
+                @if (in_array(request('reason'), ['inactive', 'expired'], true))
                     <div class="alert alert-info" role="alert">
-                        {{ __('auth.inactivity_logout') }}
+                        {{ request('reason') === 'inactive' ? __('auth.inactivity_logout') : __('auth.session_expired') }}
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('login') }}" novalidate data-validate-form data-required-message="{{ __('validation.required') }}" data-email-message="{{ __('validation.email') }}" data-loading-form data-loading-text="{{ __('auth.processing') }}">
+                <form method="POST" action="{{ route('login') }}" novalidate data-login-session data-csrf-refresh-url="{{ route('auth.csrf-token') }}" data-expired-login-url="{{ route('login', ['reason' => 'expired']) }}" data-validate-form data-required-message="{{ __('validation.required') }}" data-email-message="{{ __('validation.email') }}" data-loading-form data-loading-text="{{ __('auth.processing') }}">
                     @csrf
 
                     <div class="form-group-block">
@@ -216,7 +216,7 @@
         </section>
 
         <footer class="login-footer">
-            <span>&copy; 2026 EXAD Tracking - Tous droits r&eacute;serv&eacute;s.</span>
+            <span>&copy; 2026 {{ $applicationSettings->short_name }} - Tous droits r&eacute;serv&eacute;s.</span>
             <a href="#" aria-label="Confidentialite">Confidentialit&eacute;</a>
         </footer>
     </main>
@@ -224,6 +224,7 @@
     <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ asset('js/form-validation.js') }}?v=20260529-form-validation"></script>
     <script src="{{ asset('js/form-loading.js') }}?v=20260529-form-loading"></script>
+    <script src="{{ asset('js/login-session.js') }}?v=20260721-session-refresh"></script>
     <script>
         document.querySelector('[data-password-toggle]')?.addEventListener('click', function () {
             const password = document.getElementById('password');

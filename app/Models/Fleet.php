@@ -69,13 +69,6 @@ class Fleet extends Model
             return $query;
         }
 
-        return $query->where(function (Builder $query) use ($user): void {
-            $query->whereHas('users', fn (Builder $query): Builder => $query->whereKey($user->id))
-                ->orWhere(function (Builder $query) use ($user): void {
-                    $query
-                        ->whereDoesntHave('users')
-                        ->where('subscription_id', $user->subscription_id);
-                });
-        });
+        return $query->whereKey($user->fleet_id ?? 0);
     }
 }

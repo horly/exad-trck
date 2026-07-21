@@ -3,12 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('users.title') }} - EXAD Tracking</title>
+    <title>{{ __('users.title') }} - {{ $applicationSettings->app_name }}</title>
     @include('partials.favicon')
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260719-modal-title-icons">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260721-client-preview-icons">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -199,19 +199,54 @@
                                 <p class="password-match-message" data-password-match>{{ __('users.password_match') }}</p>
                             </div>
 
-                            <div>
-                                <label for="role" class="form-label">{{ __('users.role') }} *</label>
-                                <select id="role" name="role" class="form-select @error('role') is-invalid @enderror" required>
-                                    @foreach ($roles as $role)
-                                        <option value="{{ $role->value }}" @selected(old('role', 'user') === $role->value)>
-                                            {{ __('users.role_'.$role->value) }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('role')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                @enderror
-                            </div>
+                            @if ($isPlatformUserManagement)
+                                <div>
+                                    <label for="role" class="form-label">{{ __('users.role') }} *</label>
+                                    <select id="role" name="role" class="form-select @error('role') is-invalid @enderror" required>
+                                        @foreach ($roles as $role)
+                                            <option value="{{ $role->value }}" @selected(old('role', 'user') === $role->value)>
+                                                {{ __('users.role_'.$role->value) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('role')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div>
+                                    <label for="fleet_id" class="form-label">{{ __('users.fleet') }} *</label>
+                                    <select
+                                        id="fleet_id"
+                                        name="fleet_id"
+                                        class="form-select @error('fleet_id') is-invalid @enderror"
+                                        required
+                                        data-searchable-database
+                                        data-search-placeholder="{{ __('users.search_fleet') }}"
+                                        data-no-results="{{ __('users.no_fleet_match') }}"
+                                        data-option-icon="fa-warehouse"
+                                    >
+                                        <option value="">{{ __('users.choose_fleet') }}</option>
+                                        @foreach ($fleets as $fleet)
+                                            <option value="{{ $fleet->id }}" @selected((string) old('fleet_id') === (string) $fleet->id)>
+                                                {{ $fleet->name }} · {{ $fleet->code }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('fleet_id')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            @else
+                                <input id="role" type="hidden" name="role" value="user">
+                                <div>
+                                    <label class="form-label">{{ __('users.fleet') }}</label>
+                                    <div class="form-control users-readonly-field">
+                                        <i class="fa-solid fa-warehouse"></i>
+                                        <span>{{ auth()->user()->fleet?->name ?? __('users.no_fleet') }}</span>
+                                    </div>
+                                </div>
+                            @endif
 
                             <div>
                                 <label for="phone" class="form-label">{{ __('users.phone') }}</label>
@@ -228,6 +263,40 @@
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
                             </div>
+
+                            <section class="grid-full users-permissions-panel" data-client-permissions>
+                                <div class="users-permissions-heading">
+                                    <span class="users-permissions-icon"><i class="fa-solid fa-shield-halved"></i></span>
+                                    <div>
+                                        <h3>{{ __('users.permissions_title') }}</h3>
+                                        <p>{{ __('users.permissions_description') }}</p>
+                                    </div>
+                                </div>
+                                <div class="users-permissions-list">
+                                    @foreach ($clientPermissions as $permission)
+                                        <label class="users-permission-option">
+                                            <input
+                                                type="checkbox"
+                                                name="permissions[]"
+                                                value="{{ $permission }}"
+                                                @checked(in_array($permission, old('permissions', []), true))
+                                                data-client-permission
+                                            >
+                                            <span class="users-permission-check"><i class="fa-solid fa-check"></i></span>
+                                            <span>
+                                                <strong>{{ __('users.permission_'.str_replace('.', '_', $permission)) }}</strong>
+                                                <small>{{ __('users.permission_'.str_replace('.', '_', $permission).'_description') }}</small>
+                                            </span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                                @error('permissions')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                                @error('permissions.*')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </section>
                         </div>
                     </div>
 
@@ -248,6 +317,7 @@
     <script src="{{ asset('js/confirm-delete.js') }}?v=20260529-delete-confirm"></script>
     <script src="{{ asset('js/form-validation.js') }}?v=20260529-form-validation"></script>
     <script src="{{ asset('js/form-loading.js') }}?v=20260529-form-loading"></script>
+    <script src="{{ asset('js/searchable-select.js') }}?v=20260721-client-fleet-access"></script>
     <script>
         document.querySelectorAll('[data-password-toggle]').forEach((button) => {
             button.addEventListener('click', () => {
@@ -320,10 +390,27 @@
         const nameInput = document.getElementById('name');
         const emailInput = document.getElementById('email');
         const roleInput = document.getElementById('role');
+        const fleetInput = document.getElementById('fleet_id');
         const phoneInput = document.getElementById('phone');
         const addressInput = document.getElementById('address');
+        const permissionsPanel = userForm?.querySelector('[data-client-permissions]');
+        const permissionInputs = Array.from(userForm?.querySelectorAll('[data-client-permission]') || []);
         const passwordLabel = userForm?.querySelector('[data-password-label]');
         const confirmationLabel = userForm?.querySelector('[data-password-confirmation-label]');
+
+        const refreshFleetSelect = () => fleetInput?.dispatchEvent(new Event('searchable-select:refresh'));
+
+        const updatePermissionVisibility = () => {
+            if (!permissionsPanel) {
+                return;
+            }
+
+            const isSimpleUser = (roleInput?.value || 'user') === 'user';
+            permissionsPanel.hidden = !isSimpleUser;
+            permissionInputs.forEach((input) => {
+                input.disabled = !isSimpleUser;
+            });
+        };
 
         const resetPasswordFeedback = () => {
             passwordInput?.classList.remove('is-valid', 'is-invalid');
@@ -348,6 +435,8 @@
             passwordLabel.textContent = `${userModal.dataset.passwordLabel} *`;
             confirmationLabel.textContent = `${userModal.dataset.passwordConfirmationLabel} *`;
             resetPasswordFeedback();
+            updatePermissionVisibility();
+            refreshFleetSelect();
         };
 
         const setEditMode = (button) => {
@@ -364,8 +453,15 @@
             nameInput.value = button.dataset.name || '';
             emailInput.value = button.dataset.email || '';
             roleInput.value = button.dataset.role || 'user';
+            if (fleetInput) {
+                fleetInput.value = button.dataset.fleetId || '';
+            }
             phoneInput.value = button.dataset.phone || '';
             addressInput.value = button.dataset.address || '';
+            const selectedPermissions = JSON.parse(button.dataset.permissions || '[]');
+            permissionInputs.forEach((input) => {
+                input.checked = selectedPermissions.includes(input.value);
+            });
             passwordInput.value = '';
             passwordConfirmationInput.value = '';
             passwordInput.required = false;
@@ -373,7 +469,12 @@
             passwordLabel.textContent = userModal.dataset.passwordOptional;
             confirmationLabel.textContent = userModal.dataset.passwordConfirmationLabel;
             resetPasswordFeedback();
+            updatePermissionVisibility();
+            refreshFleetSelect();
         };
+
+        roleInput?.addEventListener('change', updatePermissionVisibility);
+        updatePermissionVisibility();
 
         document.addEventListener('click', (event) => {
             if (event.target.closest('[data-user-create]')) {

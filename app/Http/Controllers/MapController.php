@@ -23,10 +23,10 @@ class MapController extends Controller
 
     public function index(Request $request): View
     {
-        $fleets = Fleet::query()
-            ->visibleTo($request->user())
-            ->orderBy('name')
-            ->get(['id', 'name', 'code']);
+        $showTechnicalDetails = $request->user()->isSuperadmin();
+        $fleets = $showTechnicalDetails
+            ? Fleet::query()->orderBy('name')->get(['id', 'name', 'code'])
+            : collect();
 
         $summary = $this->summary($request);
 
@@ -35,6 +35,7 @@ class MapController extends Controller
             'mapboxToken' => (string) config('services.mapbox.public_token'),
             'googleMapsApiKey' => (string) config('services.google_maps.api_key'),
             'fleets' => $fleets,
+            'showTechnicalDetails' => $showTechnicalDetails,
             'summary' => $summary,
             'defaultCenter' => [15.312, -4.325],
             'defaultZoom' => 11,
@@ -43,6 +44,7 @@ class MapController extends Controller
 
     public function devices(Request $request): JsonResponse
     {
+        $showTechnicalDetails = $request->user()->isSuperadmin();
         $devices = $this->filteredDevices($request)
             ->whereNotNull('devices.last_latitude')
             ->whereNotNull('devices.last_longitude')
@@ -53,8 +55,41 @@ class MapController extends Controller
             'summary' => $this->summary($request),
             'geojson' => [
                 'type' => 'FeatureCollection',
-                'features' => $devices->map(function (Device $device) use ($trails): array {
+                'features' => $devices->map(function (Device $device) use ($trails, $showTechnicalDetails): array {
                     $trail = $trails[$device->id] ?? [];
+
+                    $properties = [
+                        'id' => $showTechnicalDetails ? $device->id : 'vehicle-'.$device->vehicle_id,
+                        'vehicle' => $device->vehicle?->name ?: __('trackers.no_vehicle'),
+                        'registration' => $device->vehicle?->registration_number ?: '-',
+                        'fleet' => $device->fleet?->name ?: __('trackers.no_fleet'),
+                        'fleet_code' => $device->fleet?->code ?: '-',
+                        'status' => $device->status,
+                        'status_label' => __('trackers.status_'.$device->status),
+                        'is_parking' => $this->isParking($device),
+                        'is_stationary_running' => $this->isStationaryRunning($device),
+                        'is_moving' => $this->isMoving($device),
+                        'trail' => $trail,
+                        'speed' => (int) $device->last_speed,
+                        'angle' => (int) $device->last_angle,
+                        'last_signal' => $device->last_seen_at?->diffForHumans() ?? __('trackers.no_signal'),
+                        'trips_url' => $showTechnicalDetails
+                            ? route('trackers.trips', $device)
+                            : route('vehicles.trips', $device->vehicle_id),
+                        'details_url' => $showTechnicalDetails
+                            ? route('trackers.details', $device)
+                            : route('vehicles.tracker-details', $device->vehicle_id),
+                        'technical_details' => $showTechnicalDetails,
+                    ];
+
+                    if ($showTechnicalDetails) {
+                        $properties += [
+                            'imei' => $device->imei,
+                            'name' => $device->name ?: __('dashboard.device_fallback', ['imei' => $device->imei]),
+                            'brand' => $device->brand ? __('trackers.brand_'.$device->brand) : '-',
+                            'model' => $device->model ?: '-',
+                        ];
+                    }
 
                     return [
                         'type' => 'Feature',
@@ -62,28 +97,7 @@ class MapController extends Controller
                             'type' => 'Point',
                             'coordinates' => $this->deviceCoordinates($device),
                         ],
-                        'properties' => [
-                            'id' => $device->id,
-                            'imei' => $device->imei,
-                            'name' => $device->name ?: __('dashboard.device_fallback', ['imei' => $device->imei]),
-                            'brand' => $device->brand ? __('trackers.brand_'.$device->brand) : '-',
-                            'model' => $device->model ?: '-',
-                            'vehicle' => $device->vehicle?->name ?: __('trackers.no_vehicle'),
-                            'registration' => $device->vehicle?->registration_number ?: '-',
-                            'fleet' => $device->fleet?->name ?: __('trackers.no_fleet'),
-                            'fleet_code' => $device->fleet?->code ?: '-',
-                            'status' => $device->status,
-                            'status_label' => __('trackers.status_'.$device->status),
-                            'is_parking' => $this->isParking($device),
-                            'is_stationary_running' => $this->isStationaryRunning($device),
-                            'is_moving' => $this->isMoving($device),
-                            'trail' => $trail,
-                            'speed' => (int) $device->last_speed,
-                            'angle' => (int) $device->last_angle,
-                            'last_signal' => $device->last_seen_at?->diffForHumans() ?? __('trackers.no_signal'),
-                            'details_url' => route('trackers.details', $device),
-                            'trips_url' => route('trackers.trips', $device),
-                        ],
+                        'properties' => $properties,
                     ];
                 })->values(),
             ],
@@ -101,9 +115,17 @@ class MapController extends Controller
         return Device::query()
             ->visibleTo($user)
             ->with(['vehicle:id,fleet_id,name,registration_number', 'fleet:id,name,code'])
+            ->when(! $user->isSuperadmin(), fn ($query) => $query->whereNotNull('devices.vehicle_id'))
             ->when(in_array($status, self::STATUSES, true), fn ($query) => $query->where('devices.status', $status))
-            ->when($fleetId !== '' && $visibleFleetIds->contains($fleetId), fn ($query) => $query->where('devices.fleet_id', (int) $fleetId))
-            ->when($search !== '', function ($query) use ($search): void {
+            ->when($user->isSuperadmin() && $fleetId !== '' && $visibleFleetIds->contains($fleetId), fn ($query) => $query->where('devices.fleet_id', (int) $fleetId))
+            ->when($search !== '' && ! $user->isSuperadmin(), function ($query) use ($search): void {
+                $query->whereHas('vehicle', function ($query) use ($search): void {
+                    $query
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('registration_number', 'like', "%{$search}%");
+                });
+            })
+            ->when($search !== '' && $user->isSuperadmin(), function ($query) use ($search): void {
                 $query->where(function ($query) use ($search): void {
                     $query
                         ->where('devices.name', 'like', "%{$search}%")

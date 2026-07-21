@@ -23,22 +23,34 @@ class TrackerEventController extends Controller
                 ->find($deviceId)
             : null;
 
-        if (! $selectedDevice) {
+        if ($deviceId !== null && ! $selectedDevice) {
             if ($isDatatableRequest) {
                 abort(404);
             }
 
+            abort(404);
+        }
+
+        if (! $selectedDevice && $request->user()->isSuperadmin()) {
             return redirect()
                 ->route('trackers.index')
                 ->with('status', __('events.select_tracker'));
         }
 
         $eventScope = function ($query) use ($selectedDevice): void {
+            if (! $selectedDevice) {
+                return;
+            }
+
             $selectedDevice->vehicle_id
                 ? $query->where('tracker_events.vehicle_id', $selectedDevice->vehicle_id)
                 : $query->where('tracker_events.device_id', $selectedDevice->id);
         };
         $baseEventScope = function ($query) use ($selectedDevice): void {
+            if (! $selectedDevice) {
+                return;
+            }
+
             $selectedDevice->vehicle_id
                 ? $query->where('vehicle_id', $selectedDevice->vehicle_id)
                 : $query->where('device_id', $selectedDevice->id);
@@ -113,6 +125,7 @@ class TrackerEventController extends Controller
             'direction' => $direction,
             'deviceId' => $deviceId,
             'selectedDevice' => $selectedDevice,
+            'showTechnicalDetails' => $request->user()->isSuperadmin(),
             'stats' => $stats,
         ];
 

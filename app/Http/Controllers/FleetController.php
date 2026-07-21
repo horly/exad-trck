@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -63,7 +64,7 @@ class FleetController extends Controller
             'search' => $search,
             'sort' => $sort,
             'direction' => $direction,
-            'canManageFleets' => $request->user()->isSuperadmin() || $request->user()->isAdmin(),
+            'canManageFleets' => $request->user()->isSuperadmin(),
             'assignableAdmins' => $this->assignableAdmins($request),
         ];
 
@@ -88,10 +89,14 @@ class FleetController extends Controller
         $this->authorizeFleetManagement($request);
 
         $data = $this->validatedFleetData($request);
+        $managerId = isset($data['admin_id']) ? (int) $data['admin_id'] : null;
+        unset($data['admin_id']);
         $data['subscription_id'] = null;
 
-        $fleet = Fleet::query()->create($data);
-        $this->syncFleetManager($request, $fleet);
+        DB::transaction(function () use ($data, $managerId): void {
+            $fleet = Fleet::query()->create($data);
+            $this->syncFleetManager($fleet, $managerId);
+        });
 
         return redirect()
             ->route('fleets.index')
@@ -109,8 +114,14 @@ class FleetController extends Controller
     {
         $this->authorizeFleetManagement($request, $fleet);
 
-        $fleet->update($this->validatedFleetData($request, $fleet));
-        $this->syncFleetManager($request, $fleet);
+        $data = $this->validatedFleetData($request, $fleet);
+        $managerId = isset($data['admin_id']) ? (int) $data['admin_id'] : null;
+        unset($data['admin_id']);
+
+        DB::transaction(function () use ($data, $fleet, $managerId): void {
+            $fleet->update($data);
+            $this->syncFleetManager($fleet, $managerId);
+        });
 
         return redirect()
             ->route('fleets.index')
@@ -133,23 +144,7 @@ class FleetController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($user->isSuperadmin() || $user->isAdmin(), 403);
-
-        if ($fleet !== null) {
-            if ($user->isSuperadmin()) {
-                return;
-            }
-
-            $isManager = $fleet->users()
-                ->whereKey($user->id)
-                ->wherePivot('permission', 'manager')
-                ->exists();
-
-            $hasLegacyAccess = $fleet->users()->doesntExist()
-                && $user->canAccessSubscription($fleet->subscription_id);
-
-            abort_unless($isManager || $hasLegacyAccess, 403);
-        }
+        abort_unless($user->isSuperadmin(), 403);
     }
 
     /**
@@ -168,17 +163,19 @@ class FleetController extends Controller
             'description' => ['nullable', 'string', 'max:1000'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'admin_id' => [
-                Rule::requiredIf($request->user()->isSuperadmin()),
                 'nullable',
                 'integer',
-                Rule::exists('users', 'id')->where(function ($query) use ($request): void {
+                Rule::exists('users', 'id')->where(function ($query) use ($fleet): void {
                     $query
                         ->where('role', UserRole::Admin->value)
-                        ->where('status', 'active');
+                        ->where('status', 'active')
+                        ->where(function ($query) use ($fleet): void {
+                            $query->whereNull('fleet_id');
 
-                    if (! $request->user()->isSuperadmin()) {
-                        $query->where('subscription_id', $request->user()->subscription_id);
-                    }
+                            if ($fleet !== null) {
+                                $query->orWhere('fleet_id', $fleet->id);
+                            }
+                        });
                 }),
             ],
         ]);
@@ -186,32 +183,51 @@ class FleetController extends Controller
 
     private function assignableAdmins(Request $request)
     {
-        if (! $request->user()->isSuperadmin() && ! $request->user()->isAdmin()) {
+        if (! $request->user()->isSuperadmin()) {
             return collect();
         }
 
         return User::query()
             ->active()
             ->where('role', UserRole::Admin->value)
-            ->when(! $request->user()->isSuperadmin(), fn ($query) => $query->forSubscription($request->user()->subscription_id))
             ->orderBy('name')
-            ->get(['id', 'name', 'email', 'role']);
+            ->get(['id', 'name', 'email', 'role', 'fleet_id']);
     }
 
-    private function syncFleetManager(Request $request, Fleet $fleet): void
+    private function syncFleetManager(Fleet $fleet, ?int $managerId): void
     {
-        $managerId = $request->user()->isSuperadmin()
-            ? (int) $request->input('admin_id')
-            : $request->user()->id;
+        $currentManagerIds = $fleet->managers()->pluck('users.id');
+
+        User::query()
+            ->whereIn('id', $currentManagerIds)
+            ->where('fleet_id', $fleet->id)
+            ->when($managerId !== null, fn ($query) => $query->where('id', '!=', $managerId))
+            ->update(['fleet_id' => null, 'subscription_id' => null]);
+
+        $fleet->users()->detach($currentManagerIds->when(
+            $managerId !== null,
+            fn ($ids) => $ids->reject(fn ($id) => (int) $id === $managerId),
+        ));
+
+        if ($managerId === null) {
+            return;
+        }
 
         $manager = User::query()
             ->active()
             ->where('role', UserRole::Admin->value)
-            ->when(! $request->user()->isSuperadmin(), fn ($query) => $query->forSubscription($request->user()->subscription_id))
+            ->where(function ($query) use ($fleet): void {
+                $query->whereNull('fleet_id')->orWhere('fleet_id', $fleet->id);
+            })
             ->whereKey($managerId)
-            ->firstOrFail(['id']);
+            ->firstOrFail();
 
-        $fleet->users()->sync([
+        $manager->forceFill([
+            'fleet_id' => $fleet->id,
+            'subscription_id' => $fleet->subscription_id,
+        ])->save();
+
+        $fleet->users()->syncWithoutDetaching([
             $manager->id => ['permission' => 'manager'],
         ]);
     }

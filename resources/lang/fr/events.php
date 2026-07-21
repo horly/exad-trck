@@ -26,4 +26,5 @@ return [
     'unknown_fleet' => 'Aucune flotte',
     'previous' => 'Précédent',
     'next' => 'Suivant',
+    'client_context' => 'Événements des véhicules de la flotte :fleet',
 ];

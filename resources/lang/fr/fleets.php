@@ -9,6 +9,7 @@ return [
     'fleet_management' => 'Gestion des flottes',
     'fleet_list' => 'Liste des flottes',
     'fleet' => 'Flotte',
+    'open_client_dashboard' => 'Ouvrir le tableau de bord client de :fleet',
     'code' => 'Code',
     'status' => 'Statut',
     'vehicles' => 'Véhicules',

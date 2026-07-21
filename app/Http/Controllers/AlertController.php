@@ -13,6 +13,7 @@ class AlertController extends Controller
 {
     public function index(Request $request): View|JsonResponse
     {
+        $showTechnicalDetails = $request->user()->isSuperadmin();
         $search = trim((string) $request->query('search', ''));
         $isDatatableRequest = $request->ajax();
         $sortableColumns = [
@@ -31,13 +32,15 @@ class AlertController extends Controller
 
         $alerts = Alert::query()
             ->visibleTo($request->user())
-            ->with(['fleet:id,name,code', 'vehicle:id,name,registration_number', 'device:id,imei,name,status'])
+            ->with($showTechnicalDetails
+                ? ['fleet:id,name,code', 'vehicle:id,name,registration_number', 'device:id,imei,name,status']
+                : ['fleet:id,name,code', 'vehicle:id,name,registration_number'])
             ->select('alerts.*')
             ->leftJoin('fleets', 'fleets.id', '=', 'alerts.fleet_id')
             ->leftJoin('vehicles', 'vehicles.id', '=', 'alerts.vehicle_id')
             ->addSelect('fleets.name as fleet_name', 'vehicles.name as vehicle_name')
-            ->when($search !== '', function ($query) use ($search): void {
-                $query->where(function ($query) use ($search): void {
+            ->when($search !== '', function ($query) use ($search, $showTechnicalDetails): void {
+                $query->where(function ($query) use ($search, $showTechnicalDetails): void {
                     $query
                         ->where('alerts.title', 'like', "%{$search}%")
                         ->orWhere('alerts.message', 'like', "%{$search}%")
@@ -46,11 +49,14 @@ class AlertController extends Controller
                         ->orWhere('alerts.status', 'like', "%{$search}%")
                         ->orWhere('fleets.name', 'like', "%{$search}%")
                         ->orWhere('vehicles.name', 'like', "%{$search}%")
-                        ->orWhere('vehicles.registration_number', 'like', "%{$search}%")
-                        ->orWhereHas('device', function ($query) use ($search): void {
+                        ->orWhere('vehicles.registration_number', 'like', "%{$search}%");
+
+                    if ($showTechnicalDetails) {
+                        $query->orWhereHas('device', function ($query) use ($search): void {
                             $query->where('imei', 'like', "%{$search}%")
                                 ->orWhere('name', 'like', "%{$search}%");
                         });
+                    }
                 });
             })
             ->when($sort !== null, function ($query) use ($sortableColumns, $sort, $direction): void {
@@ -79,6 +85,7 @@ class AlertController extends Controller
             'sort' => $sort,
             'direction' => $direction,
             'stats' => $stats,
+            'showTechnicalDetails' => $showTechnicalDetails,
             'reverbConfig' => [
                 'key' => config('broadcasting.connections.reverb.key'),
                 'host' => config('broadcasting.connections.reverb.options.host'),
@@ -110,10 +117,13 @@ class AlertController extends Controller
     public function recent(Request $request): JsonResponse
     {
         $after = max(0, (int) $request->query('after', 0));
+        $showTechnicalDetails = $request->user()->isSuperadmin();
 
         $alerts = Alert::query()
             ->visibleTo($request->user())
-            ->with(['fleet:id,name,code', 'vehicle:id,name,registration_number', 'device:id,imei,name,status'])
+            ->with($showTechnicalDetails
+                ? ['fleet:id,name,code', 'vehicle:id,name,registration_number', 'device:id,imei,name,status']
+                : ['fleet:id,name,code', 'vehicle:id,name,registration_number'])
             ->where('id', '>', $after)
             ->orderBy('id')
             ->limit(10)
@@ -126,7 +136,7 @@ class AlertController extends Controller
                 'severity' => $alert->severity,
                 'status' => $alert->status,
                 'title' => $alert->localizedTitle(),
-                'message' => $alert->localizedMessage(),
+                'message' => $alert->localizedMessageFor($request->user()),
                 'vehicle' => $alert->vehicle?->name,
                 'fleet' => $alert->fleet?->name,
                 'occurred_at' => $alert->occurred_at?->toDateTimeString(),

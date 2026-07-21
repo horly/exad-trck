@@ -38,4 +38,7 @@ return [
     'popup_last_signal' => 'Dernier signal',
     'popup_registration' => 'Immatriculation',
     'kmh' => 'km/h',
+    'client_subtitle' => 'Vue opérationnelle des véhicules géolocalisés de votre flotte.',
+    'client_total' => 'Véhicules suivis',
+    'client_search' => 'Rechercher par véhicule ou immatriculation...',
 ];

@@ -73,7 +73,7 @@ return [
     |
     */
 
-    'home' => '/fleets',
+    'home' => '/dashboard',
 
     /*
     |--------------------------------------------------------------------------
@@ -166,6 +166,10 @@ return [
         // Features::emailVerification(),
         Features::updateProfileInformation(),
         Features::updatePasswords(),
+        Features::twoFactorAuthentication([
+            'confirm' => true,
+            'confirmPassword' => true,
+        ]),
     ],
 
 ];

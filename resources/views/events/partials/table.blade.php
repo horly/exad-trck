@@ -54,12 +54,14 @@
                             <i class="{{ $sortIcon('vehicle') }}"></i>
                         </a>
                     </th>
-                    <th>
-                        <a class="datatable-sort-link {{ $sort === 'tracker' ? 'active' : '' }}" href="{{ $sortLink('tracker') }}" data-datatable-sort>
-                            <span>{{ __('events.tracker') }}</span>
-                            <i class="{{ $sortIcon('tracker') }}"></i>
-                        </a>
-                    </th>
+                    @if ($showTechnicalDetails)
+                        <th>
+                            <a class="datatable-sort-link {{ $sort === 'tracker' ? 'active' : '' }}" href="{{ $sortLink('tracker') }}" data-datatable-sort>
+                                <span>{{ __('events.tracker') }}</span>
+                                <i class="{{ $sortIcon('tracker') }}"></i>
+                            </a>
+                        </th>
+                    @endif
                     <th>
                         <a class="datatable-sort-link {{ $sort === 'fleet' ? 'active' : '' }}" href="{{ $sortLink('fleet') }}" data-datatable-sort>
                             <span>{{ __('events.fleet') }}</span>
@@ -92,10 +94,12 @@
                             <strong>{{ $event->vehicle?->name ?: __('events.unknown_vehicle') }}</strong>
                             <span class="technical-code">{{ $event->vehicle?->registration_number ?: '-' }}</span>
                         </td>
-                        <td>
-                            <strong>{{ $event->device?->name ?: ($event->device?->imei ?: __('events.unknown_tracker')) }}</strong>
-                            <span class="technical-code">{{ $event->device?->model ?: $event->device?->imei }}</span>
-                        </td>
+                        @if ($showTechnicalDetails)
+                            <td>
+                                <strong>{{ $event->device?->name ?: ($event->device?->imei ?: __('events.unknown_tracker')) }}</strong>
+                                <span class="technical-code">{{ $event->device?->model ?: $event->device?->imei }}</span>
+                            </td>
+                        @endif
                         <td>
                             <strong>{{ $event->fleet?->name ?: __('events.unknown_fleet') }}</strong>
                             <span class="technical-code">{{ $event->fleet?->code ?: '-' }}</span>
@@ -105,7 +109,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="empty-state">
+                        <td colspan="{{ $showTechnicalDetails ? 7 : 6 }}" class="empty-state">
                             <strong>{{ __('events.empty') }}</strong>
                             <span>{{ __('events.empty_text') }}</span>
                         </td>

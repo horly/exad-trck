@@ -153,9 +153,8 @@ class Device extends Model
 
         return $query->where(function (Builder $query) use ($user): void {
             $query
-                ->where('devices.subscription_id', $user->subscription_id)
-                ->orWhereHas('fleet.users', fn (Builder $query): Builder => $query->whereKey($user->id))
-                ->orWhereHas('vehicle.fleet.users', fn (Builder $query): Builder => $query->whereKey($user->id));
+                ->where('devices.fleet_id', $user->fleet_id ?? 0)
+                ->orWhereHas('vehicle', fn (Builder $query): Builder => $query->where('fleet_id', $user->fleet_id ?? 0));
         });
     }
 }

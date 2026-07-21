@@ -83,7 +83,7 @@
                         <td>{{ $alerts->firstItem() + $loop->index }}</td>
                         <td>
                             <strong>{{ $alert->localizedTitle() }}</strong>
-                            <span class="technical-code">{{ $alert->localizedMessage() }}</span>
+                            <span class="technical-code">{{ $alert->localizedMessageFor(auth()->user()) }}</span>
                         </td>
                         <td>
                             <span class="alert-badge alert-severity-{{ $alert->severity }}">
@@ -92,7 +92,9 @@
                         </td>
                         <td>
                             <strong>{{ $alert->vehicle?->name ?: __('alerts.unknown_vehicle') }}</strong>
-                            <span class="technical-code">{{ $alert->vehicle?->registration_number ?: ($alert->device?->imei ?: '-') }}</span>
+                            <span class="technical-code">
+                                {{ $alert->vehicle?->registration_number ?: ($showTechnicalDetails ? ($alert->device?->imei ?: '-') : '-') }}
+                            </span>
                         </td>
                         <td>{{ $alert->fleet?->name ?: __('alerts.unknown_fleet') }}</td>
                         <td>

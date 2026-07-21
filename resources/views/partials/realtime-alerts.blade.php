@@ -1,4 +1,4 @@
-@if (auth()->check() && auth()->user()->isSuperadmin())
+@if (auth()->check())
     @php
         $realtimeAlertConfig = [
             'key' => config('broadcasting.connections.reverb.key'),
@@ -13,6 +13,7 @@
             'recentEndpoint' => route('alerts.recent'),
             'latestAlertId' => (int) \App\Models\Alert::query()->visibleTo(auth()->user())->max('id'),
             'pollInterval' => 5000,
+            'pollOnly' => ! auth()->user()->isSuperadmin(),
         ];
     @endphp
 

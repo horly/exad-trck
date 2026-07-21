@@ -198,13 +198,13 @@ test('map alerts and customization pages display the shared sidebar version', fu
     }
 });
 
-test('admin users are redirected from home to fleets', function () {
+test('admin users are redirected from home to their dashboard', function () {
     $subscription = Subscription::factory()->create();
     $admin = User::factory()->admin($subscription)->create();
 
     $this->actingAs($admin)
         ->get('/')
-        ->assertRedirect(route('fleets.index'));
+        ->assertRedirect(route('dashboard'));
 });
 
 test('superadmin users are redirected from home to dashboard', function () {
@@ -561,6 +561,46 @@ test('local gps listener commands update registered trackers only', function () 
         'type' => 'harsh_braking',
     ]);
 
+    $invalidAngleCode = Artisan::call('gps:ingest-position', [
+        '--payload' => json_encode([
+            'imei' => '356307042441013',
+            'lat' => -4.3255,
+            'lng' => 15.3125,
+            'speed' => 65535,
+            'angle' => 65535,
+            'altitude' => 65535,
+            'satellites' => 255,
+            'gsm_signal' => 255,
+            'battery_level' => 255,
+        ]),
+    ]);
+
+    expect($invalidAngleCode)->toBe(0)
+        ->and($device->refresh()->last_angle)->toBe(90);
+
+    $this->assertDatabaseHas('positions', [
+        'device_id' => $device->id,
+        'latitude' => -4.3255,
+        'longitude' => 15.3125,
+        'speed' => 0,
+        'angle' => 90,
+        'altitude' => null,
+        'satellites' => null,
+    ]);
+
+    $northAngleCode = Artisan::call('gps:ingest-position', [
+        '--payload' => json_encode([
+            'imei' => '356307042441013',
+            'lat' => -4.3257,
+            'lng' => 15.3127,
+            'speed' => 20,
+            'angle' => 360,
+        ]),
+    ]);
+
+    expect($northAngleCode)->toBe(0)
+        ->and($device->refresh()->last_angle)->toBe(0);
+
     $secondCode = Artisan::call('gps:ingest-position', [
         '--payload' => json_encode([
             'imei' => '356307042441013',
@@ -617,6 +657,78 @@ test('local gps stale command marks silent online trackers offline', function ()
     $this->assertDatabaseMissing('tracker_events', [
         'device_id' => $device->id,
         'type' => 'signal_lost',
+    ]);
+});
+
+test('historical gps replay is stored without replacing live tracker state', function () {
+    Carbon::setTestNow(Carbon::parse('2026-07-20 10:30:00', config('app.timezone')));
+    $this->beforeApplicationDestroyed(fn () => Carbon::setTestNow());
+
+    $device = Device::factory()->create([
+        'imei' => '353201355315547',
+        'status' => 'online',
+        'last_seen_at' => now()->subMinute(),
+        'last_position_at' => now()->subMinute(),
+        'last_latitude' => -4.349633,
+        'last_longitude' => 15.297787,
+        'last_speed' => 0,
+        'last_angle' => 13,
+        'last_movement' => false,
+        'last_ignition' => false,
+    ]);
+
+    $exitCode = Artisan::call('gps:ingest-position', [
+        '--payload' => json_encode([
+            'imei' => $device->imei,
+            'lat' => -4.338925,
+            'lng' => 15.255545,
+            'speed' => 28,
+            'angle' => 95,
+            'movement' => true,
+            'ignition' => true,
+            'gps_time' => now()->subHours(14)->toIso8601String(),
+        ]),
+    ]);
+
+    $outOfOrderCode = Artisan::call('gps:ingest-position', [
+        '--payload' => json_encode([
+            'imei' => $device->imei,
+            'lat' => -4.340000,
+            'lng' => 15.260000,
+            'speed' => 35,
+            'angle' => 120,
+            'movement' => true,
+            'ignition' => true,
+            'gps_time' => now()->subMinutes(2)->toIso8601String(),
+        ]),
+    ]);
+
+    $device->refresh();
+
+    expect($exitCode)->toBe(0)
+        ->and($outOfOrderCode)->toBe(0)
+        ->and($device->status)->toBe('online')
+        ->and($device->last_seen_at->equalTo(now()))->toBeTrue()
+        ->and($device->last_position_at->equalTo(now()->subMinute()))->toBeTrue()
+        ->and((float) $device->last_latitude)->toBe(-4.349633)
+        ->and((float) $device->last_longitude)->toBe(15.297787)
+        ->and($device->last_speed)->toBe(0)
+        ->and($device->last_angle)->toBe(13)
+        ->and($device->last_movement)->toBeFalse()
+        ->and($device->last_ignition)->toBeFalse()
+        ->and(Artisan::output())->toContain('"updates_live_state":false');
+
+    $this->assertDatabaseHas('positions', [
+        'device_id' => $device->id,
+        'latitude' => -4.338925,
+        'longitude' => 15.255545,
+        'speed' => 28,
+        'movement' => true,
+    ]);
+
+    $this->assertDatabaseMissing('tracker_events', [
+        'device_id' => $device->id,
+        'type' => 'movement_started',
     ]);
 });
 

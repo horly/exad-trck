@@ -5,6 +5,7 @@ use App\Models\Fleet;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\UserLoginHistory;
+use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
@@ -36,31 +37,40 @@ test('admin and user are limited to their subscription', function () {
         ->and(Gate::forUser($user)->allows('manage-users'))->toBeFalse();
 });
 
-test('dashboard is reserved to superadmin users', function () {
-    $ownSubscription = Subscription::factory()->create();
-    $otherSubscription = Subscription::factory()->create();
-    $admin = User::factory()->admin($ownSubscription)->create();
+test('dashboard is scoped for client admins and global for superadmin users', function () {
+    $ownFleet = Fleet::factory()->create();
+    $otherFleet = Fleet::factory()->create();
+    $admin = User::factory()->admin($ownFleet->subscription)->forFleet($ownFleet)->create();
     $superadmin = User::factory()->superadmin()->create();
 
+    $ownVehicle = Vehicle::factory()->for($ownFleet)->create(['name' => 'Vehicule autorise']);
+    $otherVehicle = Vehicle::factory()->for($otherFleet)->create(['name' => 'Vehicule masque']);
+
     Device::factory()->create([
-        'subscription_id' => $ownSubscription->id,
-        'name' => 'Vehicule autorise',
+        'subscription_id' => $ownFleet->subscription_id,
+        'fleet_id' => $ownFleet->id,
+        'vehicle_id' => $ownVehicle->id,
+        'name' => 'Traceur autorise',
     ]);
 
     Device::factory()->create([
-        'subscription_id' => $otherSubscription->id,
-        'name' => 'Vehicule masque',
+        'subscription_id' => $otherFleet->subscription_id,
+        'fleet_id' => $otherFleet->id,
+        'vehicle_id' => $otherVehicle->id,
+        'name' => 'Traceur masque',
     ]);
 
     $this->actingAs($admin)
         ->get(route('dashboard'))
-        ->assertForbidden();
+        ->assertSuccessful()
+        ->assertSee('Vehicule autorise')
+        ->assertDontSee('Vehicule masque');
 
     $this->actingAs($superadmin)
         ->get(route('dashboard'))
         ->assertSuccessful()
-        ->assertSee('Vehicule autorise')
-        ->assertSee('Vehicule masque');
+        ->assertSee('Traceur autorise')
+        ->assertSee('Traceur masque');
 });
 
 test('disabled users cannot authenticate with fortify', function () {
@@ -106,7 +116,7 @@ test('fortify redirects users by role after login', function () {
     $this->post(route('login'), [
         'email' => $admin->email,
         'password' => 'password',
-    ])->assertRedirect(route('fleets.index'));
+    ])->assertRedirect(route('dashboard'));
 });
 
 test('non superadmin users cannot manage fleets from superadmin console', function () {
@@ -134,8 +144,9 @@ test('non superadmin users cannot manage fleets from superadmin console', functi
     $this->assertDatabaseMissing('fleets', ['code' => 'DENIED-ADMIN']);
 });
 
-test('superadmin can view and create users without subscription fields', function () {
+test('superadmin can view and create users with a direct fleet assignment', function () {
     $superadmin = User::factory()->superadmin()->create();
+    $fleet = Fleet::factory()->create();
 
     $this->actingAs($superadmin)
         ->get(route('users.index'))
@@ -157,6 +168,7 @@ test('superadmin can view and create users without subscription fields', functio
             'password' => 'AgentPassword@123',
             'password_confirmation' => 'AgentPassword@123',
             'role' => 'user',
+            'fleet_id' => $fleet->id,
             'phone' => '+243810000000',
             'address' => 'Kinshasa',
         ])
@@ -288,7 +300,8 @@ test('users datatable can refresh over ajax without full page reload', function 
 
 test('superadmin can update non superadmin users from management', function () {
     $superadmin = User::factory()->superadmin()->create();
-    $user = User::factory()->simpleUser()->create([
+    $fleet = Fleet::factory()->create();
+    $user = User::factory()->simpleUser($fleet->subscription)->forFleet($fleet)->create([
         'name' => 'agent ancien',
         'email' => 'agent-old@example.com',
         'phone' => '+243810000000',
@@ -311,6 +324,7 @@ test('superadmin can update non superadmin users from management', function () {
             'password' => '',
             'password_confirmation' => '',
             'role' => 'admin',
+            'fleet_id' => $fleet->id,
             'phone' => '+243820000000',
             'address' => 'Gombe',
         ])
@@ -334,6 +348,7 @@ test('superadmin can update non superadmin users from management', function () {
             'password' => 'AgentPassword@456',
             'password_confirmation' => 'AgentPassword@456',
             'role' => 'user',
+            'fleet_id' => $fleet->id,
         ])
         ->assertRedirect(route('users.index'));
 
@@ -388,28 +403,35 @@ test('user deletion flashes danger toast status', function () {
     $this->assertModelMissing($user);
 });
 
-test('non superadmin users cannot access user management', function () {
-    $subscription = Subscription::factory()->create();
-    $admin = User::factory()->admin($subscription)->create();
+test('fleet admins can access user management for their own fleet', function () {
+    $fleet = Fleet::factory()->create();
+    $admin = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
 
     $this->actingAs($admin)
         ->get(route('users.index'))
-        ->assertForbidden();
+        ->assertSuccessful();
 });
 
-test('non superadmin users cannot access current superadmin console pages', function () {
-    $subscription = Subscription::factory()->create();
-    $admin = User::factory()->admin($subscription)->create();
+test('fleet admins access client pages but remain excluded from superadmin pages', function () {
+    $fleet = Fleet::factory()->create();
+    $admin = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
 
     foreach ([
         route('dashboard'),
         route('users.index'),
-        route('fleets.index'),
         route('vehicles.index'),
-        route('trackers.index'),
         route('map.index'),
         route('map.devices'),
         route('alerts.index'),
+    ] as $url) {
+        $this->actingAs($admin)
+            ->get($url)
+            ->assertSuccessful();
+    }
+
+    foreach ([
+        route('fleets.index'),
+        route('trackers.index'),
         route('alert-rules.index'),
         route('customization.index'),
     ] as $url) {

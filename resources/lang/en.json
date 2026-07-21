@@ -1,0 +1,6 @@
+{
+    "The provided password was incorrect.": "The provided password was incorrect.",
+    "The provided password does not match your current password.": "The provided password does not match your current password.",
+    "The provided two factor authentication code was invalid.": "The provided two factor authentication code was invalid.",
+    "The provided two factor recovery code was invalid.": "The provided two factor recovery code was invalid."
+}

@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\UserRole;
+use App\Models\Fleet;
 use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -70,6 +71,14 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'subscription_id' => $subscription?->id ?? Subscription::factory(),
             'role' => UserRole::User,
+        ]);
+    }
+
+    public function forFleet(Fleet $fleet): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'fleet_id' => $fleet->id,
+            'subscription_id' => $fleet->subscription_id,
         ]);
     }
 

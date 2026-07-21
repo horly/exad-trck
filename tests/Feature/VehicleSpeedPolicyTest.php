@@ -98,7 +98,7 @@ test('gps ingestion alerts immediately once per overspeed episode and rearms at 
         ]);
     };
 
-    expect($ingest(81, '2026-07-19T10:00:00+01:00'))->toBe(0)
+    expect($ingest(81, now()->subSeconds(30)->toIso8601String()))->toBe(0)
         ->and((int) $device->positions()->latest('id')->firstOrFail()->speed)->toBe(81)
         ->and(AlertRuleState::query()->count())->toBe(1)
         ->and(Alert::query()->where('type', 'overspeed')->count())->toBe(1);
@@ -107,12 +107,12 @@ test('gps ingestion alerts immediately once per overspeed episode and rearms at 
     expect((int) $alert->speed)->toBe(81)
         ->and($alert->metadata['speed_limit'])->toBe(80);
 
-    expect($ingest(95, '2026-07-19T10:00:10+01:00'))->toBe(0)
+    expect($ingest(95, now()->subSeconds(20)->toIso8601String()))->toBe(0)
         ->and(Alert::query()->where('type', 'overspeed')->count())->toBe(1);
 
-    expect($ingest(80, '2026-07-19T10:00:20+01:00'))->toBe(0)
+    expect($ingest(80, now()->subSeconds(10)->toIso8601String()))->toBe(0)
         ->and(AlertRuleState::query()->firstOrFail()->is_triggered)->toBeFalse();
 
-    expect($ingest(81, '2026-07-19T10:00:30+01:00'))->toBe(0)
+    expect($ingest(81, now()->toIso8601String()))->toBe(0)
         ->and(Alert::query()->where('type', 'overspeed')->count())->toBe(2);
 });

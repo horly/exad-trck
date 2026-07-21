@@ -9,7 +9,7 @@ class StoreGarageRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->isSuperadmin();
+        return (bool) $this->user()?->hasClientPermission(\App\Models\User::PERMISSION_GARAGES_MANAGE);
     }
 
     protected function prepareForValidation(): void

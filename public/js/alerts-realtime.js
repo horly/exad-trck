@@ -236,6 +236,11 @@
     };
 
     const connect = () => {
+        if (config.pollOnly) {
+            setStatus('connected', labels.connected || 'Realtime connected');
+            return;
+        }
+
         if (!config.key || !config.host || !config.port) {
             setStatus('unavailable', labels.unavailable || 'Realtime unavailable');
             return;

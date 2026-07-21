@@ -107,6 +107,21 @@ class Alert extends Model
         return $this->message;
     }
 
+    public function localizedMessageFor(User $user): string
+    {
+        if ($user->isSuperadmin()) {
+            return $this->localizedMessage();
+        }
+
+        $vehicle = $this->vehicle?->name ?: __('alerts.unknown_vehicle');
+
+        return match ($this->type) {
+            'no_signal' => __('alerts.message_no_signal_client', ['vehicle' => $vehicle]),
+            'signal_recovered' => __('alerts.message_signal_recovered_client', ['vehicle' => $vehicle]),
+            default => $this->localizedMessage(),
+        };
+    }
+
     /**
      * @return array<string, string|int|float>
      */

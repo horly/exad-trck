@@ -26,15 +26,19 @@
                         <td>{{ $garage->active_maintenance_count }}</td>
                         <td><span class="status-pill status-{{ $garage->status }}">{{ __('garages.status_' . $garage->status) }}</span></td>
                         <td class="text-end"><div class="users-actions">
-                            <button type="button" class="icon-action icon-action-edit" data-bs-toggle="modal" data-bs-target="#garageModal" data-garage-edit
-                                data-garage="{{ json_encode($garageData) }}"
-                                data-action="{{ route('garages.update', $garage) }}" aria-label="{{ __('garages.edit') }}">
-                                <i class="fa-regular fa-pen-to-square"></i>
-                            </button>
-                            <form method="POST" action="{{ route('garages.destroy', $garage) }}" data-confirm-delete data-confirm-title="{{ __('garages.delete_confirm_title') }}" data-confirm-message="{{ __('garages.delete_confirm_message', ['name' => $garage->name]) }}" data-confirm-cancel="{{ __('garages.cancel') }}" data-confirm-submit="{{ __('garages.delete_confirm_submit') }}" data-confirm-processing="{{ __('garages.processing') }}">
-                                @csrf @method('DELETE')
-                                <button class="icon-action icon-action-delete" aria-label="{{ __('garages.delete') }}"><i class="fa-regular fa-trash-can"></i></button>
-                            </form>
+                            @if (auth()->user()->isSuperadmin() || ($garage->fleet_id !== null && $garage->fleet_id === auth()->user()->fleet_id))
+                                <button type="button" class="icon-action icon-action-edit" data-bs-toggle="modal" data-bs-target="#garageModal" data-garage-edit
+                                    data-garage="{{ json_encode($garageData) }}"
+                                    data-action="{{ route('garages.update', $garage) }}" aria-label="{{ __('garages.edit') }}">
+                                    <i class="fa-regular fa-pen-to-square"></i>
+                                </button>
+                                <form method="POST" action="{{ route('garages.destroy', $garage) }}" data-confirm-delete data-confirm-title="{{ __('garages.delete_confirm_title') }}" data-confirm-message="{{ __('garages.delete_confirm_message', ['name' => $garage->name]) }}" data-confirm-cancel="{{ __('garages.cancel') }}" data-confirm-submit="{{ __('garages.delete_confirm_submit') }}" data-confirm-processing="{{ __('garages.processing') }}">
+                                    @csrf @method('DELETE')
+                                    <button class="icon-action icon-action-delete" aria-label="{{ __('garages.delete') }}"><i class="fa-regular fa-trash-can"></i></button>
+                                </form>
+                            @else
+                                <span class="technical-code">-</span>
+                            @endif
                         </div></td>
                     </tr>
                 @empty

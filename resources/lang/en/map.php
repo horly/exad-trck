@@ -38,4 +38,7 @@ return [
     'popup_last_signal' => 'Last signal',
     'popup_registration' => 'Registration',
     'kmh' => 'km/h',
+    'client_subtitle' => 'Operational view of geolocated vehicles in your fleet.',
+    'client_total' => 'Tracked vehicles',
+    'client_search' => 'Search by vehicle or registration...',
 ];

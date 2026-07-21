@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('map.title') }} - EXAD Tracking</title>
+    <title>{{ __('map.title') }} - {{ $applicationSettings->app_name }}</title>
     @include('partials.favicon')
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
@@ -11,7 +11,7 @@
         <link rel="stylesheet" href="{{ asset('vendor/mapbox/mapbox-gl.css') }}">
     @endif
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260719-database-selects">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260721-client-preview-icons">
     <link rel="stylesheet" href="{{ asset('css/map.css') }}?v=20260708-map-search-normalized">
 </head>
 <body class="app-font-manrope dashboard-body">
@@ -24,7 +24,7 @@
                 <div>
                     <p class="eyebrow mb-1">{{ __('map.eyebrow') }}</p>
                     <h1>{{ __('map.title') }}</h1>
-                    <p class="map-subtitle">{{ __('map.subtitle') }}</p>
+                    <p class="map-subtitle">{{ $showTechnicalDetails ? __('map.subtitle') : __('map.client_subtitle') }}</p>
                 </div>
 
                 @include('partials.topbar-actions')
@@ -57,8 +57,8 @@
 
                     <div class="map-stats">
                         <div class="map-stat">
-                            <span class="map-stat-icon"><i class="fa-solid fa-satellite-dish"></i></span>
-                            <span class="map-stat-label">{{ __('map.total') }}</span>
+                            <span class="map-stat-icon"><i class="fa-solid {{ $showTechnicalDetails ? 'fa-satellite-dish' : 'fa-car-side' }}"></i></span>
+                            <span class="map-stat-label">{{ $showTechnicalDetails ? __('map.total') : __('map.client_total') }}</span>
                             <strong data-map-count="total">{{ $summary['total'] }}</strong>
                         </div>
                         <div class="map-stat">
@@ -96,6 +96,7 @@
                             </select>
                         </label>
 
+                        @if ($showTechnicalDetails)
                         <label class="map-filter">
                             <span><i class="fa-solid fa-layer-group"></i>{{ __('trackers.fleet') }}</span>
                             <select class="form-select" data-map-fleet data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-warehouse">
@@ -105,12 +106,13 @@
                                 @endforeach
                             </select>
                         </label>
+                        @endif
 
                         <label class="map-filter map-filter-full">
                             <span><i class="fa-solid fa-magnifying-glass-location"></i>{{ __('trackers.search') }}</span>
                             <div class="map-search">
                                 <i class="fa-solid fa-magnifying-glass"></i>
-                                <input type="search" class="form-control" placeholder="{{ __('map.search') }}" data-map-search>
+                                <input type="search" class="form-control" placeholder="{{ $showTechnicalDetails ? __('map.search') : __('map.client_search') }}" data-map-search>
                             </div>
                         </label>
                     </div>
@@ -162,6 +164,7 @@
             'devicesUrl' => route('map.devices'),
             'center' => $defaultCenter,
             'zoom' => $defaultZoom,
+            'technicalDetails' => $showTechnicalDetails,
             'messages' => [
                 'tokenMissing' => __('map.token_missing'),
                 'googleKeyMissing' => __('map.google_key_missing'),
@@ -190,17 +193,19 @@
     @endif
     <script src="{{ asset('js/dashboard-sidebar.js') }}?v=20260626-responsive-sidebar-default"></script>
     <script src="{{ asset('js/dashboard-controls.js') }}?v=20260529-shared-controls"></script>
-    <script src="{{ asset('js/searchable-select.js') }}?v=20260719-database-selects"></script>
+    @if ($showTechnicalDetails)
+        <script src="{{ asset('js/searchable-select.js') }}?v=20260719-database-selects"></script>
+    @endif
     @include('partials.realtime-alerts')
-    <script src="{{ asset('js/tracker-details.js') }}?v=20260602-details-shared"></script>
+    <script src="{{ asset('js/tracker-details.js') }}?v=20260721-client-details"></script>
     <script src="{{ asset('js/tracker-trips.js') }}?v=20260714-trip-controls-icons"></script>
     @if ($mapProvider === 'google')
-        <script src="{{ asset('js/google-map.js') }}?v=20260714-trip-panel"></script>
+        <script src="{{ asset('js/google-map.js') }}?v=20260721-client-details"></script>
         @if ($googleMapsApiKey !== '')
             <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ urlencode($googleMapsApiKey) }}&callback=initExadGoogleMap"></script>
         @endif
     @else
-        <script src="{{ asset('js/map.js') }}?v=20260714-trip-panel"></script>
+        <script src="{{ asset('js/map.js') }}?v=20260721-client-details"></script>
     @endif
 </body>
 </html>

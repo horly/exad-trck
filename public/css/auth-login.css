@@ -964,8 +964,8 @@ svg {
 }
 
 .login-button {
-    background: #0757d5;
-    border-color: #0757d5;
+    background: var(--exad-button);
+    border-color: var(--exad-button);
     border-radius: 6px;
     box-shadow: 0 13px 28px rgba(7, 87, 213, 0.2);
     font-size: 0.8rem;
@@ -974,8 +974,8 @@ svg {
 
 .login-button:hover,
 .login-button:focus {
-    background: #064ab5;
-    border-color: #064ab5;
+    background: color-mix(in srgb, var(--exad-button) 86%, #000);
+    border-color: color-mix(in srgb, var(--exad-button) 86%, #000);
 }
 
 .security-note {
@@ -1105,4 +1105,41 @@ svg {
         gap: 5px;
         padding: 16px 20px;
     }
+}
+
+.security-challenge-shell {
+    align-items: center;
+    background: #f3f6fb;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 32px 20px;
+}
+
+.security-challenge-card {
+    background: #fff;
+    border: 1px solid #d6e0ed;
+    border-radius: 8px;
+    box-shadow: 0 22px 55px rgba(28, 47, 78, 0.1);
+    max-width: 430px;
+    padding: 34px;
+    width: 100%;
+}
+
+.security-challenge-logo { display: block; margin: 0 auto 22px; width: 96px; }
+.security-challenge-icon { align-items: center; background: #eaf1ff; border: 1px solid #d2e0ff; border-radius: 6px; color: #1d4ed8; display: flex; height: 42px; justify-content: center; margin: 0 auto 18px; width: 42px; }
+.security-challenge-card h1 { color: #111827; font-size: 20px; font-weight: 850; letter-spacing: 0; margin: 0 0 9px; text-align: center; }
+.security-challenge-card > p { color: #66758f; font-size: 12px; line-height: 1.55; margin: 0 0 24px; text-align: center; }
+.security-challenge-card .field-shell { margin-bottom: 0; }
+.security-challenge-card .field-icon { align-items: center; display: inline-flex; justify-content: center; }
+.security-challenge-card .form-control { border: 1px solid #c8d5e5; border-radius: 6px; font-size: 12px; min-height: 46px; padding: 10px 12px; width: 100%; }
+.security-challenge-card .field-shell .form-control { border: 0; min-height: 42px; }
+.security-challenge-card .invalid-feedback { color: #dc3545; font-size: 10px; margin-top: 6px; }
+.security-challenge-card .login-button { margin-top: 18px; width: 100%; }
+.security-code-input { font-size: 20px !important; font-weight: 800; letter-spacing: 6px !important; text-align: center; }
+.security-mode-toggle { background: transparent; border: 0; color: #1d4ed8; display: block; font-size: 10px; font-weight: 750; margin: 14px auto 0; padding: 4px; }
+
+@media (max-width: 480px) {
+    .security-challenge-shell { padding: 18px 14px; }
+    .security-challenge-card { padding: 26px 20px; }
 }

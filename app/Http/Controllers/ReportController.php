@@ -9,6 +9,7 @@ use App\Models\Fleet;
 use App\Models\Position;
 use App\Models\ScheduledReport;
 use App\Models\TrackerEvent;
+use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -50,9 +51,10 @@ class ReportController extends Controller
     public function export(Request $request): Response|StreamedResponse
     {
         $filters = $this->filters($request);
+        $showTechnicalDetails = $request->user()->isSuperadmin();
         $format = $request->query('format') === 'print' ? 'print' : 'csv';
         $rows = $this->rows($request, $filters, false);
-        $columns = $this->columns($filters['type']);
+        $columns = $this->columns($filters['type'], $showTechnicalDetails);
 
         if ($format === 'print') {
             $filename = 'exad-report-'.$filters['type'].'-'.now()->format('Ymd-His').'.pdf';
@@ -62,6 +64,7 @@ class ReportController extends Controller
                 'filters' => $filters,
                 'rows' => $rows,
                 'title' => $this->typeLabel($filters['type']),
+                'showTechnicalDetails' => $showTechnicalDetails,
             ])
                 ->setPaper('a4', 'landscape')
                 ->download($filename);
@@ -69,13 +72,13 @@ class ReportController extends Controller
 
         $filename = 'exad-report-'.$filters['type'].'-'.now()->format('Ymd-His').'.csv';
 
-        return response()->streamDownload(function () use ($columns, $rows): void {
+        return response()->streamDownload(function () use ($columns, $rows, $showTechnicalDetails, $request): void {
             $handle = fopen('php://output', 'w');
 
             fputcsv($handle, array_values($columns), ';');
 
             foreach ($rows as $row) {
-                fputcsv($handle, $this->csvRow($row), ';');
+                fputcsv($handle, $this->csvRow($row, $showTechnicalDetails, $request->user()), ';');
             }
 
             fclose($handle);
@@ -99,6 +102,18 @@ class ReportController extends Controller
             'vehicle_id' => ['nullable', 'integer', Rule::exists('vehicles', 'id')],
             'device_id' => ['nullable', 'integer', Rule::exists('devices', 'id')],
         ]);
+
+        if (! $request->user()->isSuperadmin()) {
+            $validated['fleet_id'] = null;
+            $validated['device_id'] = null;
+
+            if (! empty($validated['vehicle_id'])) {
+                abort_unless(
+                    Vehicle::query()->visibleTo($request->user())->whereKey($validated['vehicle_id'])->exists(),
+                    403
+                );
+            }
+        }
 
         ScheduledReport::query()->create([
             'user_id' => $request->user()->id,
@@ -147,9 +162,9 @@ class ReportController extends Controller
             'period' => $period,
             'date_from' => $from,
             'date_to' => $to,
-            'fleet_id' => $request->integer('fleet_id') ?: null,
+            'fleet_id' => $request->user()->isSuperadmin() ? ($request->integer('fleet_id') ?: null) : null,
             'vehicle_id' => $request->integer('vehicle_id') ?: null,
-            'device_id' => $request->integer('device_id') ?: null,
+            'device_id' => $request->user()->isSuperadmin() ? ($request->integer('device_id') ?: null) : null,
             'search' => trim((string) $request->query('search', '')),
             'sort' => (string) $request->query('sort', ''),
             'direction' => $request->query('direction') === 'asc' ? 'asc' : 'desc',
@@ -187,14 +202,17 @@ class ReportController extends Controller
 
     private function positionRows(Request $request, array $filters, bool $paginate): mixed
     {
+        $showTechnicalDetails = $request->user()->isSuperadmin();
         $sortable = [
             'id' => 'positions.id',
-            'tracker' => 'device_name',
             'vehicle' => 'vehicle_name',
             'fleet' => 'fleet_name',
             'speed' => 'positions.speed',
             'server_time' => 'positions.server_time',
         ];
+        if ($showTechnicalDetails) {
+            $sortable['tracker'] = 'device_name';
+        }
         $sort = array_key_exists($filters['sort'], $sortable) ? $filters['sort'] : null;
 
         $query = Position::query()
@@ -209,17 +227,20 @@ class ReportController extends Controller
             ->when($filters['fleet_id'], fn ($query, $id) => $query->where('devices.fleet_id', $id))
             ->when($filters['vehicle_id'], fn ($query, $id) => $query->where('devices.vehicle_id', $id))
             ->when($filters['device_id'], fn ($query, $id) => $query->where('positions.device_id', $id))
-            ->when($filters['search'] !== '', function ($query) use ($filters): void {
+            ->when($filters['search'] !== '', function ($query) use ($filters, $showTechnicalDetails): void {
                 $search = $filters['search'];
-                $query->where(function ($query) use ($search): void {
+                $query->where(function ($query) use ($search, $showTechnicalDetails): void {
                     $query
                         ->where('positions.address', 'like', "%{$search}%")
-                        ->orWhere('positions.imei', 'like', "%{$search}%")
-                        ->orWhere('devices.name', 'like', "%{$search}%")
-                        ->orWhere('devices.imei', 'like', "%{$search}%")
                         ->orWhere('fleets.name', 'like', "%{$search}%")
                         ->orWhere('vehicles.name', 'like', "%{$search}%")
                         ->orWhere('vehicles.registration_number', 'like', "%{$search}%");
+
+                    if ($showTechnicalDetails) {
+                        $query->orWhere('positions.imei', 'like', "%{$search}%")
+                            ->orWhere('devices.name', 'like', "%{$search}%")
+                            ->orWhere('devices.imei', 'like', "%{$search}%");
+                    }
                 });
             })
             ->when($sort, function ($query) use ($sortable, $sort, $filters): void {
@@ -231,15 +252,18 @@ class ReportController extends Controller
 
     private function eventRows(Request $request, array $filters, bool $paginate): mixed
     {
+        $showTechnicalDetails = $request->user()->isSuperadmin();
         $sortable = [
             'id' => 'tracker_events.id',
             'type' => 'tracker_events.type',
             'vehicle' => 'vehicle_name',
-            'tracker' => 'device_name',
             'fleet' => 'fleet_name',
             'duration' => 'tracker_events.duration_seconds',
             'started_at' => 'tracker_events.started_at',
         ];
+        if ($showTechnicalDetails) {
+            $sortable['tracker'] = 'device_name';
+        }
         $sort = array_key_exists($filters['sort'], $sortable) ? $filters['sort'] : null;
 
         $query = TrackerEvent::query()
@@ -255,16 +279,21 @@ class ReportController extends Controller
             ->when($filters['fleet_id'], fn ($query, $id) => $query->where('tracker_events.fleet_id', $id))
             ->when($filters['vehicle_id'], fn ($query, $id) => $query->where('tracker_events.vehicle_id', $id))
             ->when($filters['device_id'], fn ($query, $id) => $query->where('tracker_events.device_id', $id))
-            ->when($filters['search'] !== '', function ($query) use ($filters): void {
+            ->when($filters['search'] !== '', function ($query) use ($filters, $showTechnicalDetails): void {
                 $search = $filters['search'];
-                $query->where(function ($query) use ($search): void {
+                $query->where(function ($query) use ($search, $showTechnicalDetails): void {
                     $query
                         ->where('tracker_events.title', 'like', "%{$search}%")
                         ->orWhere('tracker_events.message', 'like', "%{$search}%")
                         ->orWhere('tracker_events.type', 'like', "%{$search}%")
                         ->orWhere('fleets.name', 'like', "%{$search}%")
                         ->orWhere('vehicles.name', 'like', "%{$search}%")
-                        ->orWhere('devices.imei', 'like', "%{$search}%");
+                        ->orWhere('vehicles.registration_number', 'like', "%{$search}%");
+
+                    if ($showTechnicalDetails) {
+                        $query->orWhere('devices.name', 'like', "%{$search}%")
+                            ->orWhere('devices.imei', 'like', "%{$search}%");
+                    }
                 });
             })
             ->when($sort, function ($query) use ($sortable, $sort, $filters): void {
@@ -276,6 +305,7 @@ class ReportController extends Controller
 
     private function alertRows(Request $request, array $filters, bool $paginate): mixed
     {
+        $showTechnicalDetails = $request->user()->isSuperadmin();
         $sortable = [
             'id' => 'alerts.id',
             'type' => 'alerts.type',
@@ -299,9 +329,9 @@ class ReportController extends Controller
             ->when($filters['fleet_id'], fn ($query, $id) => $query->where('alerts.fleet_id', $id))
             ->when($filters['vehicle_id'], fn ($query, $id) => $query->where('alerts.vehicle_id', $id))
             ->when($filters['device_id'], fn ($query, $id) => $query->where('alerts.device_id', $id))
-            ->when($filters['search'] !== '', function ($query) use ($filters): void {
+            ->when($filters['search'] !== '', function ($query) use ($filters, $showTechnicalDetails): void {
                 $search = $filters['search'];
-                $query->where(function ($query) use ($search): void {
+                $query->where(function ($query) use ($search, $showTechnicalDetails): void {
                     $query
                         ->where('alerts.title', 'like', "%{$search}%")
                         ->orWhere('alerts.message', 'like', "%{$search}%")
@@ -310,7 +340,12 @@ class ReportController extends Controller
                         ->orWhere('alerts.status', 'like', "%{$search}%")
                         ->orWhere('fleets.name', 'like', "%{$search}%")
                         ->orWhere('vehicles.name', 'like', "%{$search}%")
-                        ->orWhere('devices.imei', 'like', "%{$search}%");
+                        ->orWhere('vehicles.registration_number', 'like', "%{$search}%");
+
+                    if ($showTechnicalDetails) {
+                        $query->orWhere('devices.name', 'like', "%{$search}%")
+                            ->orWhere('devices.imei', 'like', "%{$search}%");
+                    }
                 });
             })
             ->when($sort, function ($query) use ($sortable, $sort, $filters): void {
@@ -322,13 +357,16 @@ class ReportController extends Controller
 
     private function fleetRows(Request $request, array $filters, bool $paginate): mixed
     {
+        $showTechnicalDetails = $request->user()->isSuperadmin();
         $sortable = [
             'id' => 'fleets.id',
             'fleet' => 'fleets.name',
             'vehicles' => 'vehicles_count',
-            'trackers' => 'devices_count',
             'status' => 'fleets.status',
         ];
+        if ($showTechnicalDetails) {
+            $sortable['trackers'] = 'devices_count';
+        }
         $sort = array_key_exists($filters['sort'], $sortable) ? $filters['sort'] : null;
 
         $query = Fleet::query()
@@ -359,16 +397,23 @@ class ReportController extends Controller
 
     private function viewData(Request $request, array $filters, mixed $rows): array
     {
+        $showTechnicalDetails = $request->user()->isSuperadmin();
+
         return [
             'rows' => $rows,
             'filters' => $filters,
-            'columns' => $this->columns($filters['type']),
+            'columns' => $this->columns($filters['type'], $showTechnicalDetails),
             'typeOptions' => $this->typeOptions(),
             'periodOptions' => $this->periodOptions(),
             'summary' => $this->summary($request),
-            'fleets' => Fleet::query()->visibleTo($request->user())->orderBy('name')->get(['id', 'name', 'code']),
+            'showTechnicalDetails' => $showTechnicalDetails,
+            'fleets' => $showTechnicalDetails
+                ? Fleet::query()->visibleTo($request->user())->orderBy('name')->get(['id', 'name', 'code'])
+                : collect(),
             'vehicles' => Vehicle::query()->visibleTo($request->user())->orderBy('name')->get(['id', 'fleet_id', 'name', 'registration_number']),
-            'devices' => Device::query()->visibleTo($request->user())->orderBy('name')->orderBy('imei')->get(['id', 'fleet_id', 'vehicle_id', 'name', 'imei']),
+            'devices' => $showTechnicalDetails
+                ? Device::query()->visibleTo($request->user())->orderBy('name')->orderBy('imei')->get(['id', 'fleet_id', 'vehicle_id', 'name', 'imei'])
+                : collect(),
             'scheduledReports' => ScheduledReport::query()
                 ->where('user_id', $request->user()->id)
                 ->latest()
@@ -393,18 +438,18 @@ class ReportController extends Controller
     /**
      * @return array<string, string>
      */
-    private function columns(string $type): array
+    private function columns(string $type, bool $showTechnicalDetails): array
     {
         return match ($type) {
-            'events' => [
+            'events' => array_filter([
                 'number' => __('reports.number'),
                 'event' => __('reports.event'),
                 'vehicle' => __('reports.vehicle'),
-                'tracker' => __('reports.tracker'),
+                'tracker' => $showTechnicalDetails ? __('reports.tracker') : null,
                 'fleet' => __('reports.fleet'),
                 'duration' => __('reports.duration'),
                 'date' => __('reports.date'),
-            ],
+            ]),
             'alerts' => [
                 'number' => __('reports.number'),
                 'alert' => __('reports.alert'),
@@ -414,24 +459,24 @@ class ReportController extends Controller
                 'status' => __('reports.status'),
                 'date' => __('reports.date'),
             ],
-            'fleet_summary' => [
+            'fleet_summary' => array_filter([
                 'number' => __('reports.number'),
                 'fleet' => __('reports.fleet'),
                 'vehicles' => __('reports.vehicles'),
-                'trackers' => __('reports.trackers'),
-                'online' => __('reports.online'),
-                'offline' => __('reports.offline'),
+                'trackers' => $showTechnicalDetails ? __('reports.trackers') : null,
+                'online' => $showTechnicalDetails ? __('reports.online') : null,
+                'offline' => $showTechnicalDetails ? __('reports.offline') : null,
                 'status' => __('reports.status'),
-            ],
-            default => [
+            ]),
+            default => array_filter([
                 'number' => __('reports.number'),
-                'tracker' => __('reports.tracker'),
+                'tracker' => $showTechnicalDetails ? __('reports.tracker') : null,
                 'vehicle' => __('reports.vehicle'),
                 'fleet' => __('reports.fleet'),
                 'speed' => __('reports.speed'),
                 'address' => __('reports.address'),
                 'date' => __('reports.date'),
-            ],
+            ]),
         };
     }
 
@@ -464,36 +509,36 @@ class ReportController extends Controller
     /**
      * @return list<string>
      */
-    private function csvRow(mixed $row): array
+    private function csvRow(mixed $row, bool $showTechnicalDetails, User $user): array
     {
         if ($row instanceof Position) {
-            return [
+            return array_values(array_filter([
                 $row->id,
-                $row->device?->name ?: $row->imei,
+                $showTechnicalDetails ? ($row->device?->name ?: $row->imei) : null,
                 $row->device?->vehicle?->name ?: '-',
                 $row->device?->fleet?->name ?: '-',
                 $row->speed ?? 0,
                 $row->address ?: '-',
                 $row->server_time?->format('Y-m-d H:i:s') ?: '-',
-            ];
+            ], fn (mixed $value): bool => $value !== null));
         }
 
         if ($row instanceof TrackerEvent) {
-            return [
+            return array_values(array_filter([
                 $row->id,
                 $row->localizedTitle().' - '.$row->localizedMessage(),
                 $row->vehicle?->name ?: '-',
-                $row->device?->name ?: $row->device?->imei ?: '-',
+                $showTechnicalDetails ? ($row->device?->name ?: $row->device?->imei ?: '-') : null,
                 $row->fleet?->name ?: '-',
                 $row->durationLabel() ?: '-',
                 $row->started_at?->format('Y-m-d H:i:s') ?: '-',
-            ];
+            ], fn (mixed $value): bool => $value !== null));
         }
 
         if ($row instanceof Alert) {
             return [
                 $row->id,
-                $row->localizedTitle().' - '.$row->localizedMessage(),
+                $row->localizedTitle().' - '.$row->localizedMessageFor($user),
                 $row->severity,
                 $row->vehicle?->name ?: '-',
                 $row->fleet?->name ?: '-',
@@ -502,15 +547,15 @@ class ReportController extends Controller
             ];
         }
 
-        return [
+        return array_values(array_filter([
             $row->id,
             $row->name.' '.($row->code ? '('.$row->code.')' : ''),
             (string) $row->vehicles_count,
-            (string) $row->devices_count,
-            (string) $row->online_devices_count,
-            (string) $row->offline_devices_count,
+            $showTechnicalDetails ? (string) $row->devices_count : null,
+            $showTechnicalDetails ? (string) $row->online_devices_count : null,
+            $showTechnicalDetails ? (string) $row->offline_devices_count : null,
             $row->status,
-        ];
+        ], fn (mixed $value): bool => $value !== null));
     }
 
     private function nextRunAt(string $frequency): Carbon

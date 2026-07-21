@@ -55,15 +55,17 @@
                 <span>{{ __('reports.to') }}</span>
                 <input type="date" name="date_to" class="form-control" value="{{ $filters['date_to']->toDateString() }}">
             </label>
-            <label>
-                <span>{{ __('reports.fleet') }}</span>
-                <select name="fleet_id" class="form-select" data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-warehouse">
-                    <option value="">{{ __('reports.all_fleets') }}</option>
-                    @foreach ($fleets as $fleet)
-                        <option value="{{ $fleet->id }}" @selected((int) $filters['fleet_id'] === $fleet->id)>{{ $fleet->name }}{{ $fleet->code ? ' · '.$fleet->code : '' }}</option>
-                    @endforeach
-                </select>
-            </label>
+            @if ($showTechnicalDetails)
+                <label>
+                    <span>{{ __('reports.fleet') }}</span>
+                    <select name="fleet_id" class="form-select" data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-warehouse">
+                        <option value="">{{ __('reports.all_fleets') }}</option>
+                        @foreach ($fleets as $fleet)
+                            <option value="{{ $fleet->id }}" @selected((int) $filters['fleet_id'] === $fleet->id)>{{ $fleet->name }}{{ $fleet->code ? ' · '.$fleet->code : '' }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            @endif
             <label>
                 <span>{{ __('reports.vehicle') }}</span>
                 <select name="vehicle_id" class="form-select" data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-car-side">
@@ -73,15 +75,17 @@
                     @endforeach
                 </select>
             </label>
-            <label>
-                <span>{{ __('reports.tracker') }}</span>
-                <select name="device_id" class="form-select" data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-satellite-dish">
-                    <option value="">{{ __('reports.all_trackers') }}</option>
-                    @foreach ($devices as $device)
-                        <option value="{{ $device->id }}" @selected((int) $filters['device_id'] === $device->id)>{{ $device->name ?: $device->imei }} · {{ $device->imei }}</option>
-                    @endforeach
-                </select>
-            </label>
+            @if ($showTechnicalDetails)
+                <label>
+                    <span>{{ __('reports.tracker') }}</span>
+                    <select name="device_id" class="form-select" data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-satellite-dish">
+                        <option value="">{{ __('reports.all_trackers') }}</option>
+                        @foreach ($devices as $device)
+                            <option value="{{ $device->id }}" @selected((int) $filters['device_id'] === $device->id)>{{ $device->name ?: $device->imei }} · {{ $device->imei }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            @endif
         </div>
 
         <div class="report-toolbar">
@@ -123,7 +127,9 @@
                             <th><a class="datatable-sort-link {{ $filters['sort'] === 'id' ? 'active' : '' }}" href="{{ $sortLink('id') }}" data-datatable-sort><span>{{ __('reports.number') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
                             <th><a class="datatable-sort-link {{ $filters['sort'] === 'type' ? 'active' : '' }}" href="{{ $sortLink('type') }}" data-datatable-sort><span>{{ __('reports.event') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
                             <th><a class="datatable-sort-link {{ $filters['sort'] === 'vehicle' ? 'active' : '' }}" href="{{ $sortLink('vehicle') }}" data-datatable-sort><span>{{ __('reports.vehicle') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
-                            <th><a class="datatable-sort-link {{ $filters['sort'] === 'tracker' ? 'active' : '' }}" href="{{ $sortLink('tracker') }}" data-datatable-sort><span>{{ __('reports.tracker') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
+                            @if ($showTechnicalDetails)
+                                <th><a class="datatable-sort-link {{ $filters['sort'] === 'tracker' ? 'active' : '' }}" href="{{ $sortLink('tracker') }}" data-datatable-sort><span>{{ __('reports.tracker') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
+                            @endif
                             <th><a class="datatable-sort-link {{ $filters['sort'] === 'fleet' ? 'active' : '' }}" href="{{ $sortLink('fleet') }}" data-datatable-sort><span>{{ __('reports.fleet') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
                             <th><a class="datatable-sort-link {{ $filters['sort'] === 'duration' ? 'active' : '' }}" href="{{ $sortLink('duration') }}" data-datatable-sort><span>{{ __('reports.duration') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
                             <th><a class="datatable-sort-link {{ $filters['sort'] === 'started_at' ? 'active' : '' }}" href="{{ $sortLink('started_at') }}" data-datatable-sort><span>{{ __('reports.date') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
@@ -141,14 +147,18 @@
                             <th><a class="datatable-sort-link {{ $filters['sort'] === 'id' ? 'active' : '' }}" href="{{ $sortLink('id') }}" data-datatable-sort><span>{{ __('reports.number') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
                             <th><a class="datatable-sort-link {{ $filters['sort'] === 'fleet' ? 'active' : '' }}" href="{{ $sortLink('fleet') }}" data-datatable-sort><span>{{ __('reports.fleet') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
                             <th><a class="datatable-sort-link {{ $filters['sort'] === 'vehicles' ? 'active' : '' }}" href="{{ $sortLink('vehicles') }}" data-datatable-sort><span>{{ __('reports.vehicles') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
-                            <th><a class="datatable-sort-link {{ $filters['sort'] === 'trackers' ? 'active' : '' }}" href="{{ $sortLink('trackers') }}" data-datatable-sort><span>{{ __('reports.trackers') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
-                            <th>{{ __('reports.online') }}</th>
-                            <th>{{ __('reports.offline') }}</th>
+                            @if ($showTechnicalDetails)
+                                <th><a class="datatable-sort-link {{ $filters['sort'] === 'trackers' ? 'active' : '' }}" href="{{ $sortLink('trackers') }}" data-datatable-sort><span>{{ __('reports.trackers') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
+                                <th>{{ __('reports.online') }}</th>
+                                <th>{{ __('reports.offline') }}</th>
+                            @endif
                             <th><a class="datatable-sort-link {{ $filters['sort'] === 'status' ? 'active' : '' }}" href="{{ $sortLink('status') }}" data-datatable-sort><span>{{ __('reports.status') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
                             @break
                         @default
                             <th><a class="datatable-sort-link {{ $filters['sort'] === 'id' ? 'active' : '' }}" href="{{ $sortLink('id') }}" data-datatable-sort><span>{{ __('reports.number') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
-                            <th><a class="datatable-sort-link {{ $filters['sort'] === 'tracker' ? 'active' : '' }}" href="{{ $sortLink('tracker') }}" data-datatable-sort><span>{{ __('reports.tracker') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
+                            @if ($showTechnicalDetails)
+                                <th><a class="datatable-sort-link {{ $filters['sort'] === 'tracker' ? 'active' : '' }}" href="{{ $sortLink('tracker') }}" data-datatable-sort><span>{{ __('reports.tracker') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
+                            @endif
                             <th><a class="datatable-sort-link {{ $filters['sort'] === 'vehicle' ? 'active' : '' }}" href="{{ $sortLink('vehicle') }}" data-datatable-sort><span>{{ __('reports.vehicle') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
                             <th><a class="datatable-sort-link {{ $filters['sort'] === 'fleet' ? 'active' : '' }}" href="{{ $sortLink('fleet') }}" data-datatable-sort><span>{{ __('reports.fleet') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
                             <th><a class="datatable-sort-link {{ $filters['sort'] === 'speed' ? 'active' : '' }}" href="{{ $sortLink('speed') }}" data-datatable-sort><span>{{ __('reports.speed') }}</span><i class="{{ $sortIcon() }}"></i></a></th>
@@ -165,7 +175,9 @@
                                 <td>{{ $rows->firstItem() + $loop->index }}</td>
                                 <td><strong>{{ $row->localizedTitle() }}</strong><span class="technical-code">{{ $row->localizedMessage() }}</span></td>
                                 <td><strong>{{ $row->vehicle?->name ?: '-' }}</strong><span class="technical-code">{{ $row->vehicle?->registration_number ?: '-' }}</span></td>
-                                <td><strong>{{ $row->device?->name ?: ($row->device?->imei ?: '-') }}</strong><span class="technical-code">{{ $row->device?->model ?: '-' }}</span></td>
+                                @if ($showTechnicalDetails)
+                                    <td><strong>{{ $row->device?->name ?: ($row->device?->imei ?: '-') }}</strong><span class="technical-code">{{ $row->device?->model ?: '-' }}</span></td>
+                                @endif
                                 <td><strong>{{ $row->fleet?->name ?: '-' }}</strong><span class="technical-code">{{ $row->fleet?->code ?: '-' }}</span></td>
                                 <td>{{ $row->durationLabel() ?: '-' }}</td>
                                 <td>{{ $row->started_at?->format('Y-m-d H:i:s') ?: '-' }}</td>
@@ -174,7 +186,7 @@
                         @case('alerts')
                             <tr>
                                 <td>{{ $rows->firstItem() + $loop->index }}</td>
-                                <td><strong>{{ $row->localizedTitle() }}</strong><span class="technical-code">{{ $row->localizedMessage() }}</span></td>
+                                <td><strong>{{ $row->localizedTitle() }}</strong><span class="technical-code">{{ $row->localizedMessageFor(auth()->user()) }}</span></td>
                                 <td><span class="report-pill report-pill-{{ $row->severity }}">{{ __('reports.severity_'.$row->severity) }}</span></td>
                                 <td><strong>{{ $row->vehicle?->name ?: '-' }}</strong><span class="technical-code">{{ $row->vehicle?->registration_number ?: '-' }}</span></td>
                                 <td><strong>{{ $row->fleet?->name ?: '-' }}</strong><span class="technical-code">{{ $row->fleet?->code ?: '-' }}</span></td>
@@ -187,16 +199,20 @@
                                 <td>{{ $rows->firstItem() + $loop->index }}</td>
                                 <td><strong>{{ $row->name }}</strong><span class="technical-code">{{ $row->code ?: '-' }}</span></td>
                                 <td>{{ $row->vehicles_count }}</td>
-                                <td>{{ $row->devices_count }}</td>
-                                <td><span class="report-pill report-pill-success">{{ $row->online_devices_count }}</span></td>
-                                <td><span class="report-pill report-pill-danger">{{ $row->offline_devices_count }}</span></td>
+                                @if ($showTechnicalDetails)
+                                    <td>{{ $row->devices_count }}</td>
+                                    <td><span class="report-pill report-pill-success">{{ $row->online_devices_count }}</span></td>
+                                    <td><span class="report-pill report-pill-danger">{{ $row->offline_devices_count }}</span></td>
+                                @endif
                                 <td><span class="report-pill report-pill-muted">{{ __('reports.fleet_status_'.$row->status) }}</span></td>
                             </tr>
                             @break
                         @default
                             <tr>
                                 <td>{{ $rows->firstItem() + $loop->index }}</td>
-                                <td><span class="report-identity-cell"><strong>{{ $row->device?->name ?: $row->imei }}</strong><span class="technical-code">{{ $row->device?->imei ?: $row->imei }}</span></span></td>
+                                @if ($showTechnicalDetails)
+                                    <td><span class="report-identity-cell"><strong>{{ $row->device?->name ?: $row->imei }}</strong><span class="technical-code">{{ $row->device?->imei ?: $row->imei }}</span></span></td>
+                                @endif
                                 <td><span class="report-identity-cell"><strong>{{ $row->device?->vehicle?->name ?: '-' }}</strong><span class="technical-code">{{ $row->device?->vehicle?->registration_number ?: '-' }}</span></span></td>
                                 <td><span class="report-identity-cell"><strong>{{ $row->device?->fleet?->name ?: '-' }}</strong><span class="technical-code">{{ $row->device?->fleet?->code ?: '-' }}</span></span></td>
                                 <td>{{ __('reports.speed_value', ['value' => $row->speed ?? 0]) }}</td>

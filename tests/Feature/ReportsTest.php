@@ -124,17 +124,17 @@ test('superadmin can export alerts report and schedule recurring reports', funct
     expect(ScheduledReport::query()->first()?->recipients)->toBe(['ops@example.com', 'admin@example.com']);
 });
 
-test('report pages remain reserved to superadmin users', function () {
-    $subscription = Subscription::factory()->create();
-    $admin = User::factory()->admin($subscription)->create();
+test('fleet admins can access and export reports for their fleet', function () {
+    $fleet = \App\Models\Fleet::factory()->create();
+    $admin = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
 
     $this->actingAs($admin)
         ->get(route('reports.index'))
-        ->assertForbidden();
+        ->assertSuccessful();
 
     $this->actingAs($admin)
         ->get(route('reports.export'))
-        ->assertForbidden();
+        ->assertSuccessful();
 });
 
 test('scheduled reports can only be deleted by their owner', function () {

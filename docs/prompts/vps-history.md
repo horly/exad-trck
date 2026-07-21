@@ -538,3 +538,134 @@ The battery voltage field must not be greater than 100.
 - Syntaxe Blade validee, caches Laravel nettoyes puis caches de configuration et de vues reconstruits ; application remise en ligne.
 - Controles publics reussis en HTTP 200 pour la connexion et le CSS versionne `20260719-login-responsive` ; breakpoint tablette, prechargement bureau et masquage du panneau verifies dans les contenus servis.
 - Validation locale avant deploiement : 97 tests Laravel passes avec 818 assertions.
+
+## 2026-07-19 - Deploiement du Profil securise et de la Personnalisation globale
+
+- Deploiement cible vers `/var/www/exadtracking.app` de la nouvelle page Profil, du recadrage Cropper.js, de l'authentification 2FA Fortify et du module complet de personnalisation de l'application.
+- Sauvegarde prealable des sources remplacees : `/tmp/exadtracking-before-profile-customization-20260719-231801.tar.gz`.
+- Ajout en production de la photo de profil recadree, de sa propagation dans la topbar et la liste des utilisateurs, de la modification separee des informations personnelles, de l'e-mail et du mot de passe interactif.
+- Activation du choix utilisateur pour le TOTP : desactive par defaut, activation protegee par mot de passe et code a six chiffres, codes de recuperation, regeneration et desactivation protegees.
+- Ajout de la personnalisation globale : nom, nom court, site web, logo, favicon, sept couleurs de theme et coordonnees de support. Les champs slogan, description et texte de copyright sont volontairement absents.
+- L'identite et la palette sont propagees a la connexion, la sidebar, les titres, les rapports, les boutons, les avatars, les accents et le favicon.
+- Migrations production executees avec succes :
+  - `2026_07_19_200000_add_profile_photo_path_to_users_table`
+  - `2026_07_19_210000_create_application_settings_table`
+- Le lien `public/storage` a ete verifie actif. Autoload Composer optimise, caches Laravel nettoyes puis caches de configuration et de vues reconstruits ; workers de queue signales pour redemarrage.
+- Premier passage interrompu au controle `node --check` car Node.js n'est pas expose dans le `PATH` non interactif root. Le `trap` de securite a remis Laravel en ligne automatiquement ; la reprise a finalise autoload, migrations, caches et services sans nouvelle extraction.
+- Verifications finales : application hors maintenance, routes Profil/2FA/Personnalisation presentes, Apache, `gps-tcp.service` et `exad-server-console.service` actifs.
+- Controles publics HTTPS reussis en `200` pour la page de connexion, `customization.css`, `customization.js` et `cropper.min.js`.
+- Validation locale avant deploiement : 112 tests Laravel passes avec 963 assertions.
+
+## 2026-07-19 - Diagnostic en lecture seule du traceur 353201355315547
+
+- Consultation des journaux `gps-tcp.log` et `gps-tcp-error.log`, de l'etat du traceur en base et du code du listener TCP Teltonika, sans modification du VPS.
+- L'IMEI est accepte par le listener, mais les derniers relevés recus ont ete refuses par la validation Laravel avec l'erreur `angle must not be greater than 359`.
+- Dernier etat constate en base : `offline`, dernier signal enregistre le 19 juillet 2026 a 18:28:19 UTC et dernier cap valide `2` degres.
+- Une capture reseau courte confirme que le listener recoit et decode correctement les paquets Codec8 Extended d'autres traceurs. Les connexions recentes de l'IMEI concerne se limitent actuellement a l'identification IMEI suivie d'une fermeture.
+- Aucun fichier, service, cache ou enregistrement du VPS n'a ete modifie. Le correctif de tolerance des angles a uniquement ete prepare et valide en local.
+
+## 2026-07-20 - Correction des angles GPS et reprise du traceur 353201355315547
+
+- Deploiement cible de `routes/console.php` afin qu'un angle `360` soit normalise a `0` et qu'une valeur entiere hors plage conserve le dernier cap valide au lieu de faire rejeter tout le relevé GPS.
+- Sauvegarde du fichier precedent : `/tmp/exadtracking-before-gps-angle-20260720-105618.php`.
+- Syntaxe PHP validee, caches Laravel nettoyes puis caches de configuration et de vues reconstruits.
+- `gps-tcp.service` redemarre et verifie actif ; application remise hors maintenance et Apache verifie actif.
+- Apres redemarrage, l'IMEI `353201355315547` a repris l'envoi continu de paquets Codec8 Extended avec `records=2 ACK=2`.
+- Le traceur est repasse `online`; `last_seen_at` avance de nouveau et les anciennes positions sont progressivement ingerees dans l'ordre `Oldest`.
+- Aucun nouvel octet n'a ete ajoute a `gps-tcp-error.log` durant une fenetre de controle de 35 secondes.
+- Controle public final : `https://exadtracking.app/login` repond en HTTP 200.
+- Validation locale avant deploiement : 112 tests Laravel passes avec 968 assertions.
+
+## 2026-07-20 - Constat du rejeu historique apres reprise GPS
+
+- Controle en lecture seule apres retablissement : le traceur reste `online` et continue d'envoyer des lots acquittes, mais les archives reçues remplacent encore temporairement son etat de carte.
+- Une regression reelle de `last_position_at` de 21:03 UTC vers 19:38 UTC a ete observee pendant l'arrivee de lots hors ordre, avec une vitesse historique de 28 km/h alors que le vehicule etait stationne.
+- Aucun changement supplementaire n'a ete applique au VPS pendant ce constat.
+- Un garde-fou a ete prepare et teste localement pour stocker les archives sans modifier l'etat live ni declencher d'alertes temps reel ; son deploiement attend une autorisation explicite.
+
+### Nouvelle interruption sur une altitude sentinelle
+
+- Le traceur est repasse `offline` apres son dernier ACK a 10:51:18 UTC, tandis que le listener et Apache sont restes actifs.
+- Les nouvelles tentatives ont ete refusees par Laravel avec `altitude must not be greater than 10000`, puis le traceur a recommence les connexions IMEI sans ACK de donnees.
+- Aucun changement VPS n'a ete effectue pendant ce diagnostic.
+- La tolerance correspondante a ete ajoutee et validee localement avec les autres sentinelles GPS ; son deploiement attend une autorisation explicite.
+
+## 2026-07-20 - Deploiement du rattrapage GPS protege
+
+- Deploiement cible de `routes/console.php` avec deux protections : tolerance des sentinelles de telemetrie et separation entre archives GPS et etat live.
+- Sauvegarde du fichier precedent : `/tmp/exadtracking-before-gps-replay-20260720-121350.php`.
+- Syntaxe PHP validee, caches Laravel reconstruits, `gps-tcp.service` redemarre et verifie actif.
+- Le traceur `353201355315547` est repasse `online` et envoie continuellement des lots Codec8 Extended acquittes avec `records=2 ACK=2`.
+- Le fichier `gps-tcp-error.log` n'a pas grandi pendant la fenetre de verification post-deploiement.
+- Les archives continuent d'etre inserees dans `positions`, mais ne modifient plus `last_position_at`, les coordonnees, la vitesse ou le mouvement live tant qu'elles sont anciennes ou hors ordre.
+- Controle public final : `https://exadtracking.app/login` repond en HTTP 200.
+- Validation locale avant deploiement : 113 tests Laravel passes avec 982 assertions.
+
+## 2026-07-21 - Logo interne prepare localement
+
+- Un reglage de logo interne distinct a ete ajoute localement pour la sidebar, avec migration, upload securise, apercu et tests de regression.
+- Cette evolution n'est pas encore deployee : aucun fichier, service, cache ou schema du VPS n'a ete modifie.
+- Validation locale : 114 tests Laravel passes avec 991 assertions.
+
+## 2026-07-21 - Espace client prepare localement
+
+- L'espace client par flotte, les permissions utilisateur, le dashboard cloisonne et la gestion des utilisateurs simples par leur admin ont ete implementes uniquement dans le projet local.
+- Une migration locale ajoute l'affectation directe des utilisateurs et des garages a une flotte, ainsi que la tracabilite du compte createur.
+- Les routes de creation des flottes, vehicules, traceurs, conducteurs et departements restent reservees au superadmin ; les garages, entretiens, rapports et la carte utilisent des permissions client explicites.
+- La suite complete locale passe avec 120 tests et 1037 assertions.
+- Aucun fichier, schema, service ou cache du VPS n'a ete modifie. Le deploiement attend une autorisation explicite.
+
+### Masquage local des informations techniques des traceurs
+
+- Le projet local reserve desormais le menu et les routes techniques des traceurs au superadmin.
+- Le dashboard, la liste des vehicules, la carte, les evenements, les alertes et les rapports client ont ete adaptes pour fonctionner avec les vehicules de la flotte sans exposer le nom, le modele, l'IMEI ou l'identifiant interne des traceurs.
+- Une route de trajets basee sur le vehicule remplace l'URL contenant l'identifiant du traceur cote client, avec controle serveur de la flotte visible.
+- Les filtres de flotte et de traceur envoyes manuellement par un client sont ignores ou refuses selon l'operation ; les exports HTML, CSV et PDF appliquent la meme separation.
+- Validation locale : 122 tests Laravel passes avec 1085 assertions, vues Blade compilees et scripts de carte valides.
+- Aucun deploiement n'a ete lance et aucun fichier, schema, service ou cache du VPS n'a ete modifie.
+
+### Correctif local de disposition du dashboard client
+
+- L'ordre des sections du dashboard client a ete corrige localement afin que les alertes et actions rapides ne precedent plus l'en-tete et les indicateurs de flotte.
+- Validation locale : vues Blade compilees et 123 tests Laravel passes avec 1091 assertions.
+- Aucun fichier, service, cache ou schema du VPS n'a ete modifie.
+
+### Correctif local de reconnexion apres expiration de session
+
+- La recuperation des sessions expirees a ete corrigee localement pour ne plus afficher la page Laravel `419 PAGE EXPIRED` lors d'une nouvelle tentative de connexion.
+- Les pages d'authentification et l'endpoint de renouvellement CSRF interdisent leur mise en cache ; le formulaire obtient un jeton frais avant chaque connexion.
+- Une erreur 419 de navigateur redirige desormais vers une page de connexion neuve avec un message explicite, sans modifier le comportement des appels JSON.
+- Validation locale : syntaxe PHP et JavaScript valide, vues Blade compilees et 125 tests Laravel passes avec 1103 assertions.
+- Aucun fichier, service, cache ou schema du VPS n'a ete modifie. Le deploiement attend une autorisation explicite.
+
+### Modal de details du traceur client prepare localement
+
+- Le modal de details du traceur est maintenant accessible depuis la carte client au moyen d'une route basee sur le vehicule et limitee a la flotte visible.
+- La reponse client masque le modele, l'IMEI, le nom technique et toute URL contenant l'identifiant interne du traceur ; le superadmin conserve son affichage complet.
+- Validation locale : syntaxe PHP et JavaScript valide, vues Blade compilees et 125 tests Laravel passes avec 1115 assertions.
+- Aucun fichier, service, cache ou schema du VPS n'a ete modifie. Le deploiement attend une autorisation explicite.
+
+### Espace client complet en lecture seule prepare localement
+
+- La colonne Flotte de l'espace superadmin permet maintenant d'entrer dans tout l'espace client de la flotte selectionnee, et pas uniquement dans son tableau de bord.
+- Le menu client complet est disponible et les utilisateurs, vehicules, positions, alertes, evenements, garages, entretiens et rapports restent limites a cette flotte.
+- Le contexte est applique temporairement a chaque requete sans modifier le compte superadmin. Une indication persistante `Lecture seule` permet de quitter proprement l'espace client et de revenir aux flottes.
+- Toutes les requetes d'ecriture sont bloquees cote serveur avec une reponse 403 et les controles de modification sont masques dans l'interface.
+- Le centrage des icones du bloc `Lecture seule` dans la sidebar a ete corrige localement.
+- Validation locale : vues Blade compilees et 126 tests Laravel passes avec 1150 assertions.
+- Cette version locale a ete deployee avec succes le 21 juillet 2026 apres autorisation explicite.
+
+## 2026-07-21 - Deploiement de l'espace client cloisonne et de l'apercu en lecture seule
+
+- Deploiement vers `/var/www/exadtracking.app` de l'espace client complet par flotte, des permissions client, du dashboard dedie, du masquage des informations techniques des traceurs, du correctif de reconnexion 419, du modal de details client, du logo interne configurable et de l'acces superadmin en lecture seule.
+- La colonne Flotte permet au superadmin d'entrer dans toutes les pages client de la flotte choisie. Les requetes d'ecriture sont bloquees cote serveur avec une reponse 403 et les actions de modification sont masquees dans l'interface.
+- Migrations production executees avec succes :
+  - `2026_07_21_000000_add_internal_logo_path_to_application_settings_table`
+  - `2026_07_21_010000_add_client_fleet_access_fields`
+- Sauvegarde prealable des fichiers remplaces : `/tmp/exadtracking-before-client-space-20260721-201730.tar.gz`.
+- Une premiere generation de la liste de sauvegarde a echoue avant la mise en maintenance et avant l'extraction a cause d'un saut de ligne mal echappe. Le garde-fou a conserve Laravel en ligne et la relance corrigee a termine le deploiement.
+- Les modes de fichiers trop permissifs herites de l'archive Windows ont ete immediatement corriges : fichiers en `0644`, dossiers en `0755`, proprietaire `exad-tracking` et groupe `www-data`.
+- Autoload Composer optimise, caches Laravel nettoyes puis reconstruits, migrations appliquees et signal de redemarrage envoye aux workers de queue.
+- Verifications finales : environnement production, debug desactive, maintenance inactive, routes `fleets.dashboard` et `client-preview.exit` presentes, lien `public/storage` actif, Apache, `gps-tcp.service` et `exad-server-console.service` actifs.
+- Controles HTTPS reussis en `200` pour la connexion et `dashboard.css?v=20260721-client-preview-icons`, avec les marqueurs CSS du mode lecture seule et du centrage des icones.
+- Validation locale avant deploiement : 126 tests Laravel passes avec 1150 assertions.

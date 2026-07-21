@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Alert;
+use App\Models\ApplicationSetting;
 use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -17,7 +18,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(ApplicationSetting::class, fn (): ApplicationSetting => ApplicationSetting::query()->firstOrFail());
     }
 
     /**
@@ -43,9 +44,13 @@ class AppServiceProvider extends ServiceProvider
         View::composer('partials.topbar-actions', function ($view): void {
             $user = Auth::user();
 
-            $view->with('newAlertsCount', $user?->isSuperadmin()
+            $view->with('newAlertsCount', $user
                 ? Alert::query()->visibleTo($user)->where('status', 'new')->count()
                 : 0);
+        });
+
+        View::composer('*', function ($view): void {
+            $view->with('applicationSettings', app(ApplicationSetting::class));
         });
     }
 }

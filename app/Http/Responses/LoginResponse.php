@@ -18,11 +18,7 @@ class LoginResponse implements LoginResponseContract
             'logged_in_at' => now(),
         ]);
 
-        if ($user->isSuperadmin()) {
-            return redirect()->route('dashboard');
-        }
-
-        return redirect()->route('fleets.index');
+        return redirect()->route('dashboard');
     }
 
     private function deviceName(?string $userAgent): string

@@ -3,12 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('dashboard.title') }} - EXAD Tracking</title>
+    <title>{{ __('dashboard.title') }} - {{ $applicationSettings->app_name }}</title>
     @include('partials.favicon')
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260709-dashboard-refinement">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260721-client-preview-icons">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
@@ -18,8 +18,8 @@
             <header class="dashboard-topbar">
                 @include('partials.sidebar-toggle')
                 <div>
-                    <h1>{{ __('dashboard.title') }}</h1>
-                    <p class="dashboard-breadcrumb">{{ __('dashboard.breadcrumb') }}</p>
+                    <h1>{{ $isClientDashboard && $fleet ? __('dashboard.client_title', ['fleet' => $fleet->name]) : __('dashboard.title') }}</h1>
+                    <p class="dashboard-breadcrumb">{{ $isClientDashboard ? __('dashboard.client_breadcrumb', ['fleet' => $fleet?->name ?? '-']) : __('dashboard.breadcrumb') }}</p>
                 </div>
 
                 @include('partials.topbar-actions')
@@ -260,6 +260,7 @@
                 @endforeach
             </section>
 
+            @if ($canViewMap)
             <section class="dashboard-map-grid">
                 <article class="admin-panel world-map-panel">
                     <div class="chart-panel-header">
@@ -275,6 +276,7 @@
                     </div>
                 </article>
             </section>
+            @endif
 
             <section class="charts-grid">
                 <article class="admin-panel chart-panel chart-panel-wide">

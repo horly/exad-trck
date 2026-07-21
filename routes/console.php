@@ -45,6 +45,34 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         return 1;
     }
 
+    $discardIntegerOutsideRange = static function (array &$values, string $key, int $minimum, int $maximum): void {
+        if (! array_key_exists($key, $values)) {
+            return;
+        }
+
+        $value = filter_var($values[$key], FILTER_VALIDATE_INT);
+
+        if ($value !== false && ($value < $minimum || $value > $maximum)) {
+            unset($values[$key]);
+        }
+    };
+
+    $reportedAngle = filter_var($data['angle'] ?? null, FILTER_VALIDATE_INT);
+
+    if ($reportedAngle !== false) {
+        if ($reportedAngle === 360) {
+            $data['angle'] = 0;
+        } elseif ($reportedAngle < 0 || $reportedAngle > 359) {
+            unset($data['angle']);
+        }
+    }
+
+    $discardIntegerOutsideRange($data, 'speed', 0, 300);
+    $discardIntegerOutsideRange($data, 'altitude', -500, 10000);
+    $discardIntegerOutsideRange($data, 'satellites', 0, 99);
+    $discardIntegerOutsideRange($data, 'gsm_signal', 0, 100);
+    $discardIntegerOutsideRange($data, 'battery_level', 0, 100);
+
     $validator = Validator::make($data, [
         'imei' => ['required', 'string', 'max:20'],
         'lat' => ['required', 'numeric', 'between:-90,90'],
@@ -118,8 +146,15 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
 
     $serverTime = now();
     $gpsTime = isset($validated['gps_time']) ? Carbon::parse($validated['gps_time']) : $serverTime;
+    $isFreshPosition = $gpsTime->greaterThanOrEqualTo($serverTime->copy()->subMinutes(15))
+        && $gpsTime->lessThanOrEqualTo($serverTime->copy()->addMinutes(5));
+    $isChronologicalPosition = $device->last_position_at === null
+        || $gpsTime->greaterThanOrEqualTo($device->last_position_at);
+    $updatesLiveState = $isFreshPosition && $isChronologicalPosition;
     $speed = (int) ($validated['speed'] ?? 0);
-    $angle = (int) ($validated['angle'] ?? 0);
+    $angle = isset($validated['angle'])
+        ? (int) $validated['angle']
+        : (int) ($device->last_angle ?? 0);
     $previousStatus = (string) $device->status;
     $previousMovement = $device->last_movement;
     $previousIgnition = $device->last_ignition;
@@ -326,65 +361,76 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         'raw_data' => $rawTelemetry,
     ]);
 
-    $device->forceFill([
+    $deviceAttributes = [
         'status' => 'online',
         'last_seen_at' => $serverTime,
-        'last_position_at' => $gpsTime,
-        'last_latitude' => $validated['lat'],
-        'last_longitude' => $validated['lng'],
-        'last_speed' => $speed,
-        'last_angle' => $angle,
-        'last_ignition' => $validated['ignition'] ?? $previousIgnition,
-        'last_movement' => $movement,
-        'last_satellites' => $validated['satellites'] ?? $device->last_satellites,
-        'last_gsm_signal' => $gsmSignal,
-        'last_battery_level' => $validated['battery_level'] ?? $device->last_battery_level,
-        'last_external_voltage' => $validated['external_voltage'] ?? $device->last_external_voltage,
-        'last_battery_voltage' => $validated['battery_voltage'] ?? $device->last_battery_voltage,
-        'last_odometer_km' => $odometerKm ?? $device->last_odometer_km,
-        'last_engine_seconds' => $engineSeconds ?? ($shouldClearRuntimeAsEngineHours ? null : $device->last_engine_seconds),
-        'last_obd_runtime_seconds' => $obd['runtime_seconds'] ?? $device->last_obd_runtime_seconds,
-        'last_obd_rpm' => $obd['rpm'] ?? $device->last_obd_rpm,
-        'last_obd_speed' => $obd['speed'] ?? $device->last_obd_speed,
-        'last_obd_throttle_percent' => $obd['throttle_percent'] ?? $device->last_obd_throttle_percent,
-        'last_obd_engine_temperature_c' => $obd['engine_temperature_c'] ?? $device->last_obd_engine_temperature_c,
-        'last_obd_module_voltage' => $obd['module_voltage'] ?? $device->last_obd_module_voltage,
-        'last_obd_engine_load_percent' => $obd['engine_load_percent'] ?? $device->last_obd_engine_load_percent,
-        'last_obd_fault_distance_km' => $obd['fault_distance_km'] ?? $device->last_obd_fault_distance_km,
-        'last_obd_errors_count' => $obd['errors_count'] ?? $device->last_obd_errors_count,
-        'last_obd_distance_since_clear_km' => $obd['distance_since_clear_km'] ?? $device->last_obd_distance_since_clear_km,
-        'last_can_fuel_level_percent' => $can['fuel_level_percent'] ?? $device->last_can_fuel_level_percent,
-        'last_can_total_mileage_km' => $can['total_mileage_km'] ?? $device->last_can_total_mileage_km,
-        'last_obd_updated_at' => ($obd !== [] || $can !== []) ? $serverTime : $device->last_obd_updated_at,
-        'last_diagnostic_updated_at' => (array_key_exists('satellites', $validated) || array_key_exists('io', $validated) || array_key_exists('sensors', $validated) || $driverIdentifierUid !== null)
-            ? $serverTime
-            : $device->last_diagnostic_updated_at,
-        'last_sensors' => $validated['sensors'] ?? $device->last_sensors,
-        'last_io' => $validated['io'] ?? $device->last_io,
-        'last_driver_identifier_uid' => $driverIdentifierUid ?? $device->last_driver_identifier_uid,
-        'last_raw_payload' => $validated['raw'] ?? $rawTelemetry,
-        'last_address' => $address ?? $device->last_address,
         'codec' => $validated['codec'] ?? $device->codec,
-    ])->save();
+    ];
+
+    if ($updatesLiveState) {
+        $deviceAttributes = array_merge($deviceAttributes, [
+            'last_position_at' => $gpsTime,
+            'last_latitude' => $validated['lat'],
+            'last_longitude' => $validated['lng'],
+            'last_speed' => $speed,
+            'last_angle' => $angle,
+            'last_ignition' => $validated['ignition'] ?? $previousIgnition,
+            'last_movement' => $movement,
+            'last_satellites' => $validated['satellites'] ?? $device->last_satellites,
+            'last_gsm_signal' => $gsmSignal,
+            'last_battery_level' => $validated['battery_level'] ?? $device->last_battery_level,
+            'last_external_voltage' => $validated['external_voltage'] ?? $device->last_external_voltage,
+            'last_battery_voltage' => $validated['battery_voltage'] ?? $device->last_battery_voltage,
+            'last_odometer_km' => $odometerKm ?? $device->last_odometer_km,
+            'last_engine_seconds' => $engineSeconds ?? ($shouldClearRuntimeAsEngineHours ? null : $device->last_engine_seconds),
+            'last_obd_runtime_seconds' => $obd['runtime_seconds'] ?? $device->last_obd_runtime_seconds,
+            'last_obd_rpm' => $obd['rpm'] ?? $device->last_obd_rpm,
+            'last_obd_speed' => $obd['speed'] ?? $device->last_obd_speed,
+            'last_obd_throttle_percent' => $obd['throttle_percent'] ?? $device->last_obd_throttle_percent,
+            'last_obd_engine_temperature_c' => $obd['engine_temperature_c'] ?? $device->last_obd_engine_temperature_c,
+            'last_obd_module_voltage' => $obd['module_voltage'] ?? $device->last_obd_module_voltage,
+            'last_obd_engine_load_percent' => $obd['engine_load_percent'] ?? $device->last_obd_engine_load_percent,
+            'last_obd_fault_distance_km' => $obd['fault_distance_km'] ?? $device->last_obd_fault_distance_km,
+            'last_obd_errors_count' => $obd['errors_count'] ?? $device->last_obd_errors_count,
+            'last_obd_distance_since_clear_km' => $obd['distance_since_clear_km'] ?? $device->last_obd_distance_since_clear_km,
+            'last_can_fuel_level_percent' => $can['fuel_level_percent'] ?? $device->last_can_fuel_level_percent,
+            'last_can_total_mileage_km' => $can['total_mileage_km'] ?? $device->last_can_total_mileage_km,
+            'last_obd_updated_at' => ($obd !== [] || $can !== []) ? $serverTime : $device->last_obd_updated_at,
+            'last_diagnostic_updated_at' => (array_key_exists('satellites', $validated) || array_key_exists('io', $validated) || array_key_exists('sensors', $validated) || $driverIdentifierUid !== null)
+                ? $serverTime
+                : $device->last_diagnostic_updated_at,
+            'last_sensors' => $validated['sensors'] ?? $device->last_sensors,
+            'last_io' => $validated['io'] ?? $device->last_io,
+            'last_driver_identifier_uid' => $driverIdentifierUid ?? $device->last_driver_identifier_uid,
+            'last_raw_payload' => $validated['raw'] ?? $rawTelemetry,
+            'last_address' => $address ?? $device->last_address,
+        ]);
+    }
+
+    $device->forceFill($deviceAttributes)->save();
 
     if ($previousStatus !== 'online') {
         app(AlertService::class)->createSignalRecoveredAlert($device, $position, $previousStatus);
     }
 
-    app(TrackerEventService::class)->recordPosition(
-        $device,
-        $position,
-        $previousMovement,
-        $previousIgnition,
-    );
+    $driverSession = null;
 
-    $driverSession = $driverSessionService->sync($device, $position, $data);
-    app(DriverGeofenceService::class)->evaluate($driverSession, $device, $position);
-    app(SpeedPolicyService::class)->evaluate($device, $position);
-    if ($device->vehicle_id) {
-        app(MaintenanceService::class)->evaluateVehicle(
-            Vehicle::query()->with('device')->findOrFail($device->vehicle_id),
+    if ($updatesLiveState) {
+        app(TrackerEventService::class)->recordPosition(
+            $device,
+            $position,
+            $previousMovement,
+            $previousIgnition,
         );
+
+        $driverSession = $driverSessionService->sync($device, $position, $data);
+        app(DriverGeofenceService::class)->evaluate($driverSession, $device, $position);
+        app(SpeedPolicyService::class)->evaluate($device, $position);
+        if ($device->vehicle_id) {
+            app(MaintenanceService::class)->evaluateVehicle(
+                Vehicle::query()->with('device')->findOrFail($device->vehicle_id),
+            );
+        }
     }
 
     $this->line(json_encode([
@@ -393,6 +439,7 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         'position_id' => $position->id,
         'status' => $device->status,
         'imei' => $device->imei,
+        'updates_live_state' => $updatesLiveState,
         'driver_identifier_uid' => $driverIdentifierUid,
         'driver_session_id' => $driverSession?->id,
     ]));

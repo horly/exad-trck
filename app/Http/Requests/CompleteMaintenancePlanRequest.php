@@ -10,7 +10,7 @@ class CompleteMaintenancePlanRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return (bool) $this->user()?->isSuperadmin();
+        return (bool) $this->user()?->hasClientPermission(\App\Models\User::PERMISSION_MAINTENANCE_MANAGE);
     }
 
     public function rules(): array

@@ -12,11 +12,28 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
+use Laravel\Fortify\TwoFactorAuthenticatable;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+
+    public const PERMISSION_MAP_VIEW = 'map.view';
+
+    public const PERMISSION_REPORTS_GENERATE = 'reports.generate';
+
+    public const PERMISSION_GARAGES_MANAGE = 'garages.manage';
+
+    public const PERMISSION_MAINTENANCE_MANAGE = 'maintenance.manage';
+
+    public const CLIENT_PERMISSIONS = [
+        self::PERMISSION_MAP_VIEW,
+        self::PERMISSION_REPORTS_GENERATE,
+        self::PERMISSION_GARAGES_MANAGE,
+        self::PERMISSION_MAINTENANCE_MANAGE,
+    ];
 
     /**
      * The attributes that are mass assignable.
@@ -25,6 +42,8 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'subscription_id',
+        'fleet_id',
+        'created_by',
         'name',
         'email',
         'password',
@@ -34,6 +53,7 @@ class User extends Authenticatable
         'permissions',
         'phone',
         'address',
+        'profile_photo_path',
     ];
 
     /**
@@ -44,6 +64,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -59,12 +81,23 @@ class User extends Authenticatable
             'role' => UserRole::class,
             'disabled_at' => 'datetime',
             'permissions' => 'array',
+            'two_factor_confirmed_at' => 'datetime',
         ];
     }
 
     public function subscription(): BelongsTo
     {
         return $this->belongsTo(Subscription::class);
+    }
+
+    public function fleet(): BelongsTo
+    {
+        return $this->belongsTo(Fleet::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'created_by');
     }
 
     public function loginHistories(): HasMany
@@ -97,6 +130,20 @@ class User extends Authenticatable
     public function isActive(): bool
     {
         return $this->status === 'active' && $this->disabled_at === null;
+    }
+
+    public function hasClientPermission(string $permission): bool
+    {
+        return $this->isSuperadmin()
+            || $this->isAdmin()
+            || in_array($permission, $this->permissions ?? [], true);
+    }
+
+    public function profilePhotoUrl(): ?string
+    {
+        return $this->profile_photo_path
+            ? Storage::disk('public')->url($this->profile_photo_path)
+            : null;
     }
 
     public function canAccessSubscription(Subscription|int|null $subscription): bool

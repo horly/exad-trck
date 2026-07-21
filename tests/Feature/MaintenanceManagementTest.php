@@ -54,12 +54,13 @@ test('garage validation errors are displayed beside their fields', function () {
         ->assertDontSee('class="alert alert-danger"', false);
 });
 
-test('garage and maintenance pages are restricted and exposed in the fleet menu', function () {
+test('garage and maintenance pages are available to fleet admins and exposed in navigation', function () {
     $superadmin = User::factory()->superadmin()->create();
-    $admin = User::factory()->admin()->create();
+    $fleet = Fleet::factory()->create();
+    $admin = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
 
-    $this->actingAs($admin)->get(route('garages.index'))->assertForbidden();
-    $this->actingAs($admin)->get(route('maintenance.index'))->assertForbidden();
+    $this->actingAs($admin)->get(route('garages.index'))->assertSuccessful();
+    $this->actingAs($admin)->get(route('maintenance.index'))->assertSuccessful();
     $this->actingAs($superadmin)->get(route('garages.index'))
         ->assertSuccessful()
         ->assertSee(route('maintenance.index'), false)

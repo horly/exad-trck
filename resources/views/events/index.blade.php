@@ -3,16 +3,16 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('events.title') }} - EXAD Tracking</title>
+    <title>{{ __('events.title') }} - {{ $applicationSettings->app_name }}</title>
     @include('partials.favicon')
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260708-dashboard-order-scope">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260721-client-preview-icons">
 </head>
 <body class="app-font-manrope dashboard-body">
     <div class="dashboard-shell">
-        @include('partials.sidebar', ['active' => 'trackers'])
+        @include('partials.sidebar', ['active' => 'events'])
 
         <main class="dashboard-main">
             <header class="dashboard-topbar">
@@ -21,10 +21,14 @@
                     <p class="eyebrow mb-1">{{ __('events.eyebrow') }}</p>
                     <h1>{{ __('events.title') }}</h1>
                     <p class="dashboard-subtitle mb-0">
-                        {{ __('events.context', [
-                            'vehicle' => $selectedDevice->vehicle?->name ?: __('events.unknown_vehicle'),
-                            'tracker' => $selectedDevice->name ?: $selectedDevice->imei,
-                        ]) }}
+                        @if ($showTechnicalDetails)
+                            {{ __('events.context', [
+                                'vehicle' => $selectedDevice->vehicle?->name ?: __('events.unknown_vehicle'),
+                                'tracker' => $selectedDevice->name ?: $selectedDevice->imei,
+                            ]) }}
+                        @else
+                            {{ __('events.client_context', ['fleet' => auth()->user()->fleet?->name ?? '-']) }}
+                        @endif
                     </p>
                 </div>
 

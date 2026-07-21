@@ -46,6 +46,8 @@ return [
     'empty' => 'No vehicle is available.',
     'no_model' => 'No model',
     'no_device' => 'No tracker',
+    'tracking_online' => 'Online',
+    'tracking_offline' => 'Offline',
     'created' => 'Vehicle created successfully.',
     'updated' => 'Vehicle updated successfully.',
     'deleted' => 'Vehicle deleted successfully.',

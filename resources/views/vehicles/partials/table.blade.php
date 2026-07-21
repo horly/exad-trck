@@ -101,7 +101,14 @@
                         </td>
                         <td>
                             @if ($vehicle->device)
-                                <span class="technical-code">{{ $vehicle->device->imei }}</span>
+                                @if ($canManageVehicles)
+                                    <span class="technical-code">{{ $vehicle->device->imei }}</span>
+                                @else
+                                    @php($trackingOnline = $vehicle->device->status === 'online')
+                                    <span class="status-pill status-{{ $trackingOnline ? 'online' : 'offline' }}">
+                                        {{ $trackingOnline ? __('vehicles.tracking_online') : __('vehicles.tracking_offline') }}
+                                    </span>
+                                @endif
                             @else
                                 <span class="technical-code">{{ __('vehicles.no_device') }}</span>
                             @endif

@@ -15,13 +15,19 @@ use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
-test('fleet organization pages are reserved to superadmin users', function () {
+test('core fleet organization stays reserved while clients manage garages and maintenance', function () {
     $superadmin = User::factory()->superadmin()->create();
-    $admin = User::factory()->admin()->create();
+    $fleet = Fleet::factory()->create();
+    $admin = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
 
-    foreach ([route('drivers.index'), route('departments.index'), route('garages.index'), route('maintenance.index')] as $url) {
+    foreach ([route('drivers.index'), route('departments.index')] as $url) {
         $this->actingAs($superadmin)->get($url)->assertSuccessful();
         $this->actingAs($admin)->get($url)->assertForbidden();
+    }
+
+    foreach ([route('garages.index'), route('maintenance.index')] as $url) {
+        $this->actingAs($superadmin)->get($url)->assertSuccessful();
+        $this->actingAs($admin)->get($url)->assertSuccessful();
     }
 });
 
@@ -292,7 +298,7 @@ test('gps ingestion opens and closes a session for an authorized driver badge', 
             'lng' => 15.312,
             'address' => 'Kinshasa',
             'ignition' => true,
-            'gps_time' => '2026-07-16T10:00:00+01:00',
+            'gps_time' => now()->subMinute()->toIso8601String(),
             'io' => ['ibutton_id' => 'ab-cd 12:34'],
         ]),
     ]);
@@ -316,7 +322,7 @@ test('gps ingestion opens and closes a session for an authorized driver badge', 
             'lng' => 15.313,
             'address' => 'Kinshasa',
             'ignition' => false,
-            'gps_time' => '2026-07-16T10:30:00+01:00',
+            'gps_time' => now()->toIso8601String(),
         ]),
     ]);
 
@@ -369,16 +375,16 @@ test('gps ingestion alerts once per driver geofence exit and rearms after reentr
         ]);
     };
 
-    expect($ingest(-4.330, '2026-07-19T08:00:00+01:00', 'GEOFENCE01'))->toBe(0)
+    expect($ingest(-4.330, now()->subMinutes(3)->toIso8601String(), 'GEOFENCE01'))->toBe(0)
         ->and(Alert::query()->where('type', 'geofence_exit')->count())->toBe(1);
 
-    expect($ingest(-4.331, '2026-07-19T08:01:00+01:00'))->toBe(0)
+    expect($ingest(-4.331, now()->subMinutes(2)->toIso8601String()))->toBe(0)
         ->and(Alert::query()->where('type', 'geofence_exit')->count())->toBe(1);
 
-    expect($ingest(-4.3255, '2026-07-19T08:02:00+01:00'))->toBe(0)
+    expect($ingest(-4.3255, now()->subMinute()->toIso8601String()))->toBe(0)
         ->and(DriverSession::query()->firstOrFail()->fresh()->geofence_status)->toBe('inside');
 
-    expect($ingest(-4.330, '2026-07-19T08:03:00+01:00'))->toBe(0)
+    expect($ingest(-4.330, now()->toIso8601String()))->toBe(0)
         ->and(Alert::query()->where('type', 'geofence_exit')->count())->toBe(2);
 
     $alert = Alert::query()->where('type', 'geofence_exit')->latest()->firstOrFail();

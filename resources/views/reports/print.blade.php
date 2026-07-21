@@ -2,7 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
-    <title>{{ $title }} - EXAD Tracking</title>
+    <title>{{ $title }} - {{ $applicationSettings->app_name }}</title>
     <style>
         @page { margin: 18mm 14mm; }
         body { font-family: DejaVu Sans, sans-serif; color: #0b1220; margin: 0; font-size: 11px; }
@@ -20,7 +20,7 @@
 <body>
     <header>
         <div>
-            <p class="brand">EXAD Tracking</p>
+            <p class="brand">{{ $applicationSettings->app_name }}</p>
             <h1>{{ $title }}</h1>
             <p>{{ __('reports.print_period', ['from' => $filters['date_from']->format('Y-m-d'), 'to' => $filters['date_to']->format('Y-m-d')]) }}</p>
         </div>
@@ -39,7 +39,9 @@
                 @if ($row instanceof \App\Models\Position)
                     <tr>
                         <td>{{ $row->id }}</td>
-                        <td><strong>{{ $row->device?->name ?: $row->imei }}</strong><small>{{ $row->device?->imei ?: $row->imei }}</small></td>
+                        @if ($showTechnicalDetails)
+                            <td><strong>{{ $row->device?->name ?: $row->imei }}</strong><small>{{ $row->device?->imei ?: $row->imei }}</small></td>
+                        @endif
                         <td>{{ $row->device?->vehicle?->name ?: '-' }}</td>
                         <td>{{ $row->device?->fleet?->name ?: '-' }}</td>
                         <td>{{ $row->speed ?? 0 }} km/h</td>
@@ -51,7 +53,9 @@
                         <td>{{ $row->id }}</td>
                         <td><strong>{{ $row->localizedTitle() }}</strong><small>{{ $row->localizedMessage() }}</small></td>
                         <td>{{ $row->vehicle?->name ?: '-' }}</td>
-                        <td>{{ $row->device?->name ?: $row->device?->imei ?: '-' }}</td>
+                        @if ($showTechnicalDetails)
+                            <td>{{ $row->device?->name ?: $row->device?->imei ?: '-' }}</td>
+                        @endif
                         <td>{{ $row->fleet?->name ?: '-' }}</td>
                         <td>{{ $row->durationLabel() ?: '-' }}</td>
                         <td>{{ $row->started_at?->format('Y-m-d H:i:s') ?: '-' }}</td>
@@ -59,7 +63,7 @@
                 @elseif ($row instanceof \App\Models\Alert)
                     <tr>
                         <td>{{ $row->id }}</td>
-                        <td><strong>{{ $row->localizedTitle() }}</strong><small>{{ $row->localizedMessage() }}</small></td>
+                        <td><strong>{{ $row->localizedTitle() }}</strong><small>{{ $row->localizedMessageFor(auth()->user()) }}</small></td>
                         <td>{{ $row->severity }}</td>
                         <td>{{ $row->vehicle?->name ?: '-' }}</td>
                         <td>{{ $row->fleet?->name ?: '-' }}</td>
@@ -71,9 +75,11 @@
                         <td>{{ $row->id }}</td>
                         <td><strong>{{ $row->name }}</strong><small>{{ $row->code ?: '-' }}</small></td>
                         <td>{{ $row->vehicles_count }}</td>
-                        <td>{{ $row->devices_count }}</td>
-                        <td>{{ $row->online_devices_count }}</td>
-                        <td>{{ $row->offline_devices_count }}</td>
+                        @if ($showTechnicalDetails)
+                            <td>{{ $row->devices_count }}</td>
+                            <td>{{ $row->online_devices_count }}</td>
+                            <td>{{ $row->offline_devices_count }}</td>
+                        @endif
                         <td>{{ $row->status }}</td>
                     </tr>
                 @endif

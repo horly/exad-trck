@@ -9,6 +9,7 @@ return [
     'fleet_management' => 'Fleet management',
     'fleet_list' => 'Fleet list',
     'fleet' => 'Fleet',
+    'open_client_dashboard' => 'Open :fleet client dashboard',
     'code' => 'Code',
     'status' => 'Status',
     'vehicles' => 'Vehicles',

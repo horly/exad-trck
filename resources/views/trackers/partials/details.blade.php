@@ -1,5 +1,6 @@
 @php
     $vehicleLabel = $device->vehicle?->name ?: __('trackers.no_vehicle');
+    $showTechnicalDetails = $showTechnicalDetails ?? true;
     $registration = $device->vehicle?->registration_number;
     $fleetLabel = $device->fleet?->name ?: __('trackers.no_fleet');
     $updatedAt = $device->last_seen_at ?: $device->last_position_at;
@@ -205,14 +206,16 @@
         </div>
 
         <dl class="tracker-details-list">
-            <div>
-                <dt><i class="fa-solid fa-microchip"></i></dt>
-                <dd>{{ __('trackers.detail_model', ['model' => $modelLabel !== '' ? $modelLabel : __('trackers.unknown_value')]) }}</dd>
-            </div>
-            <div>
-                <dt><i class="fa-solid fa-hashtag"></i></dt>
-                <dd>{{ __('trackers.detail_imei', ['imei' => $device->imei]) }}</dd>
-            </div>
+            @if ($showTechnicalDetails)
+                <div>
+                    <dt><i class="fa-solid fa-microchip"></i></dt>
+                    <dd>{{ __('trackers.detail_model', ['model' => $modelLabel !== '' ? $modelLabel : __('trackers.unknown_value')]) }}</dd>
+                </div>
+                <div>
+                    <dt><i class="fa-solid fa-hashtag"></i></dt>
+                    <dd>{{ __('trackers.detail_imei', ['imei' => $device->imei]) }}</dd>
+                </div>
+            @endif
             <div>
                 <dt><i class="fa-solid fa-users"></i></dt>
                 <dd>{{ __('trackers.detail_fleet', ['fleet' => $fleetLabel]) }}</dd>
@@ -553,7 +556,7 @@
     <article class="tracker-details-card tracker-details-card-wide">
         <div class="tracker-details-card-header">
             <h3>{{ __('trackers.latest_events_title') }}</h3>
-            <a href="{{ route('events.index', ['device' => $device->id]) }}" class="tracker-details-link">
+            <a href="{{ $showTechnicalDetails ? route('events.index', ['device' => $device->id]) : route('events.index') }}" class="tracker-details-link">
                 {{ __('trackers.view_all_events') }}
             </a>
         </div>
