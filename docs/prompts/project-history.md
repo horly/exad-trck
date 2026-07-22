@@ -1131,3 +1131,44 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Le fichier distant correspond exactement au SHA-256 local `67108983a177cc5e8cee464de3d809453f4ef33dc291f98969aa567ded7b969e`, passe la verification syntaxique PHP et est lisible en mode `0644`.
 - Verifications finales : production hors maintenance, debug desactive, `/login` et `/up` en `200`, API mobile en `401` sans jeton, Apache, GPS TCP et console serveur actifs.
 - Aucun schema, migration, variable d'environnement, asset ou code Flutter n'a ete modifie. Aucun commit n'a ete cree.
+
+## 2026-07-22 - Refonte corporate de la liste des trajets mobiles
+- La feuille Flutter des trajets a ete transformee en chronologie operationnelle sobre, avec des cartes blanches, une bordure fine et la couleur de chaque trajet limitee a un accent lateral.
+- Un resume de periode affiche maintenant le nombre de trajets, la distance totale et la duree cumulee sous le selecteur Aujourd'hui, Hier, Cette semaine et Ce mois.
+- Les trajets sont regroupes visuellement par date. Chaque element distingue clairement l'heure et l'adresse de depart de l'heure et l'adresse d'arrivee au moyen d'une ligne chronologique et de deux reperes.
+- La distance, la duree et la vitesse moyenne restent visibles dans un pied compact. Toute la carte est selectionnable pour afficher le parcours sur Google Maps.
+- Le rendu a ete controle sur `emulator-5554` avec les donnees reelles de production : 13 trajets sont presentes sans debordement ni chevauchement sur le format telephone.
+- Validation locale : `flutter analyze` sans anomalie et 6 tests Flutter passes.
+- Aucun deploiement VPS, commit mobile, publication APK ou modification de l'API n'a ete effectue.
+
+### APK Android release de test physique
+- Un APK universel release a ete genere apres la refonte de la chronologie des trajets dans `D:\App\Codex\exad-tracking-mobile\build\app\outputs\flutter-apk\app-release.apk`.
+- Le build utilise l'API de production et la cle Google Maps Android locale deja configuree. Il est signe avec le certificat Android de developpement et reste reserve aux tests, pas a une publication Play Store.
+- La signature APK v2 a ete validee, puis le fichier exact a ete installe et lance avec succes sur `emulator-5554`.
+- Taille : 54 638 999 octets. SHA-256 : `520e3449fa4778faf2b103bcb60703a9258f960b2da8ddac3427fa0084cdf03f`.
+- Un serveur local temporaire expose le fichier sur le reseau Wi-Fi a l'adresse `http://192.168.1.68:8091/app-release.apk` pour les telephones physiques.
+- Un QR code a forte correction d'erreur a ete genere entierement en local dans `build/app/outputs/flutter-apk/exad-tracking-apk-qr.png`; il encode directement cette URL de telechargement Wi-Fi.
+- Aucun commit, deploiement VPS ou publication sur un store n'a ete effectue.
+
+### Boutons cartographiques adaptes aux polices Android agrandies
+- Les actions `Details`, `Trajets` et `Evenements` du panneau vehicule Flutter utilisent maintenant une hauteur stable, des espacements compacts et un libelle strictement limite a une ligne.
+- Chaque libelle se reduit automatiquement dans l'espace disponible au lieu de revenir a la ligne, ce qui corrige le rendu observe sur Galaxy S24 Ultra avec les reglages Samsung de police ou d'affichage agrandis.
+- Le rendu a ete controle sur `emulator-5554` avec l'echelle de police Android forcee a `1.3` : les trois icones et libelles restent centres, lisibles et alignes sur une seule ligne. L'echelle de l'emulateur a ensuite ete restauree a `1.0`.
+- Validation locale : `flutter analyze` sans anomalie, 6 tests Flutter passes, APK release reconstruit, signature APK v2 validee et installation de controle reussie.
+- Nouvel APK : 54 655 383 octets, SHA-256 `d807d05d97ec469b2418ef61592cbcdd061b8542d88e93a4f576d5ea5351e8eb`.
+- Le lien Wi-Fi et le QR code existants restent valides : `http://192.168.1.68:8091/app-release.apk` repond en HTTP `200` et distribue le fichier reconstruit.
+- Aucun commit, deploiement VPS ou publication sur un store n'a ete effectue.
+
+#### Regeneration de l'APK de test
+- L'APK release Android a ete regenere le 22/07/2026 a 20:52 depuis l'etat courant du projet Flutter.
+- La signature APK v2 est valide. Le build est reproductible et conserve le SHA-256 `d807d05d97ec469b2418ef61592cbcdd061b8542d88e93a4f576d5ea5351e8eb` pour une taille de 54 655 383 octets.
+- Le fichier est disponible sur le reseau local a l'adresse `http://192.168.1.68:8091/app-release.apk`, controlee en HTTP `200`. Le QR code existant reste valable.
+- Aucun commit, deploiement VPS ou publication sur un store n'a ete effectue.
+
+## 2026-07-22 - Livraison finale web et mobile des boutons responsives
+- Le depot web ne contenait aucun ecart de code executable par rapport au dernier deploiement : seuls les historiques locaux etaient en attente. La production a donc ete controlee sans extraction ni remplacement de fichier inutile.
+- Le service de trajets distant correspond toujours au SHA-256 local `67108983a177cc5e8cee464de3d809453f4ef33dc291f98969aa567ded7b969e`. Laravel est en production, debug desactive et maintenance inactive ; Apache, le listener GPS et la console serveur sont actifs.
+- Les controles HTTPS executes depuis le VPS retournent `200` pour `/login`, `200` pour `/up` et `401` pour l'API mobile appelee sans jeton.
+- L'APK mobile contenant les boutons cartographiques adaptes a ete installe puis lance avec succes sur `emulator-5554`. Sa distribution Wi-Fi locale sur `http://192.168.1.68:8091/app-release.apk` repond en `200`.
+- Validation avant livraison : 140 tests Laravel avec 1 289 assertions, analyse Flutter sans anomalie et 6 tests Flutter passes.
+- Cette livraison mobile reste une version de test signee avec le certificat Android de developpement. Aucune publication Play Store n'a ete effectuee.

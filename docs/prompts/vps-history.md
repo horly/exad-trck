@@ -797,3 +797,30 @@ The battery voltage field must not be greater than 100.
 - `optimize:clear`, `config:cache`, `view:cache` et `queue:restart` ont reussi. Le rechargement explicite d'Apache via `sudo -n` a ete refuse faute d'autorisation non interactive ; Apache est reste actif et les controles HTTPS ont reussi.
 - Etat final : environnement production, debug desactive, maintenance inactive, `/login` et `/up` en `200`, API mobile protegee en `401` sans jeton, Apache, `gps-tcp.service` et `exad-server-console.service` actifs.
 - Les archives, le dossier de staging et le script temporaires ont ete supprimes du VPS. Aucun schema, migration, variable d'environnement ou code Flutter n'a ete modifie.
+
+### Chronologie mobile amelioree localement
+- La liste des trajets de l'application Flutter a ete refondue localement avec resume de periode, regroupement par date, chronologie depart/arrivee et metriques compactes.
+- L'application mobile a lu les 13 trajets de la journee fournis par l'API de production pour le controle visuel, sans modifier les donnees serveur.
+- Aucun fichier, cache, service, schema, variable d'environnement ou configuration du VPS n'a ete modifie.
+
+### APK mobile release genere localement
+- Un APK Android release signe avec le certificat de developpement a ete compile et valide localement pour les tests sur appareils physiques.
+- Le fichier est distribue temporairement depuis le PC de developpement sur le reseau local ; aucun APK, secret Google Maps, fichier ou service n'a ete copie sur le VPS.
+- Le QR code de telechargement a egalement ete genere localement et ne sollicite aucun service du VPS.
+- Aucun cache, schema, variable, pare-feu ou configuration du serveur de production n'a ete modifie.
+
+### Correction locale des boutons mobiles sur ecrans Samsung
+- Les trois actions du panneau vehicule mobile ont ete compactees et leurs libelles limites a une seule ligne avec reduction automatique lorsque la police Android est agrandie.
+- La correction a ete validee localement a une echelle de police Android de `1.3`, puis integree dans un nouvel APK release de test dont le SHA-256 est `d807d05d97ec469b2418ef61592cbcdd061b8542d88e93a4f576d5ea5351e8eb`.
+- L'APK reste servi par le PC de developpement sur le reseau Wi-Fi local. Aucun APK, fichier applicatif, cache, schema, variable ou service du VPS n'a ete modifie.
+
+#### APK mobile regenere localement
+- L'APK release de test a ete regenere depuis le projet Flutter et sa signature v2 validee. Son SHA-256 reste `d807d05d97ec469b2418ef61592cbcdd061b8542d88e93a4f576d5ea5351e8eb`.
+- Le fichier reste distribue exclusivement depuis le PC de developpement. Aucun fichier, service, cache, schema ou parametre du VPS n'a ete modifie.
+
+## 2026-07-22 - Controle de convergence web et livraison mobile locale
+- Aucun ecart de code web executable n'etait present apres le dernier deploiement. Aucun fichier n'a donc ete recopie vers `/var/www/exadtracking.app` pendant cette operation.
+- Le SHA-256 distant de `app/Services/DeviceTripService.php` reste `67108983a177cc5e8cee464de3d809453f4ef33dc291f98969aa567ded7b969e`, identique au fichier local deja deploye.
+- Production confirmee hors maintenance avec debug desactive ; Apache, `gps-tcp.service` et `exad-server-console.service` sont actifs. `/login` et `/up` repondent en `200`, et l'API mobile sans jeton en `401`.
+- Le nouvel APK de test a ete installe et lance sur l'emulateur Android puis rendu disponible depuis le PC sur le reseau local. Aucun APK ni secret cartographique n'a ete copie sur le VPS et aucune publication Play Store n'a ete effectuee.
+- Validation finale : 140 tests Laravel avec 1 289 assertions, analyse Flutter sans anomalie et 6 tests Flutter passes.
