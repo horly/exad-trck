@@ -964,3 +964,110 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Autoload Composer optimise, caches Laravel nettoyes et reconstruits, migrations appliquees et workers de queue signales pour redemarrage.
 - Verifications production reussies : routes `fleets.dashboard` et `client-preview.exit`, application hors maintenance, Apache, listener GPS et console Web actifs, page de connexion et CSS en HTTPS 200, marqueurs de lecture seule et de centrage des icones presents.
 - Validation locale avant deploiement : 126 tests Laravel passes avec 1150 assertions.
+
+### 2026-07-22 - Premiere version de l'API mobile privee
+- Ajout de Laravel Sanctum pour authentifier exclusivement l'application mobile officielle sous le prefixe versionne `/api/v1/mobile`. La future API publique d'integration avec `client_id` et `client_secret`, ainsi que sa page de gestion client, restent volontairement hors de ce lot.
+- Mise en place de sessions mobiles distinctes par appareil avec un jeton d'acces de courte duree et un jeton de rafraichissement de longue duree. Les jetons sont haches en base, la rotation remplace systematiquement la paire et une nouvelle connexion sur le meme appareil revoque la session precedente.
+- La deconnexion peut fermer la session courante ou toutes les sessions mobiles du compte. Un compte desactive est refuse et ses jetons sont revoques lors du prochain appel authentifie.
+- L'authentification a deux facteurs Fortify est respectee : lorsqu'elle est activee et confirmee, l'API emet un challenge temporaire et n'accorde aucun jeton avant validation d'un code TOTP ou d'un code de recuperation.
+- Ajout des endpoints prives pour le bootstrap et la personnalisation en lecture seule, le profil, le dashboard, les vehicules, la carte, les alertes et les evenements.
+- Les scopes de visibilite existants cloisonnent les donnees par flotte. Les permissions client restent appliquees, notamment `map.view`, et un filtre de flotte forge par un client est ignore.
+- Les ressources JSON mobiles ne retournent aucun IMEI, identifiant interne, nom, marque, codec ou modele technique de traceur. Le suivi est expose par vehicule avec uniquement les informations operationnelles utiles.
+- Le contrat Flutter, le cycle des jetons, les erreurs metier et les recommandations de stockage securise sont documentes dans `docs/mobile-api.md`.
+- Ajout de 8 tests API couvrant l'emission hachee des jetons, le bootstrap, la separation acces/refresh, la rotation, la revocation globale, le remplacement d'une session d'appareil, la 2FA, les comptes indisponibles, l'isolation des flottes et la permission carte.
+- Suite complete verte avec 134 tests et 1232 assertions. Formatage Laravel Pint et chargement des 13 routes mobiles valides.
+- Les migrations `create_personal_access_tokens_table` et `create_mobile_sessions_table` ont ete executees avec succes sur la base locale. Les echeances de session utilisent `DATETIME` pour rester compatibles avec la version MySQL locale et SQLite en test.
+- L'audit Composer remonte 13 avis de securite dans 6 dependances deja presentes, dont Laravel, Guzzle et Symfony. Leur mise a niveau doit etre traitee dans un lot dedie avant exposition d'une API publique.
+- Aucun deploiement VPS effectue. Les nouvelles tables et les variables `MOBILE_API_*` restent uniquement locales jusqu'a une autorisation explicite.
+
+### 2026-07-22 - Creation du projet Flutter mobile
+- Creation du projet mobile dans le dossier frere `D:\App\Codex\exad-tracking-mobile`, separe du depot Laravel mais place dans le meme repertoire parent.
+- Le nom de package Dart est `exad_tracking_mobile` et l'identifiant Android initial est `com.exad.exad_tracking_mobile`.
+- Les plateformes Android et iOS ont ete generees. Les dependances Flutter initiales ont ete resolues avec succes.
+- Le projet reste volontairement sur le template Flutter standard : aucune connexion a l'API locale ou de production, aucune personnalisation et aucune logique metier n'ont encore ete ajoutees.
+- Validation initiale reussie avec `flutter analyze` : aucune anomalie detectee.
+- Aucun deploiement ni modification du VPS effectue.
+
+#### Initialisation Git du projet mobile
+- Un depot Git independant a ete initialise dans `D:\App\Codex\exad-tracking-mobile` sur la branche `main`.
+- Le `.gitignore` Flutter exclut correctement les caches, fichiers IDE, configurations locales Android et artefacts iOS generes.
+- Les sources Flutter, les projets Android/iOS, `pubspec.yaml` et `pubspec.lock` sont disponibles pour le futur premier commit.
+- Aucun fichier n'a encore ete indexe et aucun commit mobile n'a ete cree.
+
+### 2026-07-22 - Premiere interface fonctionnelle de l'application mobile
+- Le template Flutter a ete remplace par une application client structuree par fonctionnalite : authentification, session, tableau de bord, carte, vehicules, alertes et espace compte.
+- Le client HTTP utilise l'API mobile privee locale sous `http://10.0.2.2:8000/api/v1/mobile`, stocke les jetons acces/rafraichissement avec `flutter_secure_storage`, renouvelle automatiquement la session et prend en charge le challenge 2FA.
+- L'ecran de connexion reprend l'identite EXAD, affiche les erreurs sur les champs et reste adapte aux petits ecrans. Les logos officiels ont ete integres comme ressources locales.
+- La navigation inferieure est construite selon les permissions du compte. La carte n'apparait que lorsque `map_view` est autorisee.
+- Le dashboard client presente uniquement les indicateurs operationnels de sa flotte. Les listes et details mobiles n'exposent ni IMEI, ni identifiant, ni nom, codec ou modele technique de traceur.
+- La recherche des vehicules est limitee au nom et a l'immatriculation. Les statuts, vitesses, dernieres positions et alertes utilisent les ressources JSON cloisonnees de l'API privee.
+- Une premiere vue cartographique interactive positionne les vehicules a partir de leurs coordonnees et permet d'ouvrir un resume operationnel sans information technique sensible.
+- La configuration Android autorise les appels HTTP uniquement pour le developpement local et conserve la permission Internet pour les futures versions HTTPS.
+- Validation locale reussie : `flutter analyze` sans anomalie, 2 tests d'interface passes, API Laravel locale disponible sur le port 8000 et nouvelle application installee sur l'emulateur Android `emulator-5554`.
+- Le depot Git mobile reste sans commit. Aucun deploiement Laravel, API mobile ou application n'a ete effectue en production.
+
+#### Refonte corporate, langues et separation superadmin/client
+- L'ecran de connexion mobile adopte maintenant une composition corporate EXAD avec un bandeau bleu nuit, le logo en contraste, un motif de reseau discret, une proposition de valeur courte et un formulaire securise clairement hierarchise.
+- Les erreurs locales et serveur restent attachees aux champs concernes. Le contraste de la barre d'etat Android est adapte au fond sombre de la connexion.
+- La langue suit celle du telephone par defaut. Un selecteur permet de choisir explicitement Francais ou English, ou de revenir au mode systeme ; la preference est conservee dans le stockage securise du telephone.
+- Les textes principaux de la connexion, de la 2FA, de la navigation, des dashboards, des vehicules, des alertes, de la carte et du compte sont disponibles en francais et en anglais.
+- L'espace client affiche une identification `ESPACE CLIENT`, le nom de sa flotte et ses indicateurs operationnels habituels.
+- Le superadmin dispose desormais d'une console mobile differente : identite visuelle bleu nuit, entree `Supervision`, indicateurs globaux, nombre de flottes representees, repartition des vehicules par flotte et activite generale du parc.
+- Le dashboard API calcule cette repartition directement en base et retourne `fleets_total` ainsi que le total et les vehicules en ligne par flotte. Les chiffres superadmin ne dependent donc pas de la pagination a 50 vehicules de la liste mobile.
+- L'espace compte distingue egalement le role superadmin et conserve le choix de langue. Les autorisations client continuent de controler dynamiquement la navigation, notamment la carte.
+- Validation locale : `flutter analyze` sans anomalie, 4 tests Flutter passes et suite Laravel complete verte avec 135 tests et 1242 assertions. Le rendu de connexion anglais a ete controle sur `emulator-5554`, confirmant la prise en compte de la langue systeme.
+- Aucun deploiement et aucun commit n'ont ete effectues.
+
+#### APK de test sur telephone reel
+- Un APK Android debug a ete compile avec l'API locale `http://192.168.1.64:8000/api/v1/mobile` afin de tester l'application sur un telephone connecte au meme reseau Wi-Fi que le PC.
+- Laravel ecoute temporairement sur `0.0.0.0:8000` et le dossier de l'APK est expose localement sur le port `8090` pour permettre son telechargement depuis le telephone.
+- L'APK genere se trouve dans `D:\App\Codex\exad-tracking-mobile\build\app\outputs\flutter-apk\app-debug.apk` et peut etre telecharge localement via `http://192.168.1.64:8090/app-debug.apk`.
+- Cette configuration est reservee au developpement local en HTTP. Aucun deploiement, publication sur un store ou commit n'a ete effectue.
+
+### 2026-07-22 - Google Maps, geolocalisation et parcours mobiles
+- La police monospace imposee par le theme Flutter a ete retiree. Android utilise maintenant sa police systeme Roboto et iOS son equivalent natif, tout en conservant la hierarchie et les couleurs EXAD.
+- La carte simulee a ete remplacee par `google_maps_flutter`. Les positions de l'API deviennent de vrais marqueurs Google Maps, avec centrage global, centrage sur un vehicule, affichage du statut, vitesse et immatriculation.
+- Un panneau lateral repliable permet de rechercher les vehicules par nom ou immatriculation. Il reste lateral sur tablette et se masque automatiquement apres selection sur telephone afin de liberer la carte.
+- La fiche du vehicule selectionne propose trois actions : details operationnels, trajets et evenements. Les informations sensibles du traceur restent absentes de l'API et de l'interface mobile.
+- Les evenements sont filtres par vehicule. Les trajets proposent aujourd'hui, hier, semaine et mois en cours ; un trajet selectionne est dessine comme une polyline sur Google Maps et recadre automatiquement la camera.
+- Ajout de la route privee `GET /api/v1/mobile/vehicles/{vehicle}/trips`, protegee par la session mobile, la permission carte et le scope de flotte. Elle renvoie les segments, le resume et le GeoJSON sans IMEI, identifiant, nom ou modele technique du traceur.
+- La geolocalisation utilise `geolocator` uniquement a la demande. Un dialogue explique l'autorisation, Android affiche ensuite sa permission native, et les cas GPS desactive, refus permanent ou position indisponible dirigent proprement vers les parametres ou un message explicite. Aucun suivi en arriere-plan n'est active.
+- La cle Google Maps Android est lue depuis `android/local.properties` via `MAPS_API_KEY` et reste exclue de Git. Le package Android est `com.exad.exad_tracking_mobile` et le SHA-1 debug actuel est `DA:0C:99:F1:D6:2E:12:28:16:A3:B9:31:27:5A:8F:4F:A5:8E:03:49`.
+- Une cle distincte avec `Maps SDK for Android` active et des restrictions package/SHA-1 doit encore etre fournie dans `local.properties` pour afficher les tuiles Google sur les appareils reels. La cle web ou serveur Laravel n'est pas reutilisee.
+- Validation locale reussie : `flutter analyze` sans anomalie, 4 tests Flutter passes, APK debug compile, 10 tests API mobiles passes avec 100 assertions et suite Laravel complete verte avec 136 tests et 1250 assertions.
+- Aucun commit, deploiement VPS ou publication mobile n'a ete effectue.
+
+#### Modal mobile aligne sur les details du web
+- Le detail mobile du vehicule reprend maintenant les rubriques du modal web : identite vehicule et flotte, emplacement, conducteur, alimentation, GSM, diagnostic traceur, OBD/CAN et cinq derniers evenements.
+- Les champs operationnels comprennent notamment qualite GPS, coordonnees, stationnement ou mouvement, direction, adresse, altitude, conducteur RFID/iButton/NFC, tensions, batterie, contact, signal GSM, operateur, SIM, codec, satellites, protocole, odometre, heures moteur, entrees/sorties, capteurs et metriques OBD/CAN disponibles.
+- L'affichage est empile sur telephone et passe automatiquement sur deux colonnes en largeur tablette. Les rubriques conservent des icones, couleurs fonctionnelles, dates de mise a jour et etats vides explicites.
+- Ajout de `GET /api/v1/mobile/vehicles/{vehicle}/details`, protege par la session mobile, la permission carte et le scope de flotte. L'IMEI, l'identifiant interne, le nom, la marque et le modele technique du traceur restent absents.
+- La carte blanche de l'emulateur a ete diagnostiquee : `MAPS_API_KEY` est absente de `android/local.properties`. Le code et le manifeste Android sont prets, mais Google Maps ne peut pas charger ses tuiles tant qu'une cle Android restreinte n'est pas ajoutee.
+- Validation locale : analyse Flutter sans anomalie, 5 tests Flutter passes, APK debug compile, 11 tests API mobiles passes avec 113 assertions et suite Laravel complete verte avec 137 tests et 1263 assertions.
+- Aucun commit, deploiement VPS ou publication mobile n'a ete effectue.
+
+#### Activation locale de Google Maps Android
+- Une cle Android distincte a ete creee dans Google Cloud pour `EXAD Tracking Android`, limitee a `Maps SDK for Android` et restreinte au package `com.exad.exad_tracking_mobile` avec le certificat SHA-1 debug.
+- La cle est conservee uniquement dans `android/local.properties` sous `MAPS_API_KEY`; sa valeur n'est ni versionnee ni inscrite dans la documentation.
+- Apres `flutter clean` et restauration des dependances, l'APK debug a ete compile, installe et lance sur `emulator-5554`.
+- Verification reussie : le renderer Google Maps `LATEST` est charge sans erreur d'autorisation, les tuiles de Kinshasa s'affichent, les deux vehicules positionnes sont visibles et le panneau de recherche fonctionne.
+- Aucun commit, deploiement VPS ou publication mobile n'a ete effectue.
+
+#### Carte mobile live alignee sur le web
+- Les cartes web et mobile partagent maintenant `DeviceMovementService` pour determiner les etats en mouvement, en stationnement et moteur allume a l'arret, ainsi que pour construire une trace GPS recente, continue et limitee en distance.
+- L'endpoint mobile de carte retourne les memes etats operationnels et la meme trace courte que le web, tout en conservant le cloisonnement par flotte et le masquage de l'identite technique du traceur.
+- L'ecran Flutter interroge uniquement la carte toutes les 10 secondes lorsqu'elle est visible. Le rafraichissement est suspendu hors de l'onglet ou lorsque l'application passe en arriere-plan.
+- Les nouvelles positions des vehicules en mouvement sont interpolees sur 5 secondes le long de la trace serveur. La polyline progresse avec le marqueur et la camera suit le vehicule selectionne sans recharger le dashboard, les alertes ou le reste de la session.
+- Le panneau mobile affiche des compteurs positionnes, en ligne, en mouvement et hors ligne, une recherche nom/immatriculation, un filtre d'etat, l'heure de la derniere mise a jour et un interrupteur de suivi direct.
+- Les marqueurs et les lignes vehicule distinguent les etats mouvement, stationnement, moteur allume a l'arret, maintenance, inactif, en ligne et hors ligne. Sur telephone, la selection replie le panneau, zoome au niveau rue et conserve les actions Details, Trajets et Evenements.
+- Validation locale : analyse Flutter sans anomalie, 6 tests Flutter passes, APK debug compile et verifie visuellement sur `emulator-5554`; 11 tests API mobiles passent avec 118 assertions, 3 tests cartographiques web passent avec 23 assertions et la suite Laravel complete passe avec 137 tests et 1268 assertions.
+- Aucun commit, deploiement VPS ou publication mobile n'a ete effectue.
+
+### 2026-07-22 - Deploiement web de l'API mobile et du suivi cartographique partage
+- Le projet Laravel a ete deploye sur `/var/www/exadtracking.app` avec l'API mobile privee, Sanctum, les details et trajets mobiles, ainsi que `DeviceMovementService` partage par les cartes web et mobile.
+- Les cartes web et mobile utilisent maintenant les memes regles de mouvement, stationnement, moteur allume a l'arret et construction de trace GPS recente. Aucun fichier Flutter ni aucune cle Google Maps n'a ete copie sur le serveur.
+- Composer a installe `laravel/sanctum` v4.3.3 et les migrations `personal_access_tokens` et `mobile_sessions` ont ete appliquees en production.
+- Les caches Laravel ont ete nettoyes et reconstruits, l'autoload optimise et le signal de redemarrage des workers de queue envoye. Les 15 routes `api/v1/mobile` sont chargees.
+- Verification production : connexion HTTPS et endpoint de sante en 200, API protegee en 401 sans jeton, validation JSON en 422, maintenance desactivee, Apache, GPS TCP et console serveur actifs.
+- La sauvegarde de retour arriere est conservee dans `/tmp/exadtracking-before-mobile-api-live-map-20260722-134157.tar.gz`.
+- Validation locale avant deploiement : 137 tests Laravel et 1268 assertions, 6 tests Flutter et analyse Flutter sans anomalie. Aucune publication de l'application mobile n'a ete effectuee.

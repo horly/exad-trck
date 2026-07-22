@@ -14,11 +14,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use HasApiTokens, HasFactory, Notifiable, TwoFactorAuthenticatable;
 
     public const PERMISSION_MAP_VIEW = 'map.view';
 
@@ -103,6 +104,11 @@ class User extends Authenticatable
     public function loginHistories(): HasMany
     {
         return $this->hasMany(UserLoginHistory::class)->latest('logged_in_at');
+    }
+
+    public function mobileSessions(): HasMany
+    {
+        return $this->hasMany(MobileSession::class);
     }
 
     public function fleets(): BelongsToMany

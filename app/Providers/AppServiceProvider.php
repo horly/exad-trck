@@ -6,10 +6,14 @@ use App\Models\Alert;
 use App\Models\ApplicationSetting;
 use App\Models\Subscription;
 use App\Models\User;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,6 +30,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('mobile-login', fn (Request $request): Limit => Limit::perMinute(5)->by(
+            Str::lower((string) $request->input('email')).'|'.$request->ip()
+        ));
+        RateLimiter::for('mobile-two-factor', fn (Request $request): Limit => Limit::perMinute(10)->by($request->ip()));
+        RateLimiter::for('mobile-refresh', fn (Request $request): Limit => Limit::perMinute(20)->by($request->ip()));
+        RateLimiter::for('mobile-api', fn (Request $request): Limit => Limit::perMinute(120)->by(
+            (string) ($request->user()?->id ?? $request->ip())
+        ));
+
         Gate::define('manage-platform', fn (User $user): bool => $user->isSuperadmin());
 
         Gate::define('manage-subscriptions', fn (User $user): bool => $user->isSuperadmin());

@@ -669,3 +669,79 @@ The battery voltage field must not be greater than 100.
 - Verifications finales : environnement production, debug desactive, maintenance inactive, routes `fleets.dashboard` et `client-preview.exit` presentes, lien `public/storage` actif, Apache, `gps-tcp.service` et `exad-server-console.service` actifs.
 - Controles HTTPS reussis en `200` pour la connexion et `dashboard.css?v=20260721-client-preview-icons`, avec les marqueurs CSS du mode lecture seule et du centrage des icones.
 - Validation locale avant deploiement : 126 tests Laravel passes avec 1150 assertions.
+
+## 2026-07-22 - API mobile privee preparee localement
+
+- Une premiere API privee pour l'application mobile officielle a ete implementee localement avec Laravel Sanctum, des paires acces/rafraichissement par appareil, rotation, revocation et challenge 2FA Fortify.
+- Les endpoints mobiles versionnes couvrent le bootstrap, le profil, le dashboard, les vehicules, la carte, les alertes et les evenements, avec cloisonnement par flotte et masquage des donnees techniques des traceurs.
+- Deux migrations ajoutant `personal_access_tokens` et `mobile_sessions` ont ete executees avec succes sur la base locale. Aucune migration n'a ete executee sur le VPS.
+- La future API publique OAuth2 pour les integrations clientes et la page de gestion des identifiants ne font pas partie de cette version.
+- Validation locale : 134 tests Laravel passes avec 1232 assertions et 13 routes mobiles chargees.
+- L'audit Composer signale 13 avis de securite dans 6 dependances existantes ; une mise a niveau dediee est recommandee avant l'ouverture d'une API publique.
+- Aucun fichier, paquet, schema, service ou cache du VPS n'a ete modifie. Aucun deploiement n'a ete lance.
+
+## 2026-07-22 - Projet Flutter cree localement
+
+- Le projet `D:\App\Codex\exad-tracking-mobile` a ete cree localement comme dossier frere de l'application Laravel, avec les plateformes Android et iOS.
+- Le template initial passe `flutter analyze` sans anomalie.
+- L'application mobile n'est encore connectee a aucune API et aucun changement n'a ete apporte au VPS.
+- Le dossier mobile possede maintenant son propre depot Git initialise sur la branche `main`. Aucun commit et aucun depot distant n'ont encore ete configures.
+
+## 2026-07-22 - Interface mobile developpee localement
+
+- La premiere interface EXAD Tracking Mobile a ete implementee dans le projet frere local avec connexion, 2FA, stockage securise des jetons, dashboard client, vehicules, alertes, carte et espace compte.
+- L'application de developpement pointe uniquement vers l'API Laravel locale via `10.0.2.2:8000` et a ete verifiee sur l'emulateur Android local.
+- Validation locale : analyse Flutter sans anomalie et 2 tests d'interface passes.
+- Aucun fichier, schema, paquet, service, variable d'environnement ou cache du VPS n'a ete modifie. L'API mobile privee et ses migrations ne sont toujours pas deployees en production.
+
+### Refonte mobile locale sans impact VPS
+
+- La connexion Flutter a ete refondue dans un style corporate EXAD et l'application prend maintenant en charge la langue du telephone avec une preference persistante Francais/English.
+- Les interfaces mobiles client et superadmin sont separees : dashboard de flotte pour le client et console de supervision globale pour le superadmin.
+- Le contrat local du dashboard mobile fournit au superadmin une repartition des flottes agregee en base, independante de la pagination des vehicules.
+- Validation locale : analyse Flutter sans anomalie, 4 tests Flutter passes et 135 tests Laravel passes avec 1242 assertions.
+- Aucun fichier, service, paquet, schema, migration, variable ou cache du VPS n'a ete modifie. Aucun deploiement n'a ete execute.
+
+### APK mobile de test local
+
+- Un APK debug pointant vers l'API du PC sur le reseau local a ete genere pour un essai sur telephone Android reel.
+- Les ports `8000` pour l'API et `8090` pour le telechargement de l'APK sont ouverts uniquement par des processus locaux sur le PC de developpement.
+- Aucun acces, fichier, service, pare-feu, schema ou cache du VPS n'a ete modifie.
+
+### Google Maps et trajets mobiles prepares localement
+- Le projet Flutter local utilise maintenant Google Maps, une liste de vehicules repliable, la geolocalisation a la demande, les details operationnels, les evenements par vehicule et l'affichage des trajets sur la carte.
+- Une route mobile privee de trajets par vehicule a ete ajoutee localement au projet Laravel avec cloisonnement par flotte et masquage des donnees techniques du traceur.
+- La cle Android Google Maps n'est pas stockee dans le depot et devra etre configuree localement avec des restrictions package/SHA-1 avant le prochain essai cartographique reel.
+- Validation locale : APK debug compile, analyse Flutter sans anomalie, 4 tests Flutter passes et 136 tests Laravel passes avec 1250 assertions.
+- Aucun fichier, schema, migration, paquet, service, variable, cache ou pare-feu du VPS n'a ete modifie. Aucun deploiement n'a ete execute.
+
+#### Details operationnels mobiles prepares localement
+- Le modal mobile reprend desormais les memes familles d'informations que le modal web : emplacement, conducteur, alimentation, GSM, diagnostic, OBD/CAN et derniers evenements.
+- Une route privee locale de details par vehicule fournit ces donnees avec cloisonnement par flotte, sans identite technique du traceur.
+- La carte vide sur l'emulateur provient de l'absence locale de `MAPS_API_KEY`; aucune configuration Google Maps n'a ete ajoutee au VPS.
+- Validation locale : APK debug compile, 5 tests Flutter passes et 137 tests Laravel passes avec 1263 assertions.
+- Aucun fichier, service, schema, variable ou cache du VPS n'a ete modifie et aucun deploiement n'a ete execute.
+
+#### Google Maps Android valide localement
+- Une cle Google Maps Android restreinte au SDK, au package mobile et au certificat debug a ete configuree uniquement dans le fichier local non versionne du projet Flutter.
+- L'APK debug a ete reconstruit et la carte Google Maps a ete controlee sur l'emulateur : tuiles, marqueurs de vehicules et recherche sont operationnels sans erreur d'autorisation.
+- Aucune cle n'a ete copiee sur le VPS. Aucun fichier, service, schema, variable ou cache du serveur n'a ete modifie et aucun deploiement n'a ete execute.
+
+#### Suivi cartographique mobile live prepare localement
+- Les regles de mouvement et de trace GPS ont ete centralisees localement pour garantir le meme comportement sur les cartes web et mobile.
+- L'API mobile locale fournit les etats mouvement, stationnement et moteur allume a l'arret ainsi qu'une trace GPS courte et continue. Flutter actualise ces donnees toutes les 10 secondes et anime les marqueurs sur 5 secondes uniquement lorsque la carte est active.
+- Le rendu Google Maps, les compteurs, filtres, marqueurs, recentrage et actions vehicule ont ete valides sur l'emulateur Android.
+- Validation locale complete : 6 tests Flutter, 137 tests Laravel et 1268 assertions passent. Aucun fichier, service, schema, variable ou cache du VPS n'a ete modifie et aucun deploiement n'a ete execute.
+
+## 2026-07-22 - Deploiement de l'API mobile privee et du service cartographique partage
+- Deploiement cible vers `/var/www/exadtracking.app` de 33 fichiers d'execution Laravel : API mobile versionnee, authentification Sanctum, sessions mobiles, ressources vehicule/alerte/evenement, details, trajets et service commun de mouvement cartographique.
+- Archive de deploiement verifiee avant extraction avec SHA-256 `0dd6da56194fa15664f6afb2be8930ecd861c8d0284f819a2d2e92d4e05c046f`.
+- Sauvegarde prealable des fichiers remplaces : `/tmp/exadtracking-before-mobile-api-live-map-20260722-134157.tar.gz`.
+- `laravel/sanctum` v4.3.3 installe depuis le lock Composer. Les migrations suivantes ont ete appliquees en lot 11 :
+  - `2026_07_22_000000_create_personal_access_tokens_table`
+  - `2026_07_22_001000_create_mobile_sessions_table`
+- Autoload Composer optimise, caches Laravel nettoyes puis reconstruits, migrations appliquees et redemarrage des workers de queue signale. Les 15 routes sous `api/v1/mobile` sont presentes.
+- Verifications HTTPS : `/login` en 200, `/up` en 200, `/api/v1/mobile/bootstrap` en 401 JSON sans jeton et `/api/v1/mobile/auth/login` en 422 JSON pour une requete vide.
+- Production confirmee avec debug desactive, maintenance inactive, permissions `0644` sur les fichiers deployes et `0775` sur `bootstrap/cache`. Apache, `gps-tcp.service` et `exad-server-console.service` sont actifs.
+- Aucun nouvel evenement de niveau erreur dans les services pendant les dix minutes entourant le deploiement et aucune nouvelle erreur Laravel detectee. L'avertissement Composer sur la propriete Git du repertoire est non bloquant et n'affecte ni l'autoload ni l'application.
+- Les archives et scripts temporaires ont ete supprimes du VPS apres validation ; seule la sauvegarde de retour arriere est conservee. Aucun APK, code Flutter ou secret Google Maps n'a ete deploye.
