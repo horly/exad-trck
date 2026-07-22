@@ -12,12 +12,13 @@ class MobileVehicleDetailService
     /**
      * @return array<string, mixed>
      */
-    public function build(Vehicle $vehicle): array
+    public function build(Vehicle $vehicle, bool $includeTechnicalDetails = false): array
     {
         $device = $vehicle->device;
 
         if (! $device instanceof Device) {
             return [
+                ...($includeTechnicalDetails ? ['tracker' => null] : []),
                 'location' => null,
                 'driver' => null,
                 'power' => null,
@@ -47,6 +48,15 @@ class MobileVehicleDetailService
         }
 
         return [
+            ...($includeTechnicalDetails ? [
+                'tracker' => [
+                    'id' => $device->id,
+                    'name' => $device->name,
+                    'imei' => $device->imei,
+                    'brand' => $device->brand,
+                    'model' => $device->model,
+                ],
+            ] : []),
             'location' => [
                 'gps_quality_percent' => $device->last_satellites !== null
                     ? min(100, max(0, $device->last_satellites * 7))

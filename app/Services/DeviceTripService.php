@@ -10,8 +10,13 @@ use Illuminate\Support\Collection;
 class DeviceTripService
 {
     private const MAX_GAP_MINUTES = 15;
+
     private const STOP_SPLIT_MINUTES = 5;
+
+    private const STOP_LEAD_IN_MAX_SECONDS = 60;
+
     private const MIN_TRIP_DISTANCE_KM = 0.05;
+
     private const TRIP_COLORS = [
         '#2563eb',
         '#7c3aed',
@@ -25,8 +30,7 @@ class DeviceTripService
         private readonly ReverseGeocodingService $reverseGeocoding,
         private readonly GoogleRoadsService $googleRoads,
         private readonly LocationTimezoneService $locationTimezone,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{
@@ -40,10 +44,18 @@ class DeviceTripService
     {
         $positions = Position::query()
             ->where('device_id', $device->id)
-            ->whereBetween('server_time', [$from, $to])
+            ->where(function ($query) use ($from, $to): void {
+                $query
+                    ->whereBetween('gps_time', [$from, $to])
+                    ->orWhere(function ($fallbackQuery) use ($from, $to): void {
+                        $fallbackQuery
+                            ->whereNull('gps_time')
+                            ->whereBetween('server_time', [$from, $to]);
+                    });
+            })
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
-            ->orderBy('server_time')
+            ->orderByRaw('COALESCE(gps_time, server_time)')
             ->orderBy('id')
             ->get([
                 'id',
@@ -114,15 +126,34 @@ class DeviceTripService
             if (
                 $previous instanceof Position
                 && $current->isNotEmpty()
-                && $previous->server_time?->diffInMinutes($position->server_time) > self::MAX_GAP_MINUTES
+                && $this->timestampFor($previous)->diffInMinutes($this->timestampFor($position)) > self::MAX_GAP_MINUTES
             ) {
-                $current = $current->merge($pendingStops);
+                if ($pendingStops->isNotEmpty()) {
+                    $current->push($pendingStops->first());
+                }
+
                 $this->pushSegment($segments, $current);
                 $current = collect();
                 $pendingStops = collect();
+                $lastStop = null;
             }
 
             if ($this->isMovingPosition($position)) {
+                if ($pendingStops->isNotEmpty()) {
+                    /** @var Position $lastMovingPosition */
+                    $lastMovingPosition = $current->last();
+
+                    if ($this->stopDurationMinutes($lastMovingPosition, $pendingStops, $position) >= self::STOP_SPLIT_MINUTES) {
+                        /** @var Position $segmentStart */
+                        $segmentStart = $current->first();
+                        $current->push($pendingStops->first());
+                        $segmentCreated = $this->pushSegment($segments, $current);
+                        $current = collect();
+                        $lastStop = $segmentCreated ? $pendingStops->last() : $segmentStart;
+                        $pendingStops = collect();
+                    }
+                }
+
                 if ($current->isEmpty() && $lastStop instanceof Position) {
                     $current->push($lastStop);
                 }
@@ -134,18 +165,23 @@ class DeviceTripService
 
                 $current->push($position);
                 $previous = $position;
+
                 continue;
             }
 
             if ($current->isNotEmpty()) {
                 $pendingStops->push($position);
+                /** @var Position $lastMovingPosition */
+                $lastMovingPosition = $current->last();
 
-                if ($this->stopDurationMinutes($pendingStops) >= self::STOP_SPLIT_MINUTES) {
-                    $current = $current->merge($pendingStops);
-                    $this->pushSegment($segments, $current);
+                if ($this->stopDurationMinutes($lastMovingPosition, $pendingStops) >= self::STOP_SPLIT_MINUTES) {
+                    /** @var Position $segmentStart */
+                    $segmentStart = $current->first();
+                    $current->push($pendingStops->first());
+                    $segmentCreated = $this->pushSegment($segments, $current);
                     $current = collect();
                     $pendingStops = collect();
-                    $lastStop = $position;
+                    $lastStop = $segmentCreated ? $position : $segmentStart;
                 }
             } else {
                 $lastStop = $position;
@@ -161,41 +197,43 @@ class DeviceTripService
     }
 
     /**
-     * @param  Collection<int, Position>  $positions
+     * @param  Collection<int, Position>  $stops
      */
-    private function stopDurationMinutes(Collection $positions): float
-    {
-        if ($positions->count() < 2) {
-            return 0.0;
-        }
+    private function stopDurationMinutes(
+        Position $lastMovingPosition,
+        Collection $stops,
+        ?Position $stopEnd = null,
+    ): float {
+        /** @var Position $firstStop */
+        $firstStop = $stops->first();
+        /** @var Position $lastStop */
+        $lastStop = $stopEnd ?: $stops->last();
+        $leadInSeconds = min(
+            self::STOP_LEAD_IN_MAX_SECONDS,
+            $this->timestampFor($lastMovingPosition)->diffInSeconds($this->timestampFor($firstStop)),
+        );
+        $stationarySeconds = $this->timestampFor($firstStop)->diffInSeconds($this->timestampFor($lastStop));
 
-        /** @var Position $first */
-        $first = $positions->first();
-        /** @var Position $last */
-        $last = $positions->last();
-
-        if (! $first->server_time || ! $last->server_time) {
-            return 0.0;
-        }
-
-        return (float) $first->server_time->diffInMinutes($last->server_time);
+        return ($leadInSeconds + $stationarySeconds) / 60;
     }
 
     /**
      * @param  list<Collection<int, Position>>  $segments
      * @param  Collection<int, Position>  $segment
      */
-    private function pushSegment(array &$segments, Collection $segment): void
+    private function pushSegment(array &$segments, Collection $segment): bool
     {
         if ($segment->count() < 2 || ! $segment->contains(fn (Position $position): bool => $this->isMovingPosition($position))) {
-            return;
+            return false;
         }
 
         if ($this->distanceFor($segment) < self::MIN_TRIP_DISTANCE_KM) {
-            return;
+            return false;
         }
 
         $segments[] = $segment->values();
+
+        return true;
     }
 
     /**
@@ -246,7 +284,11 @@ class DeviceTripService
 
     private function isMovingPosition(Position $position): bool
     {
-        return (bool) ($position->movement ?? ((int) $position->speed > 0));
+        if ($position->speed !== null) {
+            return (float) $position->speed > 0;
+        }
+
+        return (bool) $position->movement;
     }
 
     private function timestampFor(Position $position): Carbon

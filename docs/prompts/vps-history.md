@@ -745,3 +745,55 @@ The battery voltage field must not be greater than 100.
 - Production confirmee avec debug desactive, maintenance inactive, permissions `0644` sur les fichiers deployes et `0775` sur `bootstrap/cache`. Apache, `gps-tcp.service` et `exad-server-console.service` sont actifs.
 - Aucun nouvel evenement de niveau erreur dans les services pendant les dix minutes entourant le deploiement et aucune nouvelle erreur Laravel detectee. L'avertissement Composer sur la propriete Git du repertoire est non bloquant et n'affecte ni l'autoload ni l'application.
 - Les archives et scripts temporaires ont ete supprimes du VPS apres validation ; seule la sauvegarde de retour arriere est conservee. Aucun APK, code Flutter ou secret Google Maps n'a ete deploye.
+
+#### Barre de navigation mobile modifiee localement
+- La barre de navigation inferieure et la zone de navigation systeme Android ont ete alignees localement sur les couleurs du theme EXAD.
+- Validation locale : analyse Flutter sans anomalie et 6 tests Flutter passes.
+- Aucun fichier, service, schema, variable ou cache du VPS n'a ete modifie et aucun deploiement n'a ete execute.
+
+#### Application mobile reliee a l'API de production
+- Le build mobile local utilise maintenant par defaut `https://exadtracking.app/api/v1/mobile` afin de lire les positions reelles deja recues par le serveur de production.
+- Le controle HTTPS de l'endpoint mobile confirme une reponse JSON `401` sans jeton, conforme a la protection attendue de l'API privee.
+- Le nom natif et les icones Android/iOS ont ete modifies uniquement dans le projet Flutter local. Aucun APK, asset mobile ou secret n'a ete copie sur le VPS.
+- Aucun fichier, service, schema, migration, variable ou cache du VPS n'a ete modifie et aucun deploiement n'a ete execute.
+
+#### Camera et marqueurs mobiles modifies localement
+- La camera Flutter s'ouvre desormais au niveau rue sans cadrage global automatique et les marqueurs distinguent mouvement, parking, arret moteur allume, en ligne, hors ligne, inactif et maintenance.
+- La modification concerne uniquement le rendu du client Flutter et reutilise les etats deja fournis par l'API de production.
+- Validation locale : analyse Flutter sans anomalie, 6 tests Flutter passes et APK debug reinstalle sur l'emulateur.
+- Aucun fichier, service, schema, migration, variable ou cache du VPS n'a ete modifie et aucun deploiement n'a ete execute.
+
+#### Cloisonnement des details traceur prepare localement
+- L'API Laravel locale fournit l'identite technique du traceur uniquement au superadmin et continue de la supprimer entierement pour les comptes clients.
+- Le client Flutter local sait afficher le nom, l'identifiant interne, l'IMEI, la marque et le modele uniquement lorsque ce bloc superadmin est present.
+- La carte d'identite mobile a ete alignee sur le modal web : immatriculation dans le titre, modele combine marque/modele, IMEI presente sous le libelle `ID`, flotte et pastille de statut. Les donnees techniques restent conditionnees au bloc superadmin.
+- Validation locale : 12 tests API mobiles et 138 tests Laravel passent, ainsi que l'analyse et les 6 tests Flutter.
+- Aucun fichier, service, schema, migration, variable ou cache du VPS n'a ete modifie et aucun deploiement n'a ete execute.
+
+## 2026-07-22 - Deploiement du cloisonnement des details traceur mobiles
+- Deploiement cible vers `/var/www/exadtracking.app` de `app/Http/Controllers/Api/V1/MobileVehicleDetailController.php` et `app/Services/MobileVehicleDetailService.php`.
+- Archive Linux controlee avant extraction avec SHA-256 `727f08c0fd88df543c4372fefd0e0decf6e2f628e99223af433f4a02e8ce855a`.
+- Sauvegarde de retour arriere conservee dans `/tmp/exadtracking-before-tracker-details-20260722-152058.tar.gz`.
+- Les caches Laravel ont ete nettoyes puis reconstruits, les workers de queue signales et Apache recharge sans interruption de maintenance.
+- Les fichiers deployes correspondent aux SHA-256 locaux, passent la verification syntaxique PHP et conservent les permissions `0644` avec le proprietaire `exad-tracking:www-data`.
+- Verification production : `/login` et `/up` en `200`, API mobile protegee en `401` sans jeton, debug desactive, maintenance inactive, Apache, GPS TCP et console serveur actifs.
+- Verification fonctionnelle sur l'application mobile connectee a la production : le superadmin recoit et affiche le modele et l'IMEI du traceur. Le masquage client reste couvert par les tests API.
+- Aucune migration, modification de schema, variable d'environnement ou publication d'APK n'a ete effectuee.
+
+## 2026-07-22 - Diagnostic production des trajets, correctif local non deploye
+- Une analyse strictement en lecture seule des positions du traceur `353201355315547` a confirme que le serveur recoit des positions a vitesse nulle et coordonnees stables dont le drapeau `movement` reste pourtant actif.
+- Cette incoherence explique la fusion de plusieurs trajets separes par des stationnements dans la liste EXAD Tracking, alors que Navixy les presente individuellement.
+- Le correctif local utilise la vitesse comme signal prioritaire, separe les stationnements d'au moins cinq minutes, ordonne les donnees par heure GPS et filtre les micro-deplacements de parking.
+- La simulation sur les donnees du 22/07/2026 retrouve 9 trajets significatifs au lieu de 3, sans ecriture dans la base de production.
+- Le script temporaire de diagnostic a ete supprime de `/tmp` apres les controles.
+- Aucun fichier applicatif, schema, cache, service ou variable du VPS n'a ete modifie. Le correctif attend une autorisation explicite de deploiement.
+
+## 2026-07-22 - Deploiement du calcul detaille des trajets
+- Deploiement cible de `app/Services/DeviceTripService.php` vers `/var/www/exadtracking.app`.
+- Archive minimale controlee avant installation avec le SHA-256 `b8aa08e4dd10f37adf157d8bdf9800c26b619d609b3d26063c8116aa8c70b204` et contenant uniquement le service de trajets.
+- Sauvegarde de retour arriere conservee dans `/tmp/exadtracking-before-trip-segmentation-20260722-183255.tar.gz`.
+- Une premiere commande inline a ete interrompue avant modification par l'interpretation PowerShell des substitutions Linux. Lors de la reprise par script, la copie a reussi mais la tentative de changement de groupe a ete refusee ; le mode a ete immediatement corrige de `0600` a `0644` avant les controles HTTP.
+- Le fichier de production appartient au compte de deploiement `exad-tracking`, reste lisible par Apache en `0644` et correspond exactement au SHA-256 local `67108983a177cc5e8cee464de3d809453f4ef33dc291f98969aa567ded7b969e`.
+- `optimize:clear`, `config:cache`, `view:cache` et `queue:restart` ont reussi. Le rechargement explicite d'Apache via `sudo -n` a ete refuse faute d'autorisation non interactive ; Apache est reste actif et les controles HTTPS ont reussi.
+- Etat final : environnement production, debug desactive, maintenance inactive, `/login` et `/up` en `200`, API mobile protegee en `401` sans jeton, Apache, `gps-tcp.service` et `exad-server-console.service` actifs.
+- Les archives, le dossier de staging et le script temporaires ont ete supprimes du VPS. Aucun schema, migration, variable d'environnement ou code Flutter n'a ete modifie.

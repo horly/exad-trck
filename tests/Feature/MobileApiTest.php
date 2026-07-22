@@ -459,6 +459,7 @@ test('mobile vehicle details mirror the operational web sections without tracker
     $response = $this->withToken($accessToken)
         ->getJson(route('api.v1.mobile.vehicles.details', $vehicle->id))
         ->assertSuccessful()
+        ->assertJsonMissingPath('data.details.tracker')
         ->assertJsonPath('data.details.location.address', 'Kinshasa')
         ->assertJsonPath('data.details.location.gps_quality_percent', 70)
         ->assertJsonPath('data.details.driver.full_name', 'Jean Conducteur')
@@ -472,4 +473,33 @@ test('mobile vehicle details mirror the operational web sections without tracker
         ->not->toContain('999999999999999')
         ->not->toContain('Nom Traceur Secret')
         ->not->toContain('Modele Traceur Secret');
+});
+
+test('mobile superadmin vehicle details include the tracker technical identity', function () {
+    $superadmin = User::factory()->superadmin()->create();
+    $fleet = Fleet::factory()->create();
+    $vehicle = Vehicle::factory()->for($fleet)->create(['name' => 'Vehicule Superadmin']);
+    $device = Device::factory()->online()->create([
+        'subscription_id' => $fleet->subscription_id,
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $vehicle->id,
+        'imei' => '868120000000001',
+        'name' => 'Traceur Direction',
+        'brand' => 'teltonika',
+        'model' => 'FMB920',
+    ]);
+    $accessToken = $this->postJson(
+        route('api.v1.mobile.auth.login'),
+        mobileCredentials($superadmin),
+    )->assertSuccessful()->json('data.tokens.access_token');
+
+    $this->app['auth']->forgetGuards();
+    $this->flushHeaders()->withToken($accessToken)
+        ->getJson(route('api.v1.mobile.vehicles.details', $vehicle->id))
+        ->assertSuccessful()
+        ->assertJsonPath('data.details.tracker.id', $device->id)
+        ->assertJsonPath('data.details.tracker.name', 'Traceur Direction')
+        ->assertJsonPath('data.details.tracker.imei', '868120000000001')
+        ->assertJsonPath('data.details.tracker.brand', 'teltonika')
+        ->assertJsonPath('data.details.tracker.model', 'FMB920');
 });

@@ -24,7 +24,10 @@ class MobileVehicleDetailController extends Controller
         return response()->json([
             'data' => [
                 ...(new MobileVehicleResource($model))->resolve($request),
-                'details' => $detailService->build($model),
+                'details' => $detailService->build(
+                    $model,
+                    includeTechnicalDetails: $request->user()->isSuperadmin(),
+                ),
             ],
         ]);
     }

@@ -1071,3 +1071,63 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Verification production : connexion HTTPS et endpoint de sante en 200, API protegee en 401 sans jeton, validation JSON en 422, maintenance desactivee, Apache, GPS TCP et console serveur actifs.
 - La sauvegarde de retour arriere est conservee dans `/tmp/exadtracking-before-mobile-api-live-map-20260722-134157.tar.gz`.
 - Validation locale avant deploiement : 137 tests Laravel et 1268 assertions, 6 tests Flutter et analyse Flutter sans anomalie. Aucune publication de l'application mobile n'a ete effectuee.
+
+#### Barre de navigation mobile aux couleurs EXAD
+- La barre de navigation inferieure Flutter utilise maintenant la couleur principale issue de la personnalisation de l'application, avec un indicateur actif dans la couleur secondaire.
+- Les icones et libelles actifs sont blancs ; les elements inactifs conservent un blanc attenue afin de rester lisibles sans concurrencer l'onglet selectionne.
+- La zone de navigation systeme Android reprend la meme couleur et supprime la bande blanche sous la barre sur les appareils utilisant la navigation gestuelle.
+- Validation locale reussie : `flutter analyze` sans anomalie et 6 tests Flutter passes.
+- Aucun deploiement, commit ou publication mobile n'a ete effectue.
+
+#### Identite native et API de production de l'application mobile
+- Le nom affiche par l'application est maintenant `EXAD Tracking` sur Android et iOS.
+- Les icones de lancement Android, y compris l'icone adaptative, et le catalogue iOS ont ete regeneres depuis `public/images/icon-exad-tracking.png`, qui correspond au favicon EXAD utilise par l'application web.
+- L'URL mobile par defaut est desormais `https://exadtracking.app/api/v1/mobile`. L'application installee lit donc les positions et mouvements recus par le serveur de production au lieu du serveur d'ecoute local statique.
+- La variable de compilation `API_BASE_URL` reste disponible pour pointer ponctuellement vers `http://10.0.2.2:8000/api/v1/mobile` pendant le developpement local.
+- L'endpoint de production a ete controle avec un en-tete JSON et refuse correctement une requete sans jeton en `401`; l'API mobile privee et son cloisonnement restent donc appliques.
+- Validation locale reussie : generation des icones natives, `flutter analyze` sans anomalie, 6 tests Flutter passes, APK debug compile, installe et lance sur `emulator-5554`.
+- Aucun commit, deploiement VPS ou publication sur un store n'a ete effectue.
+
+#### Camera de rue et marqueurs d'etat sur la carte mobile
+- L'ajustement automatique de la camera sur tous les vehicules a l'ouverture de la carte a ete retire, car il eloignait la vue jusqu'a masquer le detail des rues.
+- La carte s'ouvre maintenant sur le premier vehicule positionne avec un zoom de rue `15.5`. Le bouton de cadrage global reste disponible pour afficher volontairement tous les vehicules.
+- Les epingles Google Maps generiques ont ete remplacees par des marqueurs coherents avec la carte web : fleche bleue orientee selon le cap pour un vehicule en mouvement, cercle bleu avec `P` pour le parking et carre bleu avec pause pour un vehicule a l'arret moteur allume.
+- Les autres etats utilisent une icone voiture : vert en ligne, orange hors ligne, rouge inactif et violet en maintenance. Les couleurs reprennent la palette cartographique du web.
+- Validation locale reussie : `flutter analyze` sans anomalie, 6 tests Flutter passes, APK debug compile, installe et lance sur `emulator-5554`.
+- Aucun commit, deploiement VPS ou publication mobile n'a ete effectue.
+
+#### Details techniques mobiles reserves au superadmin
+- L'endpoint prive de details vehicule adapte maintenant sa reponse au role authentifie. Le superadmin recoit un bloc technique `tracker` avec l'identifiant interne, le nom, l'IMEI, la marque et le modele du traceur.
+- Les administrateurs clients et utilisateurs simples ne recoivent pas la cle `tracker`; l'IMEI, le nom, la marque, le modele et l'identifiant interne restent donc absents de leur reponse API et de leur interface mobile.
+- Pour le superadmin, la feuille mobile devient `Details du traceur`, utilise une icone de composant et affiche les informations techniques dans la carte principale, avant les rubriques emplacement, conducteur, alimentation, GSM, diagnostic, OBD/CAN et evenements.
+- La premiere carte mobile reprend exactement la structure web : titre `Vehicule (immatriculation)`, puis `Modele`, `ID` correspondant a l'IMEI, `Flotte` et une pastille de statut pour le superadmin. Les lignes redondantes d'immatriculation et de configuration GPS ont ete retirees.
+- Pour les comptes clients, la feuille reste `Details du vehicule` et conserve le meme titre, la flotte et le statut, sans les lignes `Modele` et `ID`.
+- Validation locale : 12 tests API mobiles passes avec 126 assertions, suite Laravel complete verte avec 138 tests et 1276 assertions, analyse Flutter sans anomalie et 6 tests Flutter passes. L'APK debug a ete reinstalle sur `emulator-5554`.
+- Aucun commit ni deploiement VPS n'a ete effectue. L'API de production doit etre deployee sur autorisation avant que le bloc technique superadmin soit visible dans l'application connectee au serveur public.
+
+## 2026-07-22 - Deploiement des details techniques du traceur dans l'API mobile
+- L'API Laravel de production fournit maintenant le bloc `details.tracker` uniquement aux comptes superadmin avec le modele, l'IMEI, le nom et l'identifiant interne du traceur.
+- Les comptes administrateur client et utilisateur simple continuent de recevoir une reponse sans cle `details.tracker`; les informations techniques sensibles restent donc masquees cote client.
+- Le deploiement a ete limite a `MobileVehicleDetailController.php` et `MobileVehicleDetailService.php`, sans migration ni modification de base de donnees.
+- Verification visuelle sur `emulator-5554` apres redemarrage de l'application : la fiche superadmin affiche `Teltonika FMB003`, l'IMEI `353201355315547`, la flotte et le statut en ligne dans la structure attendue.
+- Validation : 12 tests API mobiles et 126 assertions passes localement, syntaxe PHP valide, `/login` et `/up` en `200`, API protegee en `401` sans jeton, services de production actifs.
+- Aucun commit ni publication sur un store n'a ete effectue.
+
+## 2026-07-22 - Segmentation detaillee des trajets preparee localement
+- L'analyse des 3 064 positions du traceur `353201355315547` sur la journee a montre que certains firmwares Teltonika conservent `movement=true` et parfois le contact actif pendant un stationnement, alors que la vitesse reste a `0` et que les coordonnees ne changent pas.
+- Le calcul des trajets s'appuie maintenant prioritairement sur la vitesse mesuree : une position a vitesse nulle est consideree comme un arret, meme si le drapeau de mouvement reste actif. Le drapeau `movement` reste le repli lorsque la vitesse est absente.
+- Un stationnement continu d'au moins cinq minutes separe deux trajets. Les points d'arret prolonges ne gonflent plus la duree de conduite, tandis que les pauses courtes restent integrees au trajet courant.
+- La selection, l'ordre et les ecarts temporels utilisent desormais `gps_time`, avec repli sur `server_time` uniquement pour les anciennes positions sans heure GPS. Les transmissions retardees sont ainsi replacees dans l'ordre reel du parcours.
+- Les micro-deplacements de stationnement inferieurs a 50 metres restent filtres sans retarder artificiellement l'heure de depart du trajet suivant.
+- Une simulation en lecture seule sur les donnees de production du 22/07/2026 produit 9 trajets significatifs au lieu des 3 grands blocs actuels, avec des horaires et distances proches de la chronologie Navixy fournie.
+- Validation locale : 8 tests de trajets avec 59 assertions, 12 tests API mobiles avec 126 assertions et suite Laravel complete avec 140 tests et 1 289 assertions.
+- Ce correctif n'a pas ete deploye et aucun commit n'a ete cree.
+
+## 2026-07-22 - Deploiement de la segmentation detaillee des trajets
+- Le service `app/Services/DeviceTripService.php` a ete deploye seul vers la production, sans inclure les autres modifications locales en attente.
+- La production segmente maintenant les trajets sur les arrets reels d'au moins cinq minutes, donne priorite a la vitesse sur le drapeau de mouvement, utilise l'heure GPS et filtre les micro-deplacements de parking.
+- Une sauvegarde de retour arriere a ete creee dans `/tmp/exadtracking-before-trip-segmentation-20260722-183255.tar.gz`.
+- Les caches Laravel ont ete nettoyes puis les caches de configuration et de vues reconstruits. Le signal de redemarrage des workers de queue a ete envoye.
+- Le fichier distant correspond exactement au SHA-256 local `67108983a177cc5e8cee464de3d809453f4ef33dc291f98969aa567ded7b969e`, passe la verification syntaxique PHP et est lisible en mode `0644`.
+- Verifications finales : production hors maintenance, debug desactive, `/login` et `/up` en `200`, API mobile en `401` sans jeton, Apache, GPS TCP et console serveur actifs.
+- Aucun schema, migration, variable d'environnement, asset ou code Flutter n'a ete modifie. Aucun commit n'a ete cree.

@@ -1,7 +1,8 @@
 <?php
 
-use App\Models\Device;
+use App\Events\AlertCreated;
 use App\Models\Alert;
+use App\Models\Device;
 use App\Models\Driver;
 use App\Models\DriverIdentifier;
 use App\Models\Fleet;
@@ -1183,7 +1184,94 @@ test('tracker trips keep short stops inside one continuous trip', function () {
         ->toContain('Arrivee Gombe')
         ->not->toContain('Trajet 2')
         ->and($response->json('geojson.features.0.geometry.coordinates'))
-        ->toHaveCount(6);
+        ->toHaveCount(5);
+});
+
+test('tracker trips split sustained zero speed stops even when movement remains true', function () {
+    config(['services.google_maps.api_key' => '', 'services.mapbox.public_token' => '']);
+
+    $superadmin = User::factory()->superadmin()->create();
+    $device = Device::factory()->create();
+
+    $points = [
+        ['time' => now()->setTime(7, 27), 'lat' => -4.33000, 'lng' => 15.22000, 'address' => 'Depart Kasa-Vubu', 'speed' => 24],
+        ['time' => now()->setTime(7, 35), 'lat' => -4.33200, 'lng' => 15.22500, 'address' => 'Parcours Kasa-Vubu', 'speed' => 26],
+        ['time' => now()->setTime(7, 46), 'lat' => -4.33500, 'lng' => 15.23000, 'address' => 'Arrivee Avenue Saio', 'speed' => 18],
+        ['time' => now()->setTime(7, 47), 'lat' => -4.33500, 'lng' => 15.23000, 'address' => 'Arret Avenue Saio', 'speed' => 0],
+        ['time' => now()->setTime(7, 49), 'lat' => -4.33500, 'lng' => 15.23000, 'address' => 'Arret Avenue Saio', 'speed' => 0],
+        ['time' => now()->setTime(7, 50), 'lat' => -4.33500, 'lng' => 15.23000, 'address' => 'Arret Avenue Saio', 'speed' => 0],
+        ['time' => now()->setTime(7, 53), 'lat' => -4.33600, 'lng' => 15.23500, 'address' => 'Reprise Avenue Saio', 'speed' => 20],
+        ['time' => now()->setTime(8, 1), 'lat' => -4.34000, 'lng' => 15.24500, 'address' => 'Arrivee Rue Bosobolo', 'speed' => 22],
+        ['time' => now()->setTime(8, 2), 'lat' => -4.34000, 'lng' => 15.24500, 'address' => 'Arret Rue Bosobolo', 'speed' => 0],
+        ['time' => now()->setTime(8, 6), 'lat' => -4.34000, 'lng' => 15.24500, 'address' => 'Arret Rue Bosobolo', 'speed' => 0],
+    ];
+
+    foreach ($points as $index => $point) {
+        Position::factory()->forDevice($device)->create([
+            'server_time' => now()->setTime(12, 0)->addSeconds($index),
+            'gps_time' => $point['time'],
+            'latitude' => $point['lat'],
+            'longitude' => $point['lng'],
+            'address' => $point['address'],
+            'movement' => true,
+            'ignition' => true,
+            'speed' => $point['speed'],
+        ]);
+    }
+
+    $response = $this->actingAs($superadmin)
+        ->withHeader('X-Requested-With', 'XMLHttpRequest')
+        ->getJson(route('trackers.trips', ['device' => $device, 'period' => 'today']))
+        ->assertSuccessful()
+        ->assertJsonPath('summary.count', 2)
+        ->assertJsonPath('geojson.features.0.properties.start_time', '08:27')
+        ->assertJsonPath('geojson.features.0.properties.end_time', '08:47')
+        ->assertJsonPath('geojson.features.1.properties.start_time', '08:50')
+        ->assertJsonPath('geojson.features.1.properties.end_time', '09:02');
+
+    expect($response->json('html'))
+        ->toContain('Total : 2 trajets')
+        ->toContain('Trajet 1')
+        ->toContain('Trajet 2');
+});
+
+test('tracker trips ignore parking jitter without delaying the next departure', function () {
+    config(['services.google_maps.api_key' => '', 'services.mapbox.public_token' => '']);
+
+    $superadmin = User::factory()->superadmin()->create();
+    $device = Device::factory()->create();
+    $points = [
+        ['time' => now()->setTime(9, 55), 'lat' => -4.33000, 'lng' => 15.22000, 'speed' => 0],
+        ['time' => now()->setTime(10, 0), 'lat' => -4.33000, 'lng' => 15.22000, 'speed' => 0],
+        ['time' => now()->setTime(10, 0, 10), 'lat' => -4.33005, 'lng' => 15.22005, 'speed' => 3],
+        ['time' => now()->setTime(10, 0, 20), 'lat' => -4.33005, 'lng' => 15.22005, 'speed' => 0],
+        ['time' => now()->setTime(10, 5, 20), 'lat' => -4.33005, 'lng' => 15.22005, 'speed' => 0],
+        ['time' => now()->setTime(10, 5, 30), 'lat' => -4.33100, 'lng' => 15.22500, 'speed' => 24],
+        ['time' => now()->setTime(10, 15), 'lat' => -4.34000, 'lng' => 15.24500, 'speed' => 28],
+        ['time' => now()->setTime(10, 16), 'lat' => -4.34000, 'lng' => 15.24500, 'speed' => 0],
+        ['time' => now()->setTime(10, 21), 'lat' => -4.34000, 'lng' => 15.24500, 'speed' => 0],
+    ];
+
+    foreach ($points as $point) {
+        Position::factory()->forDevice($device)->create([
+            'server_time' => $point['time'],
+            'gps_time' => $point['time'],
+            'latitude' => $point['lat'],
+            'longitude' => $point['lng'],
+            'address' => 'Position test',
+            'movement' => $point['speed'] > 0,
+            'ignition' => true,
+            'speed' => $point['speed'],
+        ]);
+    }
+
+    $this->actingAs($superadmin)
+        ->withHeader('X-Requested-With', 'XMLHttpRequest')
+        ->getJson(route('trackers.trips', ['device' => $device, 'period' => 'today']))
+        ->assertSuccessful()
+        ->assertJsonPath('summary.count', 1)
+        ->assertJsonPath('geojson.features.0.properties.start_time', '11:00')
+        ->assertJsonPath('geojson.features.0.properties.end_time', '11:16');
 });
 
 test('tracker trips resolve missing addresses with mapbox reverse geocoding', function () {
@@ -2011,7 +2099,7 @@ test('alert demo command creates an alert and dispatches broadcast event', funct
         'severity' => 'critical',
     ]);
 
-    Event::assertDispatched(\App\Events\AlertCreated::class);
+    Event::assertDispatched(AlertCreated::class);
 });
 
 test('superadmin can view server logs page and fetch whitelisted log content', function () {
