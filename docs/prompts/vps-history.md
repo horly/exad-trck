@@ -824,3 +824,15 @@ The battery voltage field must not be greater than 100.
 - Production confirmee hors maintenance avec debug desactive ; Apache, `gps-tcp.service` et `exad-server-console.service` sont actifs. `/login` et `/up` repondent en `200`, et l'API mobile sans jeton en `401`.
 - Le nouvel APK de test a ete installe et lance sur l'emulateur Android puis rendu disponible depuis le PC sur le reseau local. Aucun APK ni secret cartographique n'a ete copie sur le VPS et aucune publication Play Store n'a ete effectuee.
 - Validation finale : 140 tests Laravel avec 1 289 assertions, analyse Flutter sans anomalie et 6 tests Flutter passes.
+
+## 2026-08-02 - Correction de la saturation du listener GPS TCP
+- Diagnostic production : `gps-tcp.service` et le port `5027/tcp` etaient actifs, mais le processus conservait 2 875 connexions TCP etablies et 2 898 descripteurs pour seulement trois traceurs enregistres.
+- Cause confirmee dans `gps-listener-server-prod/src/listeners/tcp-listener.js` : aucune echeance de handshake, aucun delai d'inactivite pour les connexions authentifiees, aucune limite de tampon par socket et aucun plafond global de connexions.
+- Impact observe : 7 028 positions et 3 589 emplacements distincts recus le 31 juillet, puis seulement 479 positions sur un emplacement fixe le 1er aout. Laravel continuait a stocker les paquets disponibles, mais ne recevait plus de deplacements permettant de former des trajets.
+- Correction deployee sur le listener de production : handshake limite a 15 secondes, connexion authentifiee inactive limitee a 15 minutes, keepalive TCP active, tampon limite a 1 Mio et maximum global fixe a 512 connexions. Ces valeurs restent surchargeables par variables d'environnement.
+- Sauvegarde de retour arriere : `/tmp/exad-tcp-listener-before-fix-20260802.js`.
+- Le fichier corrige a passe `node --check` avant et apres installation, puis `gps-tcp.service` a ete redemarre avec succes.
+- Controle post-deploiement : service actif, connexions etablies ramenees de 2 875 a 1, descripteurs ramenes de 2 898 a 23 et nouvelles positions de nouveau ingerees.
+- La commande `gps:mark-stale --minutes=5`, deja disponible mais non planifiee, est maintenant executee chaque minute avec `withoutOverlapping()` ; son premier passage a correctement marque deux traceurs silencieux hors ligne.
+- Aucune execution du scheduler Laravel n'etait configuree sur le VPS malgre un service cron actif. L'entree `/etc/cron.d/exad-tracking` lance desormais `php artisan schedule:run` chaque minute sous l'utilisateur `exad-tracking`.
+- Sauvegarde de retour arriere de la route console : `/tmp/exad-console-before-stale-schedule-20260802.php`. La syntaxe PHP, `schedule:list`, l'execution manuelle du scheduler et le service cron ont ete valides.

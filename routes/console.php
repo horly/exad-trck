@@ -489,6 +489,7 @@ Artisan::command('maintenance:evaluate', function (): int {
 })->purpose('Evaluate maintenance due dates, mileage and engine hours');
 
 Schedule::command('maintenance:evaluate')->everyFifteenMinutes()->withoutOverlapping();
+Schedule::command('gps:mark-stale --minutes=5')->everyMinute()->withoutOverlapping();
 
 Artisan::command('alerts:demo {vehicle_id? : Optional vehicle ID used as alert context}', function (): int {
     $vehicleId = $this->argument('vehicle_id') ? (int) $this->argument('vehicle_id') : null;
