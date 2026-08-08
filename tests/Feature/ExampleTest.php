@@ -733,6 +733,38 @@ test('historical gps replay is stored without replacing live tracker state', fun
     ]);
 });
 
+test('gps ingestion never copies a previous address onto new coordinates', function () {
+    Carbon::setTestNow(Carbon::parse('2026-08-08 09:30:00', config('app.timezone')));
+    $this->beforeApplicationDestroyed(fn () => Carbon::setTestNow());
+
+    $device = Device::factory()->create([
+        'imei' => '353201355315547',
+        'status' => 'online',
+        'last_position_at' => now()->subMinute(),
+        'last_latitude' => -4.349815,
+        'last_longitude' => 15.2977483,
+        'last_address' => '196, Avenue de L ECOLE, Ngaliema, Kinshasa',
+    ]);
+
+    $exitCode = Artisan::call('gps:ingest-position', [
+        '--payload' => json_encode([
+            'imei' => $device->imei,
+            'lat' => -4.350500,
+            'lng' => 15.311000,
+            'speed' => 0,
+            'movement' => false,
+            'ignition' => false,
+            'gps_time' => now()->toIso8601String(),
+        ]),
+    ]);
+
+    $position = Position::query()->where('device_id', $device->id)->latest('id')->firstOrFail();
+
+    expect($exitCode)->toBe(0)
+        ->and($position->address)->toBeNull()
+        ->and($device->refresh()->last_address)->toBeNull();
+});
+
 test('superadmin can browse tracker events with ajax datatable', function () {
     $superadmin = User::factory()->superadmin()->create();
     $fleet = Fleet::factory()->create(['name' => 'EXAD CARS']);
@@ -817,6 +849,8 @@ test('superadmin can browse tracker events with ajax datatable', function () {
 });
 
 test('superadmin can open tracker details with fleet and latest events', function () {
+    config(['services.google_maps.api_key' => '', 'services.mapbox.public_token' => '']);
+
     $superadmin = User::factory()->superadmin()->create();
     $fleet = Fleet::factory()->create(['name' => 'EXAD CARS', 'code' => 'EX-CRS']);
     $vehicle = Vehicle::factory()->create([
@@ -841,6 +875,7 @@ test('superadmin can open tracker details with fleet and latest events', functio
         'last_driver_identifier_uid' => 'ABCD1234',
         'operator_name' => 'Vodacom',
         'last_address' => 'Avenue des Ecuries, Joli Parc, Ngaliema, Kinshasa, Congo-Kinshasa',
+        'last_position_at' => now(),
     ]);
     $driver = Driver::query()->create([
         'fleet_id' => $fleet->id,
@@ -863,6 +898,7 @@ test('superadmin can open tracker details with fleet and latest events', functio
         'altitude' => 296,
         'address' => 'Avenue des Ecuries, Joli Parc, Ngaliema, Kinshasa, Congo-Kinshasa',
         'server_time' => now(),
+        'gps_time' => now(),
     ]);
 
     TrackerEvent::query()->create([
@@ -920,10 +956,12 @@ test('tracker details show the latest stopped or parked address', function () {
         'last_address' => 'Adresse de position courante',
         'last_movement' => true,
         'last_ignition' => true,
+        'last_position_at' => now()->setTime(8, 30),
     ]);
 
     Position::factory()->forDevice($device)->create([
         'server_time' => now()->setTime(8, 10),
+        'gps_time' => now()->setTime(8, 10),
         'latitude' => -4.328,
         'longitude' => 15.312,
         'address' => '128 Rue De Bolobo, Kinshasa, République démocratique du Congo',
@@ -933,6 +971,7 @@ test('tracker details show the latest stopped or parked address', function () {
     ]);
     Position::factory()->forDevice($device)->create([
         'server_time' => now()->setTime(8, 30),
+        'gps_time' => now()->setTime(8, 30),
         'latitude' => -4.331,
         'longitude' => 15.315,
         'address' => 'Position courante en mouvement',
@@ -977,6 +1016,7 @@ test('tracker details use the current parking start position for location data',
 
     Position::factory()->forDevice($device)->create([
         'server_time' => now()->subMinutes(12),
+        'gps_time' => now()->subMinutes(12),
         'latitude' => -4.349,
         'longitude' => 15.309,
         'address' => 'Position avant parking',
@@ -987,6 +1027,7 @@ test('tracker details use the current parking start position for location data',
     ]);
     Position::factory()->forDevice($device)->create([
         'server_time' => now()->subMinutes(8),
+        'gps_time' => now()->subMinutes(8),
         'latitude' => -4.350066,
         'longitude' => 15.3106833,
         'altitude' => 297,
@@ -998,6 +1039,7 @@ test('tracker details use the current parking start position for location data',
     ]);
     Position::factory()->forDevice($device)->create([
         'server_time' => now()->subMinute(),
+        'gps_time' => now()->subMinute(),
         'latitude' => -4.350500,
         'longitude' => 15.311000,
         'address' => 'Dernier ping parking',
@@ -1020,6 +1062,82 @@ test('tracker details use the current parking start position for location data',
         ->toContain('Parking')
         ->toContain('8 minutes')
         ->not->toContain('Dernier ping parking');
+});
+
+test('tracker details geocode the exact parking coordinates instead of a copied listener address', function () {
+    config([
+        'services.maps.provider' => 'google',
+        'services.google_maps.api_key' => 'AIza-test-key',
+        'services.mapbox.public_token' => '',
+    ]);
+    Carbon::setTestNow(Carbon::parse('2026-08-08 09:30:00', config('app.timezone')));
+    $this->beforeApplicationDestroyed(fn () => Carbon::setTestNow());
+
+    Http::fake(fn () => Http::response([
+        'status' => 'OK',
+        'results' => [[
+            'types' => ['street_address'],
+            'formatted_address' => 'Avenue Kasa-Vubu, Bayaka, Kinshasa, République démocratique du Congo',
+            'geometry' => ['location_type' => 'ROOFTOP'],
+            'address_components' => [
+                ['long_name' => 'Avenue Kasa-Vubu', 'types' => ['route']],
+                ['long_name' => 'Bayaka', 'types' => ['neighborhood']],
+                ['long_name' => 'Kinshasa', 'types' => ['locality']],
+                ['long_name' => 'République démocratique du Congo', 'types' => ['country']],
+            ],
+        ]],
+    ]));
+
+    $superadmin = User::factory()->superadmin()->create();
+    $fleet = Fleet::factory()->create();
+    $vehicle = Vehicle::factory()->for($fleet)->create(['name' => 'Suzuki Horly YANGO']);
+    $gpsTime = now()->subWeek();
+    $staleAddress = '196, Avenue de L ECOLE, Ngaliema, Kinshasa';
+    $device = Device::factory()->create([
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $vehicle->id,
+        'last_position_at' => $gpsTime,
+        'last_latitude' => -4.349815,
+        'last_longitude' => 15.2977483,
+        'last_address' => $staleAddress,
+        'last_ignition' => true,
+        'last_movement' => true,
+    ]);
+    $parkingPosition = Position::factory()->forDevice($device)->create([
+        'gps_time' => $gpsTime,
+        'server_time' => now(),
+        'latitude' => -4.349815,
+        'longitude' => 15.2977483,
+        'address' => $staleAddress,
+        'speed' => 0,
+        'movement' => true,
+        'ignition' => true,
+        'raw_data' => ['source' => 'gps-listener-server-local', 'payload' => []],
+    ]);
+    Position::factory()->forDevice($device)->create([
+        'gps_time' => $gpsTime->copy()->addHour(),
+        'server_time' => now()->addMinute(),
+        'latitude' => -4.200000,
+        'longitude' => 15.500000,
+        'address' => $staleAddress,
+        'speed' => 0,
+        'movement' => false,
+        'ignition' => false,
+        'raw_data' => ['source' => 'gps-listener-server-local', 'payload' => []],
+    ]);
+
+    $response = $this->actingAs($superadmin)
+        ->withHeader('X-Requested-With', 'XMLHttpRequest')
+        ->getJson(route('trackers.details', $device))
+        ->assertSuccessful();
+
+    expect($response->json('html'))
+        ->toContain('Avenue Kasa-Vubu')
+        ->toContain('Latitude : -4.3498150, Longitude : 15.2977483')
+        ->not->toContain($staleAddress)
+        ->not->toContain('-4.2000000');
+
+    expect($parkingPosition->refresh()->address)->toContain('Avenue Kasa-Vubu');
 });
 
 test('superadmin can display tracker trips as html and geojson', function () {

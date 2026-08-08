@@ -9,6 +9,10 @@ use App\Models\Vehicle;
 
 class MobileVehicleDetailService
 {
+    public function __construct(
+        private readonly PositionAddressService $positionAddress,
+    ) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -37,8 +41,12 @@ class MobileVehicleDetailService
                 ->limit(5),
         ]);
         $latestPosition = $this->latestPosition($device);
+        $latestStoppedPosition = $this->latestStoppedPosition($device);
         $parkingStart = $this->parkingStartPosition($device);
-        $locationPosition = $parkingStart ?: $latestPosition;
+        $locationPosition = $parkingStart ?: ($latestStoppedPosition ?: $latestPosition);
+        $locationAddress = $locationPosition instanceof Position
+            ? $this->positionAddress->resolve($locationPosition)
+            : null;
         $driverIdentifier = $this->currentDriverIdentifier($device);
         $driver = $driverIdentifier?->driver;
         $gsmSignal = $device->last_gsm_signal;
@@ -70,12 +78,12 @@ class MobileVehicleDetailService
                 'altitude_meters' => $locationPosition?->altitude !== null
                     ? (float) $locationPosition->altitude
                     : null,
-                'address' => $locationPosition?->address ?: $device->last_address,
+                'address' => $locationAddress,
                 'heading_degrees' => (int) ($locationPosition?->angle ?? $device->last_angle),
                 'movement' => $locationPosition?->movement ?? $device->last_movement,
                 'ignition' => $locationPosition?->ignition ?? $device->last_ignition,
-                'parking_started_at' => $parkingStart?->server_time?->toISOString(),
-                'updated_at' => ($locationPosition?->server_time ?: $device->last_position_at ?: $device->last_seen_at)?->toISOString(),
+                'parking_started_at' => ($parkingStart?->gps_time ?: $parkingStart?->server_time)?->toISOString(),
+                'updated_at' => ($locationPosition?->gps_time ?: $locationPosition?->server_time ?: $device->last_position_at)?->toISOString(),
             ],
             'driver' => $driver ? [
                 'full_name' => $driver->full_name,
@@ -140,11 +148,14 @@ class MobileVehicleDetailService
             ->where('device_id', $device->id)
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
+            ->when($device->last_position_at, fn ($query, $lastPositionAt) => $query->where('gps_time', '<=', $lastPositionAt))
+            ->latest('gps_time')
             ->latest('server_time')
             ->latest('id')
             ->first([
                 'id',
                 'device_id',
+                'gps_time',
                 'latitude',
                 'longitude',
                 'address',
@@ -154,6 +165,40 @@ class MobileVehicleDetailService
                 'angle',
                 'movement',
                 'ignition',
+                'raw_data',
+            ]);
+    }
+
+    private function latestStoppedPosition(Device $device): ?Position
+    {
+        return Position::query()
+            ->where('device_id', $device->id)
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->where(function ($query): void {
+                $query
+                    ->where('movement', false)
+                    ->orWhere('speed', 0)
+                    ->orWhere('ignition', false);
+            })
+            ->when($device->last_position_at, fn ($query, $lastPositionAt) => $query->where('gps_time', '<=', $lastPositionAt))
+            ->latest('gps_time')
+            ->latest('server_time')
+            ->latest('id')
+            ->first([
+                'id',
+                'device_id',
+                'gps_time',
+                'latitude',
+                'longitude',
+                'address',
+                'altitude',
+                'server_time',
+                'speed',
+                'angle',
+                'movement',
+                'ignition',
+                'raw_data',
             ]);
     }
 
@@ -167,12 +212,15 @@ class MobileVehicleDetailService
             ->where('device_id', $device->id)
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
+            ->when($device->last_position_at, fn ($query, $lastPositionAt) => $query->where('gps_time', '<=', $lastPositionAt))
+            ->latest('gps_time')
             ->latest('server_time')
             ->latest('id')
             ->limit(250)
             ->get([
                 'id',
                 'device_id',
+                'gps_time',
                 'latitude',
                 'longitude',
                 'address',
@@ -182,6 +230,7 @@ class MobileVehicleDetailService
                 'angle',
                 'movement',
                 'ignition',
+                'raw_data',
             ]);
         $parkingStart = null;
 
@@ -193,7 +242,30 @@ class MobileVehicleDetailService
             $parkingStart = $position;
         }
 
-        return $parkingStart;
+        return $parkingStart ?: Position::query()
+            ->where('device_id', $device->id)
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->where('ignition', false)
+            ->when($device->last_position_at, fn ($query, $lastPositionAt) => $query->where('gps_time', '<=', $lastPositionAt))
+            ->latest('gps_time')
+            ->latest('server_time')
+            ->latest('id')
+            ->first([
+                'id',
+                'device_id',
+                'gps_time',
+                'latitude',
+                'longitude',
+                'address',
+                'altitude',
+                'server_time',
+                'speed',
+                'angle',
+                'movement',
+                'ignition',
+                'raw_data',
+            ]);
     }
 
     private function currentDriverIdentifier(Device $device): ?DriverIdentifier

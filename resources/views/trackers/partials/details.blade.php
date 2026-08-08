@@ -8,7 +8,7 @@
     $formatVoltage = fn ($value) => $value !== null ? rtrim(rtrim(number_format((float) $value, 2, '.', ''), '0'), '.') : null;
     $parkingDuration = $parkingDuration ?? ($device->last_position_at ? $device->last_position_at->diffForHumans(null, true) : null);
     $locationUpdatedAt = $locationUpdatedAt ?? $updatedAt;
-    $locationAddress = $latestPosition?->address ?: $device->last_address;
+    $locationAddress = $locationAddress ?? ($latestPosition?->address ?: $device->last_address);
     $locationLatitude = $latestPosition?->latitude ?? $device->last_latitude;
     $locationLongitude = $latestPosition?->longitude ?? $device->last_longitude;
     $locationAltitude = $latestPosition?->altitude;

@@ -8,7 +8,6 @@ use App\Services\AlertService;
 use App\Services\DriverGeofenceService;
 use App\Services\DriverSessionService;
 use App\Services\MaintenanceService;
-use App\Services\ReverseGeocodingService;
 use App\Services\SpeedPolicyService;
 use App\Services\TrackerEventService;
 use Illuminate\Foundation\Inspiring;
@@ -329,16 +328,12 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         $gsmSignal = min(100, $rawGsmSignal <= 5 ? $rawGsmSignal * 20 : $rawGsmSignal);
     }
 
-    if ($address === null) {
-        $address = app(ReverseGeocodingService::class)->resolveBest(
-            (float) $validated['lat'],
-            (float) $validated['lng'],
-            $device->last_address,
-        );
-    }
-
     $driverSessionService = app(DriverSessionService::class);
     $driverIdentifierUid = $driverSessionService->extractIdentifierUid($data);
+    $coordinatesUnchanged = $device->last_latitude !== null
+        && $device->last_longitude !== null
+        && abs((float) $device->last_latitude - (float) $validated['lat']) < 0.00001
+        && abs((float) $device->last_longitude - (float) $validated['lng']) < 0.00001;
 
     $position = Position::query()->create([
         'device_id' => $device->id,
@@ -403,7 +398,7 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
             'last_io' => $validated['io'] ?? $device->last_io,
             'last_driver_identifier_uid' => $driverIdentifierUid ?? $device->last_driver_identifier_uid,
             'last_raw_payload' => $validated['raw'] ?? $rawTelemetry,
-            'last_address' => $address ?? $device->last_address,
+            'last_address' => $address ?? ($coordinatesUnchanged ? $device->last_address : null),
         ]);
     }
 

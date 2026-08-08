@@ -11,6 +11,7 @@ use App\Models\TrackerEvent;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Laravel\Fortify\Fortify;
 use Laravel\Sanctum\PersonalAccessToken;
 use PragmaRX\Google2FA\Google2FA;
@@ -385,6 +386,8 @@ test('mobile vehicle trips are scoped to the visible fleet without tracker secre
 });
 
 test('mobile vehicle details mirror the operational web sections without tracker identity', function () {
+    config(['services.google_maps.api_key' => '', 'services.mapbox.public_token' => '']);
+
     $fleet = Fleet::factory()->create();
     $user = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
     $vehicle = Vehicle::factory()->for($fleet)->create(['name' => 'Vehicule Detail']);
@@ -410,9 +413,11 @@ test('mobile vehicle details mirror the operational web sections without tracker
         'last_io' => ['ignition' => true],
         'last_sensors' => ['temperature' => 84],
         'last_driver_identifier_uid' => 'RFID-MOBILE-001',
+        'last_position_at' => now(),
     ]);
     $position = Position::factory()->forDevice($device)->create([
         'server_time' => now(),
+        'gps_time' => now(),
         'latitude' => -4.325,
         'longitude' => 15.31,
         'altitude' => 281,
@@ -473,6 +478,78 @@ test('mobile vehicle details mirror the operational web sections without tracker
         ->not->toContain('999999999999999')
         ->not->toContain('Nom Traceur Secret')
         ->not->toContain('Modele Traceur Secret');
+});
+
+test('mobile vehicle details use the exact parking coordinates and gps timestamp', function () {
+    config([
+        'services.maps.provider' => 'google',
+        'services.google_maps.api_key' => 'AIza-test-key',
+        'services.mapbox.public_token' => '',
+    ]);
+    Http::fake(fn () => Http::response([
+        'status' => 'OK',
+        'results' => [[
+            'types' => ['street_address'],
+            'formatted_address' => 'Avenue Kasa-Vubu, Bayaka, Kinshasa, République démocratique du Congo',
+            'geometry' => ['location_type' => 'ROOFTOP'],
+            'address_components' => [
+                ['long_name' => 'Avenue Kasa-Vubu', 'types' => ['route']],
+                ['long_name' => 'Bayaka', 'types' => ['neighborhood']],
+                ['long_name' => 'Kinshasa', 'types' => ['locality']],
+                ['long_name' => 'République démocratique du Congo', 'types' => ['country']],
+            ],
+        ]],
+    ]));
+
+    $fleet = Fleet::factory()->create();
+    $user = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
+    $vehicle = Vehicle::factory()->for($fleet)->create(['name' => 'Suzuki Horly YANGO']);
+    $gpsTime = now()->subWeek()->startOfSecond();
+    $staleAddress = '196, Avenue de L ECOLE, Ngaliema, Kinshasa';
+    $device = Device::factory()->online()->create([
+        'subscription_id' => $fleet->subscription_id,
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $vehicle->id,
+        'last_position_at' => $gpsTime,
+        'last_latitude' => -4.349815,
+        'last_longitude' => 15.2977483,
+        'last_address' => $staleAddress,
+        'last_ignition' => true,
+        'last_movement' => true,
+    ]);
+    Position::factory()->forDevice($device)->create([
+        'gps_time' => $gpsTime,
+        'server_time' => now(),
+        'latitude' => -4.349815,
+        'longitude' => 15.2977483,
+        'address' => $staleAddress,
+        'speed' => 0,
+        'movement' => true,
+        'ignition' => true,
+        'raw_data' => ['source' => 'gps-listener-server-local', 'payload' => []],
+    ]);
+    Position::factory()->forDevice($device)->create([
+        'gps_time' => $gpsTime->copy()->addHour(),
+        'server_time' => now()->addMinute(),
+        'latitude' => -4.200000,
+        'longitude' => 15.500000,
+        'address' => $staleAddress,
+        'speed' => 0,
+        'movement' => false,
+        'ignition' => false,
+        'raw_data' => ['source' => 'gps-listener-server-local', 'payload' => []],
+    ]);
+    $accessToken = $this->postJson(route('api.v1.mobile.auth.login'), mobileCredentials($user))
+        ->assertSuccessful()
+        ->json('data.tokens.access_token');
+
+    $this->withToken($accessToken)
+        ->getJson(route('api.v1.mobile.vehicles.details', $vehicle->id))
+        ->assertSuccessful()
+        ->assertJsonPath('data.details.location.latitude', -4.349815)
+        ->assertJsonPath('data.details.location.longitude', 15.2977483)
+        ->assertJsonPath('data.details.location.address', 'Avenue Kasa-Vubu, Bayaka, Kinshasa, République démocratique du Congo')
+        ->assertJsonPath('data.details.location.updated_at', $gpsTime->toISOString());
 });
 
 test('mobile superadmin vehicle details include the tracker technical identity', function () {

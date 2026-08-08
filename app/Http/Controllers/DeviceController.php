@@ -8,7 +8,7 @@ use App\Models\DriverIdentifier;
 use App\Models\Position;
 use App\Models\Vehicle;
 use App\Services\DeviceTripService;
-use App\Services\ReverseGeocodingService;
+use App\Services\PositionAddressService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
@@ -330,17 +330,17 @@ class DeviceController extends Controller
             ->with('status_type', 'danger');
     }
 
-    public function details(Request $request, Device $device, ReverseGeocodingService $reverseGeocoding): JsonResponse
+    public function details(Request $request, Device $device, PositionAddressService $positionAddress): JsonResponse
     {
         abort_unless(
             Device::query()->visibleTo($request->user())->whereKey($device->id)->exists(),
             403
         );
 
-        return $this->detailsResponse($device, $reverseGeocoding, true);
+        return $this->detailsResponse($device, $positionAddress, true);
     }
 
-    public function vehicleDetails(Request $request, Vehicle $vehicle, ReverseGeocodingService $reverseGeocoding): JsonResponse
+    public function vehicleDetails(Request $request, Vehicle $vehicle, PositionAddressService $positionAddress): JsonResponse
     {
         abort_unless(
             Vehicle::query()->visibleTo($request->user())->whereKey($vehicle->id)->exists(),
@@ -352,10 +352,10 @@ class DeviceController extends Controller
             ->where('vehicle_id', $vehicle->id)
             ->firstOrFail();
 
-        return $this->detailsResponse($device, $reverseGeocoding, $request->user()->isSuperadmin());
+        return $this->detailsResponse($device, $positionAddress, $request->user()->isSuperadmin());
     }
 
-    private function detailsResponse(Device $device, ReverseGeocodingService $reverseGeocoding, bool $showTechnicalDetails): JsonResponse
+    private function detailsResponse(Device $device, PositionAddressService $positionAddress, bool $showTechnicalDetails): JsonResponse
     {
         $device->load([
             'fleet:id,name,code',
@@ -371,9 +371,11 @@ class DeviceController extends Controller
             ->where('device_id', $device->id)
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
+            ->when($device->last_position_at, fn ($query, $lastPositionAt) => $query->where('gps_time', '<=', $lastPositionAt))
+            ->latest('gps_time')
             ->latest('server_time')
             ->latest('id')
-            ->first(['id', 'device_id', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition']);
+            ->first(['id', 'device_id', 'gps_time', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition', 'raw_data']);
         $latestStoppedPosition = Position::query()
             ->where('device_id', $device->id)
             ->whereNotNull('latitude')
@@ -384,18 +386,20 @@ class DeviceController extends Controller
                     ->orWhere('speed', 0)
                     ->orWhere('ignition', false);
             })
+            ->when($device->last_position_at, fn ($query, $lastPositionAt) => $query->where('gps_time', '<=', $lastPositionAt))
+            ->latest('gps_time')
             ->latest('server_time')
             ->latest('id')
-            ->first(['id', 'device_id', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition']);
+            ->first(['id', 'device_id', 'gps_time', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition', 'raw_data']);
         $parkingStartPosition = $this->parkingStartPosition($device);
         $locationPosition = $parkingStartPosition ?: ($latestStoppedPosition ?: $latestPosition);
-        $locationUpdatedAt = $locationPosition?->server_time ?: ($device->last_seen_at ?: $device->last_position_at);
-        $parkingStartedAt = $parkingStartPosition?->server_time;
+        $locationUpdatedAt = $locationPosition?->gps_time ?: ($locationPosition?->server_time ?: $device->last_position_at);
+        $parkingStartedAt = $parkingStartPosition?->gps_time ?: $parkingStartPosition?->server_time;
 
-        $this->refreshReadableAddress(
+        $locationAddress = $this->refreshReadableAddress(
             $device,
             $locationPosition,
-            $reverseGeocoding,
+            $positionAddress,
             $locationPosition instanceof Position && $latestPosition instanceof Position && $locationPosition->is($latestPosition),
         );
         $currentDriver = $this->currentDriverForDevice($device);
@@ -405,6 +409,7 @@ class DeviceController extends Controller
                 'device' => $device,
                 'currentDriver' => $currentDriver,
                 'latestPosition' => $locationPosition,
+                'locationAddress' => $locationAddress ?? __('trackers.address_unavailable'),
                 'gpsQuality' => $this->gpsQuality($device),
                 'direction' => $this->directionLabel((int) ($locationPosition?->angle ?? $device->last_angle)),
                 'locationUpdatedAt' => $locationUpdatedAt,
@@ -498,35 +503,25 @@ class DeviceController extends Controller
     private function refreshReadableAddress(
         Device $device,
         ?Position $latestPosition,
-        ReverseGeocodingService $reverseGeocoding,
+        PositionAddressService $positionAddress,
         bool $syncDeviceAddress = true,
-    ): void {
-        $latitude = $latestPosition?->latitude ?? $device->last_latitude;
-        $longitude = $latestPosition?->longitude ?? $device->last_longitude;
-
-        if ($latitude === null || $longitude === null) {
-            return;
+    ): ?string {
+        if (! $latestPosition instanceof Position) {
+            return null;
         }
 
-        $resolvedAddress = $reverseGeocoding->resolveBest(
-            (float) $latitude,
-            (float) $longitude,
-            $latestPosition?->address ?: $device->last_address,
-        );
+        $resolvedAddress = $positionAddress->resolve($latestPosition);
 
         if ($resolvedAddress === null) {
-            return;
-        }
-
-        if ($latestPosition instanceof Position && $latestPosition->address !== $resolvedAddress) {
-            $latestPosition->forceFill(['address' => $resolvedAddress])->save();
-            $latestPosition->address = $resolvedAddress;
+            return null;
         }
 
         if ($syncDeviceAddress && $device->last_address !== $resolvedAddress) {
             $device->forceFill(['last_address' => $resolvedAddress])->save();
             $device->last_address = $resolvedAddress;
         }
+
+        return $resolvedAddress;
     }
 
     private function parkingStartPosition(Device $device): ?Position
@@ -539,10 +534,12 @@ class DeviceController extends Controller
             ->where('device_id', $device->id)
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
+            ->when($device->last_position_at, fn ($query, $lastPositionAt) => $query->where('gps_time', '<=', $lastPositionAt))
+            ->latest('gps_time')
             ->latest('server_time')
             ->latest('id')
             ->limit(250)
-            ->get(['id', 'device_id', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition']);
+            ->get(['id', 'device_id', 'gps_time', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition', 'raw_data']);
 
         $parkingStart = null;
 
@@ -559,9 +556,11 @@ class DeviceController extends Controller
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->where('ignition', false)
+            ->when($device->last_position_at, fn ($query, $lastPositionAt) => $query->where('gps_time', '<=', $lastPositionAt))
+            ->latest('gps_time')
             ->latest('server_time')
             ->latest('id')
-            ->first(['id', 'device_id', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition']);
+            ->first(['id', 'device_id', 'gps_time', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition', 'raw_data']);
     }
 
     /**
