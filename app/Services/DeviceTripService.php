@@ -9,6 +9,8 @@ use Illuminate\Support\Collection;
 
 class DeviceTripService
 {
+    private const ENRICHMENT_BUDGET_SECONDS = 5.0;
+
     private const MAX_GAP_MINUTES = 15;
 
     private const STOP_SPLIT_MINUTES = 5;
@@ -26,6 +28,8 @@ class DeviceTripService
         '#dc2626',
     ];
 
+    private ?float $enrichmentDeadline = null;
+
     public function __construct(
         private readonly ReverseGeocodingService $reverseGeocoding,
         private readonly GoogleRoadsService $googleRoads,
@@ -42,6 +46,8 @@ class DeviceTripService
      */
     public function build(Device $device, Carbon $from, Carbon $to): array
     {
+        $this->enrichmentDeadline = microtime(true) + self::ENRICHMENT_BUDGET_SECONDS;
+
         $positions = Position::query()
             ->where('device_id', $device->id)
             ->where(function ($query) use ($from, $to): void {
@@ -80,7 +86,7 @@ class DeviceTripService
         $totalDistance = round(array_sum(array_column($trips, 'distance_km')), 2);
         $totalDuration = (int) array_sum(array_column($trips, 'duration_seconds'));
 
-        return [
+        $payload = [
             'trips' => $trips,
             'total_distance_km' => $totalDistance,
             'total_duration_seconds' => $totalDuration,
@@ -108,6 +114,10 @@ class DeviceTripService
                 ])->values()->all(),
             ],
         ];
+
+        $this->enrichmentDeadline = null;
+
+        return $payload;
     }
 
     /**
@@ -278,7 +288,9 @@ class DeviceTripService
             'average_speed_kmh' => $averageSpeed,
             'max_speed_kmh' => $maxSpeed,
             'color' => $color,
-            'coordinates' => $this->googleRoads->snap($positions),
+            'coordinates' => $this->canEnrich()
+                ? $this->googleRoads->snap($positions)
+                : $this->rawCoordinates($positions),
         ];
     }
 
@@ -346,10 +358,12 @@ class DeviceTripService
 
         // Tracker payloads can keep an old address after coordinates change.
         // Resolve each trip boundary from its own coordinates first.
-        $resolvedAddress = $this->reverseGeocoding->resolve(
-            (float) $position->latitude,
-            (float) $position->longitude,
-        );
+        $resolvedAddress = $this->canEnrich()
+            ? $this->reverseGeocoding->resolve(
+                (float) $position->latitude,
+                (float) $position->longitude,
+            )
+            : null;
 
         $resolvedAddress ??= is_string($currentAddress) && trim($currentAddress) !== ''
             ? trim($currentAddress)
@@ -367,6 +381,27 @@ class DeviceTripService
             'latitude' => $position->latitude,
             'longitude' => $position->longitude,
         ]);
+    }
+
+    private function canEnrich(): bool
+    {
+        return $this->enrichmentDeadline !== null
+            && microtime(true) < $this->enrichmentDeadline;
+    }
+
+    /**
+     * @param  Collection<int, Position>  $positions
+     * @return list<array{0: float, 1: float}>
+     */
+    private function rawCoordinates(Collection $positions): array
+    {
+        return $positions
+            ->map(fn (Position $position): array => [
+                (float) $position->longitude,
+                (float) $position->latitude,
+            ])
+            ->values()
+            ->all();
     }
 
     public function durationLabel(int $seconds): string

@@ -72,8 +72,8 @@ class ReverseGeocodingService
         }
 
         try {
-            $response = Http::timeout(5)
-                ->retry(2, 200)
+            $response = Http::connectTimeout(1)
+                ->timeout(2)
                 ->get('https://maps.googleapis.com/maps/api/geocode/json', [
                     'latlng' => $latitude.','.$longitude,
                     'key' => $apiKey,
@@ -128,8 +128,8 @@ class ReverseGeocodingService
         }
 
         try {
-            $response = Http::timeout(5)
-                ->retry(2, 200)
+            $response = Http::connectTimeout(1)
+                ->timeout(2)
                 ->get('https://api.mapbox.com/search/geocode/v6/reverse', [
                     'latitude' => $latitude,
                     'longitude' => $longitude,

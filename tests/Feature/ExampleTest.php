@@ -733,6 +733,54 @@ test('historical gps replay is stored without replacing live tracker state', fun
     ]);
 });
 
+test('delayed gps replay advances a stale known position without triggering realtime events', function () {
+    Carbon::setTestNow(Carbon::parse('2026-08-08 14:00:00', config('app.timezone')));
+    $this->beforeApplicationDestroyed(fn () => Carbon::setTestNow());
+
+    $device = Device::factory()->create([
+        'imei' => '353201355315547',
+        'status' => 'online',
+        'last_seen_at' => now()->subMinute(),
+        'last_position_at' => Carbon::parse('2026-07-31 23:45:44', config('app.timezone')),
+        'last_latitude' => -4.349815,
+        'last_longitude' => 15.2977483,
+        'last_speed' => 0,
+        'last_angle' => 0,
+        'last_movement' => false,
+        'last_ignition' => false,
+    ]);
+    $gpsTime = now()->subHours(3);
+
+    $exitCode = Artisan::call('gps:ingest-position', [
+        '--payload' => json_encode([
+            'imei' => $device->imei,
+            'lat' => -4.0580516,
+            'lng' => 15.5559816,
+            'speed' => 19,
+            'angle' => 72,
+            'movement' => true,
+            'ignition' => true,
+            'gps_time' => $gpsTime->toIso8601String(),
+        ]),
+    ]);
+
+    $device->refresh();
+
+    expect($exitCode)->toBe(0)
+        ->and($device->last_position_at->equalTo($gpsTime))->toBeTrue()
+        ->and((float) $device->last_latitude)->toBe(-4.0580516)
+        ->and((float) $device->last_longitude)->toBe(15.5559816)
+        ->and($device->last_speed)->toBe(19)
+        ->and($device->last_movement)->toBeTrue()
+        ->and($device->last_ignition)->toBeTrue()
+        ->and(Artisan::output())->toContain('"updates_live_state":false');
+
+    $this->assertDatabaseMissing('tracker_events', [
+        'device_id' => $device->id,
+        'type' => 'movement_started',
+    ]);
+});
+
 test('gps ingestion never copies a previous address onto new coordinates', function () {
     Carbon::setTestNow(Carbon::parse('2026-08-08 09:30:00', config('app.timezone')));
     $this->beforeApplicationDestroyed(fn () => Carbon::setTestNow());

@@ -12,6 +12,7 @@ use Throwable;
 class GoogleRoadsService
 {
     private const CACHE_TTL_HOURS = 6;
+
     private const MAX_POINTS_PER_REQUEST = 100;
 
     /**
@@ -68,8 +69,8 @@ class GoogleRoadsService
 
         try {
             foreach ($this->chunksWithOverlap($coordinates) as $chunk) {
-                $response = Http::timeout(8)
-                    ->retry(2, 250)
+                $response = Http::connectTimeout(1)
+                    ->timeout(2)
                     ->get('https://roads.googleapis.com/v1/snapToRoads', [
                         'path' => collect($chunk)
                             ->map(fn (array $coordinate): string => $coordinate[1].','.$coordinate[0])
@@ -168,5 +169,4 @@ class GoogleRoadsService
     {
         return 'google-roads:snap:v1:'.md5(json_encode($coordinates));
     }
-
 }

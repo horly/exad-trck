@@ -150,6 +150,7 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
     $isChronologicalPosition = $device->last_position_at === null
         || $gpsTime->greaterThanOrEqualTo($device->last_position_at);
     $updatesLiveState = $isFreshPosition && $isChronologicalPosition;
+    $advancesKnownPosition = $isChronologicalPosition;
     $speed = (int) ($validated['speed'] ?? 0);
     $angle = isset($validated['angle'])
         ? (int) $validated['angle']
@@ -362,7 +363,7 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         'codec' => $validated['codec'] ?? $device->codec,
     ];
 
-    if ($updatesLiveState) {
+    if ($advancesKnownPosition) {
         $deviceAttributes = array_merge($deviceAttributes, [
             'last_position_at' => $gpsTime,
             'last_latitude' => $validated['lat'],
@@ -435,6 +436,7 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         'status' => $device->status,
         'imei' => $device->imei,
         'updates_live_state' => $updatesLiveState,
+        'advances_known_position' => $advancesKnownPosition,
         'driver_identifier_uid' => $driverIdentifierUid,
         'driver_session_id' => $driverSession?->id,
     ]));
