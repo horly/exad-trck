@@ -836,3 +836,19 @@ The battery voltage field must not be greater than 100.
 - La commande `gps:mark-stale --minutes=5`, deja disponible mais non planifiee, est maintenant executee chaque minute avec `withoutOverlapping()` ; son premier passage a correctement marque deux traceurs silencieux hors ligne.
 - Aucune execution du scheduler Laravel n'etait configuree sur le VPS malgre un service cron actif. L'entree `/etc/cron.d/exad-tracking` lance desormais `php artisan schedule:run` chaque minute sous l'utilisateur `exad-tracking`.
 - Sauvegarde de retour arriere de la route console : `/tmp/exad-console-before-stale-schedule-20260802.php`. La syntaxe PHP, `schedule:list`, l'execution manuelle du scheduler et le service cron ont ete valides.
+
+## 2026-08-16 - Correction des adresses manquantes dans les trajets
+- Diagnostic production : Google et Mapbox etaient configures, mais 3 662 des 3 666 positions du jour ne possedaient pas encore d'adresse en base.
+- Cause applicative : le calcul des trajets partageait un budget global de cinq secondes entre les fuseaux horaires, le geocodage inverse et Google Roads. Les derniers trajets ne tentaient plus de resoudre leurs adresses lorsque les traitements precedents avaient epuise ce budget, puis affichaient latitude et longitude.
+- Correction deployee : les adresses de depart et d'arrivee sont desormais resolues avant les enrichissements optionnels et ne sont plus ignorees lorsque le budget Google Roads est expire.
+- Les appels de fuseau horaire utilisent maintenant des delais explicites de connexion et de reponse plus courts. Les messages bruts des exceptions HTTP, susceptibles de contenir une cle dans leur URL, ne sont plus journalises par les services cartographiques modifies.
+- Archive de deploiement controlee avant installation avec le SHA-256 `6dbb0ce0da27e917a12d11e73e99581d83522a1474270f4595c9dd53fb032811`.
+- Sauvegarde de retour arriere : `/tmp/exadtracking-before-geocoding-20260816.tar.gz`.
+- Validation : syntaxe PHP des quatre services, empreintes locales/distantes identiques, 145 tests Laravel et 1 318 assertions, caches configuration/vue reconstruits, `/up` et `/login` en HTTP 200.
+
+## 2026-08-16 - Sélecteur du fournisseur cartographique
+- Ajout dans la personnalisation superadmin d’un réglage global permettant de choisir Google Maps ou Mapbox comme carte de suivi par défaut, sans modifier les clés API ni redéployer l’application.
+- Le choix est stocké dans `application_settings.map_provider`; la migration additive conserve `google` pour les installations existantes et la validation refuse tout fournisseur non pris en charge.
+- La page de carte charge désormais les ressources Google Maps ou Mapbox à partir de ce réglage persistant. La production reste configurée sur Google Maps après la migration.
+- Archive de déploiement vérifiée avec le SHA-256 `144988604211e0c2bba40239ae61558a0721756660a9e40135c4346b8bda571e` et sauvegarde de retour arrière conservée dans `/tmp/exadtracking-before-map-provider-20260816-151026.tar.gz`.
+- Validation : empreintes des sept fichiers locaux/distants identiques, migration exécutée en lot 12, 145 tests Laravel et 1 321 assertions, caches reconstruits, `/up` et `/login` en HTTP 200, Apache et les services GPS actifs.

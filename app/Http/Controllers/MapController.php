@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ApplicationSetting;
 use App\Models\Device;
 use App\Models\Fleet;
 use App\Services\DeviceMovementService;
@@ -17,7 +18,10 @@ class MapController extends Controller
      */
     private const STATUSES = ['online', 'inactive', 'offline', 'maintenance'];
 
-    public function __construct(private readonly DeviceMovementService $movementService) {}
+    public function __construct(
+        private readonly DeviceMovementService $movementService,
+        private readonly ApplicationSetting $applicationSettings,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -190,8 +194,6 @@ class MapController extends Controller
 
     private function mapProvider(): string
     {
-        $provider = (string) config('services.maps.provider', 'google');
-
-        return in_array($provider, ['google', 'mapbox'], true) ? $provider : 'google';
+        return $this->applicationSettings->mapProvider();
     }
 }

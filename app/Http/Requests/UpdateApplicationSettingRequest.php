@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\ApplicationSetting;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateApplicationSettingRequest extends FormRequest
 {
@@ -30,6 +32,7 @@ class UpdateApplicationSettingRequest extends FormRequest
             'app_name' => ['required', 'string', 'max:80'],
             'short_name' => ['required', 'string', 'max:40'],
             'website_url' => ['nullable', 'url:http,https', 'max:255'],
+            'map_provider' => ['required', 'string', Rule::in(ApplicationSetting::MAP_PROVIDERS)],
             'logo' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:min_width=120,min_height=40,max_width=2400,max_height=1200'],
             'internal_logo' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:min_width=80,min_height=30,max_width=2400,max_height=1200'],
             'favicon' => ['nullable', 'file', 'mimes:png,webp,ico', 'max:1024'],

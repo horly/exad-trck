@@ -103,7 +103,6 @@ class GoogleRoadsService
         } catch (Throwable $exception) {
             Log::warning('Google Roads snap exception.', [
                 'exception' => $exception::class,
-                'message' => $exception->getMessage(),
             ]);
 
             return null;

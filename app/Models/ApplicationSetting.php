@@ -7,6 +7,15 @@ use Illuminate\Support\Facades\Storage;
 
 class ApplicationSetting extends Model
 {
+    public const MAP_PROVIDER_GOOGLE = 'google';
+
+    public const MAP_PROVIDER_MAPBOX = 'mapbox';
+
+    public const MAP_PROVIDERS = [
+        self::MAP_PROVIDER_GOOGLE,
+        self::MAP_PROVIDER_MAPBOX,
+    ];
+
     public const DEFAULT_COLORS = [
         'primary_color' => '#171064',
         'secondary_color' => '#2F67E8',
@@ -21,6 +30,7 @@ class ApplicationSetting extends Model
         'app_name',
         'short_name',
         'website_url',
+        'map_provider',
         'logo_path',
         'internal_logo_path',
         'favicon_path',
@@ -38,6 +48,7 @@ class ApplicationSetting extends Model
     protected $attributes = [
         'app_name' => 'EXAD Tracking',
         'short_name' => 'EXAD Tracking',
+        'map_provider' => self::MAP_PROVIDER_GOOGLE,
         'primary_color' => '#171064',
         'secondary_color' => '#2F67E8',
         'button_color' => '#171064',
@@ -46,6 +57,13 @@ class ApplicationSetting extends Model
         'sidebar_start_color' => '#1B146F',
         'sidebar_end_color' => '#0F0A43',
     ];
+
+    public function mapProvider(): string
+    {
+        return in_array($this->map_provider, self::MAP_PROVIDERS, true)
+            ? $this->map_provider
+            : self::MAP_PROVIDER_GOOGLE;
+    }
 
     public function logoUrl(bool $forDarkSurface = false): string
     {

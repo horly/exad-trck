@@ -15,6 +15,7 @@ function validCustomizationPayload(array $overrides = []): array
         'app_name' => 'EXAD Tracking',
         'short_name' => 'EXAD Tracking',
         'website_url' => 'https://exadtracking.app',
+        'map_provider' => 'google',
         'primary_color' => '#171064',
         'secondary_color' => '#2F67E8',
         'button_color' => '#171064',
@@ -38,13 +39,14 @@ test('customization page exposes the approved corporate settings only', function
         ->assertSee('name="logo"', false)
         ->assertSee('name="internal_logo"', false)
         ->assertSee('name="favicon"', false)
+        ->assertSee('name="map_provider"', false)
         ->assertSee('data-theme-color', false)
         ->assertSee('name="support_email"', false)
         ->assertDontSee('name="slogan"', false)
         ->assertDontSee('name="description"', false)
         ->assertDontSee('name="copyright"', false);
 
-    expect(Schema::hasColumns('application_settings', ['app_name', 'short_name', 'logo_path', 'internal_logo_path', 'favicon_path']))->toBeTrue()
+    expect(Schema::hasColumns('application_settings', ['app_name', 'short_name', 'map_provider', 'logo_path', 'internal_logo_path', 'favicon_path']))->toBeTrue()
         ->and(Schema::hasColumn('application_settings', 'slogan'))->toBeFalse()
         ->and(Schema::hasColumn('application_settings', 'description'))->toBeFalse()
         ->and(Schema::hasColumn('application_settings', 'copyright'))->toBeFalse();
@@ -57,6 +59,7 @@ test('superadmin can update and propagate application identity and colors', func
         ->patch(route('customization.update'), validCustomizationPayload([
             'app_name' => 'EXAD Fleet Control',
             'short_name' => 'EXAD Fleet',
+            'map_provider' => 'mapbox',
             'button_color' => '#123456',
             'sidebar_start_color' => '#112233',
             'sidebar_end_color' => '#223344',
@@ -68,6 +71,7 @@ test('superadmin can update and propagate application identity and colors', func
     expect($settings)
         ->app_name->toBe('EXAD Fleet Control')
         ->short_name->toBe('EXAD Fleet')
+        ->map_provider->toBe('mapbox')
         ->button_color->toBe('#123456')
         ->sidebar_start_color->toBe('#112233')
         ->sidebar_end_color->toBe('#223344');
@@ -95,10 +99,11 @@ test('customization validation errors remain attached to their fields', function
             'app_name' => '',
             'website_url' => 'invalid-address',
             'primary_color' => 'blue',
+            'map_provider' => 'openstreetmap',
             'internal_logo' => UploadedFile::fake()->create('internal-logo.svg', 10, 'image/svg+xml'),
         ]))
         ->assertRedirect(route('customization.index'))
-        ->assertSessionHasErrors(['app_name', 'website_url', 'primary_color', 'internal_logo']);
+        ->assertSessionHasErrors(['app_name', 'website_url', 'primary_color', 'map_provider', 'internal_logo']);
 
     $this->actingAs($superadmin)
         ->get(route('customization.index'))

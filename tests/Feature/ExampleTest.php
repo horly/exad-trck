@@ -2,6 +2,7 @@
 
 use App\Events\AlertCreated;
 use App\Models\Alert;
+use App\Models\ApplicationSetting;
 use App\Models\Device;
 use App\Models\Driver;
 use App\Models\DriverIdentifier;
@@ -1494,6 +1495,80 @@ test('tracker trips resolve missing addresses with mapbox reverse geocoding', fu
     expect($start->refresh()->address)->toBe('Avenue de l’OUA, Ngaliema, Kinshasa, Congo-Kinshasa');
 });
 
+test('tracker trip addresses are resolved before the optional enrichment budget expires', function () {
+    config([
+        'services.maps.provider' => 'google',
+        'services.google_maps.api_key' => 'AIza-test-key',
+        'services.google_maps.roads_enabled' => false,
+        'services.mapbox.public_token' => '',
+    ]);
+
+    $timezoneDelayed = false;
+
+    Http::fake(function ($request) use (&$timezoneDelayed) {
+        if (str_contains($request->url(), '/maps/api/timezone/json')) {
+            if (! $timezoneDelayed) {
+                $timezoneDelayed = true;
+                usleep(5_100_000);
+            }
+
+            return Http::response([
+                'status' => 'OK',
+                'timeZoneId' => 'Africa/Kinshasa',
+            ]);
+        }
+
+        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+        $address = str_starts_with((string) ($query['latlng'] ?? ''), '-4.352')
+            ? 'Avenue Kasa-Vubu, Kinshasa, Congo-Kinshasa'
+            : 'Avenue des Huileries, Kinshasa, Congo-Kinshasa';
+
+        return Http::response([
+            'status' => 'OK',
+            'results' => [[
+                'types' => ['route'],
+                'formatted_address' => $address,
+                'geometry' => ['location_type' => 'GEOMETRIC_CENTER'],
+                'address_components' => [
+                    ['long_name' => str($address)->before(',')->toString(), 'types' => ['route']],
+                    ['long_name' => 'Kinshasa', 'types' => ['locality']],
+                    ['long_name' => 'Congo-Kinshasa', 'types' => ['country']],
+                ],
+            ]],
+        ]);
+    });
+
+    $superadmin = User::factory()->superadmin()->create();
+    $device = Device::factory()->create();
+
+    foreach ([
+        ['time' => now()->setTime(11, 5), 'lat' => -4.3476283, 'lng' => 15.3145250],
+        ['time' => now()->setTime(11, 9), 'lat' => -4.3520000, 'lng' => 15.3210600],
+    ] as $point) {
+        Position::factory()->forDevice($device)->create([
+            'server_time' => $point['time'],
+            'gps_time' => $point['time'],
+            'latitude' => $point['lat'],
+            'longitude' => $point['lng'],
+            'address' => null,
+            'movement' => true,
+            'speed' => 20,
+            'raw_data' => null,
+        ]);
+    }
+
+    $response = $this->actingAs($superadmin)
+        ->withHeader('X-Requested-With', 'XMLHttpRequest')
+        ->getJson(route('trackers.trips', ['device' => $device, 'period' => 'today']))
+        ->assertSuccessful();
+
+    expect($response->json('html'))
+        ->toContain('Avenue des Huileries')
+        ->toContain('Avenue Kasa-Vubu')
+        ->not->toContain('Latitude :')
+        ->and($timezoneDelayed)->toBeTrue();
+});
+
 test('tracker trips resolve each boundary from its own coordinates when stored addresses are stale', function () {
     config([
         'services.maps.provider' => 'google',
@@ -1643,7 +1718,6 @@ test('tracker trips improve generic addresses with google geocoding and snap pat
 test('authenticated users can view the map page with google maps as default provider', function () {
     $user = User::factory()->superadmin()->create();
     config([
-        'services.maps.provider' => 'google',
         'services.google_maps.api_key' => 'AIza-test-key',
     ]);
 
@@ -1660,9 +1734,9 @@ test('authenticated users can view the map page with google maps as default prov
         ->assertSee('exadMapConfig', false);
 });
 
-test('mapbox provider remains available for the future map selector', function () {
+test('the tracking map uses the mapbox provider selected in application settings', function () {
     $user = User::factory()->superadmin()->create();
-    config(['services.maps.provider' => 'mapbox']);
+    ApplicationSetting::query()->firstOrFail()->update(['map_provider' => 'mapbox']);
 
     $this->actingAs($user)
         ->get(route('map.index'))

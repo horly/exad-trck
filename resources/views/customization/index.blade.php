@@ -64,6 +64,24 @@
                         </div>
                     </section>
 
+                    <section class="customization-section" aria-labelledby="map-title">
+                        <div class="customization-section-heading">
+                            <span><i class="fa-solid fa-map-location-dot"></i></span>
+                            <div><h3 id="map-title">{{ __('customization.map_title') }}</h3><p>{{ __('customization.map_help') }}</p></div>
+                        </div>
+                        <div class="customization-form-grid">
+                            <div class="customization-field customization-field-half">
+                                <label class="form-label" for="map_provider">{{ __('customization.map_provider') }} *</label>
+                                <select id="map_provider" class="form-select @error('map_provider') is-invalid @enderror" name="map_provider" required>
+                                    <option value="google" @selected(old('map_provider', $settings->mapProvider()) === 'google')>{{ __('customization.map_google') }}</option>
+                                    <option value="mapbox" @selected(old('map_provider', $settings->mapProvider()) === 'mapbox')>{{ __('customization.map_mapbox') }}</option>
+                                </select>
+                                <small class="form-text text-muted">{{ __('customization.map_provider_help') }}</small>
+                                @error('map_provider')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+                    </section>
+
                     <section class="customization-section" aria-labelledby="visual-title">
                         <div class="customization-section-heading">
                             <span><i class="fa-regular fa-image"></i></span>

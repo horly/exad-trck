@@ -48,8 +48,8 @@ class LocationTimezoneService
     private function resolveWithGoogle(float $latitude, float $longitude, Carbon $timestamp, string $apiKey): ?string
     {
         try {
-            $response = Http::timeout(5)
-                ->retry(2, 200)
+            $response = Http::connectTimeout(1)
+                ->timeout(2)
                 ->get('https://maps.googleapis.com/maps/api/timezone/json', [
                     'location' => $latitude.','.$longitude,
                     'timestamp' => $timestamp->getTimestamp(),
@@ -76,7 +76,6 @@ class LocationTimezoneService
                 'latitude' => $latitude,
                 'longitude' => $longitude,
                 'exception' => $exception::class,
-                'message' => $exception->getMessage(),
             ]);
 
             return null;

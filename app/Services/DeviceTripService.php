@@ -259,6 +259,8 @@ class DeviceTripService
         $distance = $this->distanceFor($positions);
         $startTimestamp = $this->timestampFor($start);
         $endTimestamp = $this->timestampFor($end);
+        $startAddress = $this->addressFor($start);
+        $endAddress = $this->addressFor($end);
         $startTime = $this->localTimeFor($start);
         $endTime = $this->localTimeFor($end);
         $duration = max(0, (int) $startTimestamp->diffInSeconds($endTimestamp));
@@ -278,8 +280,8 @@ class DeviceTripService
             'date' => $startTime->format('d.m.Y'),
             'start_time' => $startTime->format('H:i'),
             'end_time' => $endTime->format('H:i'),
-            'start_address' => $this->addressFor($start),
-            'end_address' => $this->addressFor($end),
+            'start_address' => $startAddress,
+            'end_address' => $endAddress,
             'distance_km' => round($distance, 2),
             'distance_label' => __('trackers.trip_distance_value', ['distance' => number_format($distance, 2, '.', '')]),
             'duration_seconds' => $duration,
@@ -358,12 +360,10 @@ class DeviceTripService
 
         // Tracker payloads can keep an old address after coordinates change.
         // Resolve each trip boundary from its own coordinates first.
-        $resolvedAddress = $this->canEnrich()
-            ? $this->reverseGeocoding->resolve(
-                (float) $position->latitude,
-                (float) $position->longitude,
-            )
-            : null;
+        $resolvedAddress = $this->reverseGeocoding->resolve(
+            (float) $position->latitude,
+            (float) $position->longitude,
+        );
 
         $resolvedAddress ??= is_string($currentAddress) && trim($currentAddress) !== ''
             ? trim($currentAddress)

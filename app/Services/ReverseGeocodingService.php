@@ -112,7 +112,6 @@ class ReverseGeocodingService
                 'latitude' => $latitude,
                 'longitude' => $longitude,
                 'exception' => $exception::class,
-                'message' => $exception->getMessage(),
             ]);
 
             return null;
@@ -168,7 +167,6 @@ class ReverseGeocodingService
                 'latitude' => $latitude,
                 'longitude' => $longitude,
                 'exception' => $exception::class,
-                'message' => $exception->getMessage(),
             ]);
 
             return null;
