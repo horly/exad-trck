@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -75,7 +76,10 @@ class Driver extends Model
 
     public function primaryIdentifier(): HasOne
     {
-        return $this->hasOne(DriverIdentifier::class)->where('active', true)->oldestOfMany();
+        return $this->hasOne(DriverIdentifier::class)->ofMany(
+            ['id' => 'max'],
+            fn (Builder $query) => $query->where('active', true),
+        );
     }
 
     public function vehicles(): BelongsToMany
@@ -86,5 +90,14 @@ class Driver extends Model
     public function sessions(): HasMany
     {
         return $this->hasMany(DriverSession::class);
+    }
+
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->isSuperadmin()) {
+            return $query;
+        }
+
+        return $query->where('drivers.fleet_id', $user->fleet_id ?? 0);
     }
 }

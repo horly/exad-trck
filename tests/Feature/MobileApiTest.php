@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Device;
 use App\Models\Department;
+use App\Models\Device;
 use App\Models\Driver;
 use App\Models\DriverIdentifier;
 use App\Models\Fleet;
@@ -274,6 +274,70 @@ test('mobile operational data is restricted to the client fleet without tracker 
         ->not->toContain('FMB920-SECRET');
 });
 
+test('mobile drivers are read only fleet scoped and never expose identifiers', function () {
+    $fleet = Fleet::factory()->create(['name' => 'Flotte Chauffeurs']);
+    $otherFleet = Fleet::factory()->create(['name' => 'Flotte Interdite']);
+    $user = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
+    $department = Department::query()->create([
+        'fleet_id' => $fleet->id,
+        'name' => 'Operations',
+        'code' => 'OPS',
+        'status' => 'active',
+    ]);
+    $vehicle = Vehicle::factory()->for($fleet)->create([
+        'name' => 'Toyota Chauffeur',
+        'registration_number' => '1234BV01',
+    ]);
+    $driver = Driver::query()->create([
+        'fleet_id' => $fleet->id,
+        'department_id' => $department->id,
+        'first_name' => 'Arnold',
+        'last_name' => 'Lula',
+        'employee_id' => 'CH-001',
+        'phone' => '+243810000001',
+        'email' => 'arnold@example.test',
+        'status' => 'active',
+    ]);
+    $driver->vehicles()->attach($vehicle);
+    $driver->identifiers()->create([
+        'type' => 'ibutton',
+        'uid' => '38000009A29C2114',
+        'active' => true,
+    ]);
+    Driver::query()->create([
+        'fleet_id' => $otherFleet->id,
+        'first_name' => 'Conducteur',
+        'last_name' => 'Interdit',
+        'status' => 'active',
+    ]);
+    $accessToken = $this->postJson(route('api.v1.mobile.auth.login'), mobileCredentials($user))
+        ->assertSuccessful()
+        ->json('data.tokens.access_token');
+
+    $response = $this->withToken($accessToken)
+        ->getJson(route('api.v1.mobile.drivers.index', ['fleet_id' => $otherFleet->id, 'per_page' => 50]))
+        ->assertSuccessful()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.full_name', 'Arnold Lula')
+        ->assertJsonPath('data.0.employee_id', 'CH-001')
+        ->assertJsonPath('data.0.phone', '+243810000001')
+        ->assertJsonPath('data.0.fleet.name', 'Flotte Chauffeurs')
+        ->assertJsonPath('data.0.department.name', 'Operations')
+        ->assertJsonPath('data.0.vehicles.0.name', 'Toyota Chauffeur')
+        ->assertJsonMissingPath('data.0.identifier')
+        ->assertJsonMissingPath('data.0.identifiers')
+        ->assertJsonMissingPath('data.0.identifier_uid');
+
+    expect(json_encode($response->json(), JSON_THROW_ON_ERROR))
+        ->not->toContain('38000009A29C2114')
+        ->not->toContain('Conducteur Interdit');
+
+    $this->withToken($accessToken)
+        ->getJson(route('api.v1.mobile.drivers.index', ['search' => '38000009A29C2114']))
+        ->assertSuccessful()
+        ->assertJsonCount(0, 'data');
+});
+
 test('simple mobile users need the map permission', function () {
     $fleet = Fleet::factory()->create();
     $restrictedUser = User::factory()->simpleUser($fleet->subscription)->forFleet($fleet)->create([
@@ -385,15 +449,16 @@ test('mobile vehicle trips are scoped to the visible fleet without tracker secre
         ->assertNotFound();
 });
 
-test('mobile vehicle details mirror the operational web sections without tracker identity', function () {
+test('mobile client vehicle details include tracker identity without driver identifiers', function () {
     config(['services.google_maps.api_key' => '', 'services.mapbox.public_token' => '']);
 
     $fleet = Fleet::factory()->create();
+    $staleDeviceFleet = Fleet::factory()->create();
     $user = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
     $vehicle = Vehicle::factory()->for($fleet)->create(['name' => 'Vehicule Detail']);
     $device = Device::factory()->online()->create([
         'subscription_id' => $fleet->subscription_id,
-        'fleet_id' => $fleet->id,
+        'fleet_id' => $staleDeviceFleet->id,
         'vehicle_id' => $vehicle->id,
         'imei' => '999999999999999',
         'name' => 'Nom Traceur Secret',
@@ -410,9 +475,14 @@ test('mobile vehicle details mirror the operational web sections without tracker
         'last_obd_rpm' => 1800,
         'last_obd_speed' => 35,
         'last_obd_engine_temperature_c' => 84,
-        'last_io' => ['ignition' => true],
+        'last_io' => [
+            90 => 0,
+            132 => 33554435,
+            517 => 317,
+            'ignition' => true,
+        ],
         'last_sensors' => ['temperature' => 84],
-        'last_driver_identifier_uid' => 'RFID-MOBILE-001',
+        'last_driver_identifier_uid' => '142F748E0200006C',
         'last_position_at' => now(),
     ]);
     $position = Position::factory()->forDevice($device)->create([
@@ -444,7 +514,7 @@ test('mobile vehicle details mirror the operational web sections without tracker
     DriverIdentifier::query()->create([
         'driver_id' => $driver->id,
         'type' => 'rfid',
-        'uid' => 'RFID-MOBILE-001',
+        'uid' => '6C0000028E742F14',
         'active' => true,
     ]);
     TrackerEvent::query()->create([
@@ -464,20 +534,32 @@ test('mobile vehicle details mirror the operational web sections without tracker
     $response = $this->withToken($accessToken)
         ->getJson(route('api.v1.mobile.vehicles.details', $vehicle->id))
         ->assertSuccessful()
-        ->assertJsonMissingPath('data.details.tracker')
+        ->assertJsonPath('data.details.tracker.id', $device->id)
+        ->assertJsonPath('data.details.tracker.name', 'Nom Traceur Secret')
+        ->assertJsonPath('data.details.tracker.imei', '999999999999999')
+        ->assertJsonPath('data.details.tracker.model', 'Modele Traceur Secret')
         ->assertJsonPath('data.details.location.address', 'Kinshasa')
         ->assertJsonPath('data.details.location.gps_quality_percent', 70)
         ->assertJsonPath('data.details.driver.full_name', 'Jean Conducteur')
+        ->assertJsonMissingPath('data.details.driver.identifier_uid')
+        ->assertJsonMissingPath('data.details.driver.identifier_type')
+        ->assertJsonMissingPath('data.details.diagnostic.driver_identifier_uid')
         ->assertJsonPath('data.details.power.external_voltage', 12.8)
         ->assertJsonPath('data.details.gsm.signal_percent', 80)
         ->assertJsonPath('data.details.diagnostic.satellites', 10)
         ->assertJsonPath('data.details.obd_can.rpm', 1800)
+        ->assertJsonPath('data.details.obd_can.states.ignition_on', true)
+        ->assertJsonPath('data.details.obd_can.states.engine_running', false)
+        ->assertJsonPath('data.details.obd_can.states.front_left_door_open', false)
+        ->assertJsonPath('data.details.obd_can.states.rear_right_door_open', false)
+        ->assertJsonPath('data.details.obd_can.states.hood_open', false)
+        ->assertJsonPath('data.details.obd_can.states.trunk_open', false)
+        ->assertJsonPath('data.details.obd_can.states.doors_open', false)
         ->assertJsonCount(1, 'data.details.recent_events');
 
     expect(json_encode($response->json(), JSON_THROW_ON_ERROR))
-        ->not->toContain('999999999999999')
-        ->not->toContain('Nom Traceur Secret')
-        ->not->toContain('Modele Traceur Secret');
+        ->not->toContain('6C0000028E742F14')
+        ->not->toContain('142F748E0200006C');
 });
 
 test('mobile vehicle details use the exact parking coordinates and gps timestamp', function () {
@@ -564,6 +646,7 @@ test('mobile superadmin vehicle details include the tracker technical identity',
         'name' => 'Traceur Direction',
         'brand' => 'teltonika',
         'model' => 'FMB920',
+        'last_driver_identifier_uid' => 'SUPERADMIN-BADGE',
     ]);
     $accessToken = $this->postJson(
         route('api.v1.mobile.auth.login'),
@@ -578,5 +661,6 @@ test('mobile superadmin vehicle details include the tracker technical identity',
         ->assertJsonPath('data.details.tracker.name', 'Traceur Direction')
         ->assertJsonPath('data.details.tracker.imei', '868120000000001')
         ->assertJsonPath('data.details.tracker.brand', 'teltonika')
-        ->assertJsonPath('data.details.tracker.model', 'FMB920');
+        ->assertJsonPath('data.details.tracker.model', 'FMB920')
+        ->assertJsonPath('data.details.diagnostic.driver_identifier_uid', 'SUPERADMIN-BADGE');
 });

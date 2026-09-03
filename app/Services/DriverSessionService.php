@@ -6,6 +6,7 @@ use App\Models\Device;
 use App\Models\DriverIdentifier;
 use App\Models\DriverSession;
 use App\Models\Position;
+use App\Support\DriverIdentifierUid;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -51,12 +52,22 @@ class DriverSessionService
                 return $activeSession;
             }
 
-            $identifier = DriverIdentifier::query()
+            $identifierCandidates = DriverIdentifierUid::candidates($identifierUid);
+            $identifiers = DriverIdentifier::query()
                 ->with('driver')
-                ->where('uid', $identifierUid)
+                ->whereIn('uid', $identifierCandidates)
                 ->where('active', true)
                 ->lockForUpdate()
-                ->first();
+                ->get();
+            $identifier = null;
+
+            foreach ($identifierCandidates as $candidate) {
+                $identifier = $identifiers->firstWhere('uid', $candidate);
+
+                if ($identifier) {
+                    break;
+                }
+            }
 
             if ($identifier && (
                 ($identifier->issued_at && $occurredAt->isBefore($identifier->issued_at))
@@ -75,6 +86,10 @@ class DriverSessionService
                 $this->close($activeSession, $position, $occurredAt, 'identifier_rejected');
 
                 return null;
+            }
+
+            if ($device->last_driver_identifier_uid !== $identifier->uid) {
+                $device->forceFill(['last_driver_identifier_uid' => $identifier->uid])->save();
             }
 
             if ($activeSession?->driver_identifier_id === $identifier->id) {
@@ -138,12 +153,10 @@ class DriverSessionService
         foreach ($keys as $key) {
             $value = $this->findRecursively($payload, $key);
 
-            if (is_scalar($value)) {
-                $normalized = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', (string) $value));
+            $normalized = DriverIdentifierUid::normalize($value);
 
-                if ($normalized !== '') {
-                    return $normalized;
-                }
+            if ($normalized !== null) {
+                return $normalized;
             }
         }
 

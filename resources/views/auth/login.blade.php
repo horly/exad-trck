@@ -217,6 +217,7 @@
 
         <footer class="login-footer">
             <span>&copy; 2026 {{ $applicationSettings->short_name }} - Tous droits r&eacute;serv&eacute;s.</span>
+            <a href="{{ route('mobile.downloads.index') }}">{{ __('downloads.login_download_link') }}</a>
             <a href="#" aria-label="Confidentialite">Confidentialit&eacute;</a>
         </footer>
     </main>

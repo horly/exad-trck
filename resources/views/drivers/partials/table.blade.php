@@ -1,4 +1,5 @@
 @php
+    $canManageDrivers = $canManageDrivers ?? auth()->user()->isSuperadmin();
     $sortLink = function (string $column) use ($sort, $direction, $search): string {
         $nextDirection = $sort === $column && $direction === 'asc' ? 'desc' : 'asc';
 
@@ -42,7 +43,9 @@
                             </a>
                         </th>
                     @endforeach
-                    <th>{{ __('drivers.badge') }}</th>
+                    @if ($canManageDrivers)
+                        <th>{{ __('drivers.badge') }}</th>
+                    @endif
                     <th>{{ __('drivers.vehicles') }}</th>
                     <th>
                         <a class="datatable-sort-link {{ $sort === 'status' ? 'active' : '' }}" href="{{ $sortLink('status') }}" data-datatable-sort>
@@ -50,7 +53,9 @@
                             <i class="fa-solid fa-sort"></i>
                         </a>
                     </th>
-                    <th class="text-end">{{ __('drivers.actions') }}</th>
+                    @if ($canManageDrivers)
+                        <th class="text-end">{{ __('drivers.actions') }}</th>
+                    @endif
                 </tr>
             </thead>
             <tbody>
@@ -78,13 +83,15 @@
                             <span class="technical-code">{{ $driver->fleet?->code }}</span>
                         </td>
                         <td>{{ $driver->department?->name ?: '-' }}</td>
-                        <td>
-                            @if ($driver->primaryIdentifier)
-                                <span class="driver-badge-code"><i class="fa-solid fa-key"></i>{{ $driver->primaryIdentifier->uid }}</span>
-                            @else
-                                <span class="technical-code">-</span>
-                            @endif
-                        </td>
+                        @if ($canManageDrivers)
+                            <td>
+                                @if ($driver->primaryIdentifier)
+                                    <span class="driver-badge-code"><i class="fa-solid fa-key"></i>{{ $driver->primaryIdentifier->uid }}</span>
+                                @else
+                                    <span class="technical-code">-</span>
+                                @endif
+                            </td>
+                        @endif
                         <td>
                             <div class="driver-vehicle-summary">
                                 @forelse ($driver->vehicles->take(2) as $vehicle)
@@ -98,8 +105,9 @@
                             </div>
                         </td>
                         <td><span class="status-pill status-{{ $driver->status }}">{{ __('drivers.status_' . $driver->status) }}</span></td>
-                        <td class="text-end">
-                            <div class="users-actions">
+                        @if ($canManageDrivers)
+                            <td class="text-end">
+                                <div class="users-actions">
                                 <button
                                     type="button"
                                     class="icon-action icon-action-edit"
@@ -153,11 +161,12 @@
                                         <i class="fa-regular fa-trash-can"></i>
                                     </button>
                                 </form>
-                            </div>
-                        </td>
+                                </div>
+                            </td>
+                        @endif
                     </tr>
                 @empty
-                    <tr><td colspan="9" class="empty-state">{{ __('drivers.empty') }}</td></tr>
+                    <tr><td colspan="{{ $canManageDrivers ? 9 : 7 }}" class="empty-state">{{ __('drivers.empty') }}</td></tr>
                 @endforelse
             </tbody>
         </table>

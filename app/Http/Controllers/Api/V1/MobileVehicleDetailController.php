@@ -26,7 +26,8 @@ class MobileVehicleDetailController extends Controller
                 ...(new MobileVehicleResource($model))->resolve($request),
                 'details' => $detailService->build(
                     $model,
-                    includeTechnicalDetails: $request->user()->isSuperadmin(),
+                    includeTrackerIdentity: true,
+                    includeDriverIdentifier: $request->user()->isSuperadmin(),
                 ),
             ],
         ]);

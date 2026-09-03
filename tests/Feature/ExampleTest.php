@@ -14,12 +14,14 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleSubscriptionFeature;
 use App\Models\VehicleSubscriptionPlan;
+use App\Services\ReverseGeocodingService;
 use Database\Seeders\AlertRuleSeeder;
 use Database\Seeders\VehicleSubscriptionFeatureSeeder;
 use Database\Seeders\VehicleSubscriptionPlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 
@@ -662,6 +664,41 @@ test('local gps stale command marks silent online trackers offline', function ()
     ]);
 });
 
+test('gps ingestion normalizes fmb140 can mileage and signed engine temperature', function () {
+    $device = Device::factory()->create([
+        'imei' => '353201357467643',
+        'status' => 'inactive',
+    ]);
+
+    $exitCode = Artisan::call('gps:ingest-position', [
+        '--payload' => json_encode([
+            'imei' => $device->imei,
+            'lat' => -4.343545,
+            'lng' => 15.2864733,
+            'speed' => 6,
+            'io' => [
+                16 => 224264,
+                66 => 14220,
+                85 => 1218,
+                115 => 65176,
+                199 => 616,
+            ],
+            'can' => [
+                'total_mileage_km' => 0.616,
+            ],
+        ], JSON_THROW_ON_ERROR),
+    ]);
+
+    $device->refresh();
+
+    expect($exitCode)->toBe(0)
+        ->and((float) $device->last_odometer_km)->toBe(224.26)
+        ->and((float) $device->last_can_total_mileage_km)->toBe(224.26)
+        ->and((float) $device->last_obd_engine_temperature_c)->toBe(-36.0)
+        ->and($device->last_obd_rpm)->toBe(1218)
+        ->and($device->last_obd_module_voltage)->toBeNull();
+});
+
 test('historical gps replay is stored without replacing live tracker state', function () {
     Carbon::setTestNow(Carbon::parse('2026-07-20 10:30:00', config('app.timezone')));
     $this->beforeApplicationDestroyed(fn () => Carbon::setTestNow());
@@ -902,13 +939,14 @@ test('superadmin can open tracker details with fleet and latest events', functio
 
     $superadmin = User::factory()->superadmin()->create();
     $fleet = Fleet::factory()->create(['name' => 'EXAD CARS', 'code' => 'EX-CRS']);
+    $staleDeviceFleet = Fleet::factory()->create(['name' => 'Ancienne flotte traceur']);
     $vehicle = Vehicle::factory()->create([
         'fleet_id' => $fleet->id,
         'name' => 'Suzuki Swift Horly',
         'registration_number' => '6823BV01',
     ]);
     $device = Device::factory()->create([
-        'fleet_id' => $fleet->id,
+        'fleet_id' => $staleDeviceFleet->id,
         'vehicle_id' => $vehicle->id,
         'brand' => 'teltonika',
         'model' => 'FMB003',
@@ -921,7 +959,12 @@ test('superadmin can open tracker details with fleet and latest events', functio
         'last_external_voltage' => 12.6,
         'last_battery_voltage' => 4.05,
         'last_movement' => false,
-        'last_driver_identifier_uid' => 'ABCD1234',
+        'last_io' => [
+            90 => 0,
+            132 => 33554435,
+            517 => 317,
+        ],
+        'last_driver_identifier_uid' => '142F748E0200006C',
         'operator_name' => 'Vodacom',
         'last_address' => 'Avenue des Ecuries, Joli Parc, Ngaliema, Kinshasa, Congo-Kinshasa',
         'last_position_at' => now(),
@@ -938,7 +981,7 @@ test('superadmin can open tracker details with fleet and latest events', functio
     DriverIdentifier::query()->create([
         'driver_id' => $driver->id,
         'type' => 'ibutton',
-        'uid' => 'ABCD1234',
+        'uid' => '6C0000028E742F14',
         'active' => true,
     ]);
     Position::factory()->forDevice($device)->create([
@@ -974,18 +1017,27 @@ test('superadmin can open tracker details with fleet and latest events', functio
         ->assertJsonStructure(['html']);
 
     expect($response->json('html'))
+        ->toContain('tracker-details-overview')
+        ->toContain('tracker-details-card--identity')
+        ->toContain('tracker-details-technical')
+        ->toContain('Synthèse opérationnelle')
         ->toContain('Flotte : EXAD CARS')
         ->toContain('Suzuki Swift Horly')
         ->toContain('Alimentation')
         ->toContain('Conducteur')
         ->toContain('Nom : David Lukusa')
         ->toContain('Matricule : DRV-001')
-        ->toContain('Identifiant conducteur : ABCD1234')
+        ->toContain('Identifiant conducteur : 6C0000028E742F14')
         ->toContain('Avenue des Ecuries')
         ->toContain('altitude : 296 mètres')
         ->toContain('Parking')
         ->toContain('Tension externe : 12.6 V')
         ->toContain('Vodacom')
+        ->toContain('États CAN du véhicule')
+        ->toContain('Porte arrière droite')
+        ->toContain('État de l’allumage')
+        ->toContain('Allumé')
+        ->toContain('Toutes fermées')
         ->toContain('Début de déplacement')
         ->not->toContain('Groupe');
 });
@@ -1495,6 +1547,82 @@ test('tracker trips resolve missing addresses with mapbox reverse geocoding', fu
     expect($start->refresh()->address)->toBe('Avenue de l’OUA, Ngaliema, Kinshasa, Congo-Kinshasa');
 });
 
+test('reverse geocoding replaces a generic locality with the street returned by the fallback provider', function () {
+    app()->setLocale('fr');
+
+    config([
+        'services.maps.provider' => 'google',
+        'services.google_maps.api_key' => 'AIza-test-key',
+        'services.mapbox.public_token' => 'pk.test',
+    ]);
+
+    $latitude = -4.38888;
+    $longitude = 15.29999;
+
+    Cache::put(
+        'reverse-geocode:v2:fr:-4.38888:15.29999',
+        'Ngaliema, Kinshasa, République démocratique du Congo',
+        now()->addDays(30),
+    );
+    Cache::forget('reverse-geocode:v3:fr:-4.38888:15.29999');
+
+    Http::preventStrayRequests();
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), 'maps.googleapis.com/maps/api/geocode/json')) {
+            return Http::response([
+                'status' => 'OK',
+                'results' => [[
+                    'types' => ['locality'],
+                    'formatted_address' => 'Ngaliema, Kinshasa, République démocratique du Congo',
+                    'geometry' => ['location_type' => 'APPROXIMATE'],
+                    'address_components' => [
+                        ['long_name' => 'Ngaliema', 'types' => ['sublocality_level_1']],
+                        ['long_name' => 'Kinshasa', 'types' => ['locality']],
+                        ['long_name' => 'République démocratique du Congo', 'types' => ['country']],
+                    ],
+                ]],
+            ]);
+        }
+
+        if (str_contains($request->url(), 'api.mapbox.com/search/geocode/v6/reverse')) {
+            return Http::response([
+                'features' => [
+                    [
+                        'properties' => [
+                            'feature_type' => 'neighborhood',
+                            'full_address' => 'Ngaliema, Kinshasa, République démocratique du Congo',
+                        ],
+                    ],
+                    [
+                        'properties' => [
+                            'feature_type' => 'street',
+                            'name' => 'Avenue Nguma',
+                            'place_formatted' => 'Ngaliema, Kinshasa, République démocratique du Congo',
+                        ],
+                    ],
+                ],
+            ]);
+        }
+
+        return Http::response([], 404);
+    });
+
+    $address = app(ReverseGeocodingService::class)->resolve($latitude, $longitude);
+
+    expect($address)->toBe('Avenue Nguma, Ngaliema, Kinshasa, République démocratique du Congo');
+
+    Http::assertSent(function ($request): bool {
+        if (! str_contains($request->url(), 'api.mapbox.com/search/geocode/v6/reverse')) {
+            return false;
+        }
+
+        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+        return ! isset($query['limit'])
+            && ($query['types'] ?? null) === 'address,street,neighborhood,locality,place';
+    });
+});
+
 test('tracker trip addresses are resolved before the optional enrichment budget expires', function () {
     config([
         'services.maps.provider' => 'google',
@@ -1728,6 +1856,7 @@ test('authenticated users can view the map page with google maps as default prov
         ->assertSee('js/google-map.js', false)
         ->assertSee('trackerDetailsModal', false)
         ->assertSee('js/tracker-details.js', false)
+        ->assertSee('20260903-tracker-details-corporate', false)
         ->assertDontSee('vendor/mapbox/mapbox-gl.css', false)
         ->assertDontSee('vendor/mapbox/mapbox-gl.js', false)
         ->assertDontSee('js/map.js?v=20260602-mapbox-trips', false)
@@ -1875,6 +2004,45 @@ test('map devices endpoint returns geojson for every positioned tracker to super
         ->toHaveCount(3)
         ->and($response->json('geojson.features.0.properties.details_url'))->toContain('/trackers/')
         ->and($response->json('geojson.features.0.properties.trips_url'))->toContain('/trackers/');
+});
+
+test('map fleet filtering uses the assigned vehicle fleet when the tracker fleet is stale', function () {
+    $superadmin = User::factory()->superadmin()->create();
+    $staleFleet = Fleet::factory()->create(['name' => 'Ancienne flotte']);
+    $vehicleFleet = Fleet::factory()->create(['name' => 'Flotte du vehicule', 'code' => 'VEH']);
+    $staleFleetUser = User::factory()->admin($staleFleet->subscription)->forFleet($staleFleet)->create();
+    $vehicleFleetUser = User::factory()->admin($vehicleFleet->subscription)->forFleet($vehicleFleet)->create();
+    $vehicle = Vehicle::factory()->for($vehicleFleet)->create(['name' => 'Vehicule transfere']);
+
+    Device::factory()->online()->create([
+        'fleet_id' => $staleFleet->id,
+        'vehicle_id' => $vehicle->id,
+        'last_latitude' => -4.325,
+        'last_longitude' => 15.312,
+    ]);
+
+    $this->actingAs($superadmin)
+        ->getJson(route('map.devices', ['fleet_id' => $vehicleFleet->id]))
+        ->assertSuccessful()
+        ->assertJsonPath('summary.total', 1)
+        ->assertJsonPath('geojson.features.0.properties.fleet', 'Flotte du vehicule')
+        ->assertJsonPath('geojson.features.0.properties.fleet_code', 'VEH');
+
+    $this->actingAs($superadmin)
+        ->getJson(route('map.devices', ['fleet_id' => $staleFleet->id]))
+        ->assertSuccessful()
+        ->assertJsonPath('summary.total', 0)
+        ->assertJsonCount(0, 'geojson.features');
+
+    $this->actingAs($staleFleetUser)
+        ->getJson(route('map.devices'))
+        ->assertSuccessful()
+        ->assertJsonCount(0, 'geojson.features');
+
+    $this->actingAs($vehicleFleetUser)
+        ->getJson(route('map.devices'))
+        ->assertSuccessful()
+        ->assertJsonCount(1, 'geojson.features');
 });
 
 test('map devices endpoint can filter positioned trackers by address city', function () {

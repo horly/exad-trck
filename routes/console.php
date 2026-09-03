@@ -248,6 +248,19 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
     $voltageMetric = static fn ($value) => $value !== null && is_numeric($value) && (float) $value > 100
         ? round((float) $value / 1000, 3)
         : $value;
+    $signedWordTenthMetric = static function ($value): ?float {
+        if ($value === null || ! is_numeric($value)) {
+            return null;
+        }
+
+        $integer = (int) $value;
+
+        if ($integer > 32767) {
+            $integer -= 65536;
+        }
+
+        return round($integer / 10, 1);
+    };
     $compactMetrics = static fn (array $metrics): array => array_filter(
         $metrics,
         static fn ($value): bool => $value !== null && $value !== '',
@@ -273,7 +286,19 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
         $engineSeconds = (int) round((float) $engineHours * 3600);
     }
 
-    $odometerRaw = $validated['odometer'] ?? $metricNumber(['odometer', 'odometer_km', 'total_odometer', 'mileage', 'total_mileage', 'can.total_mileage_km', 'io.199', '199']);
+    $canTotalMileageKm = $metricNumber(['io.389', '389']);
+
+    if ($canTotalMileageKm === null) {
+        $canTotalMileageMeters = $metricNumber(['io.87', '87', 'io.105', '105', 'io.16', '16']);
+        $canTotalMileageKm = $canTotalMileageMeters !== null
+            ? round($canTotalMileageMeters / 1000, 2)
+            : null;
+    }
+
+    $canEngineTemperature = $signedWordTenthMetric($metricNumber(['io.115', '115']));
+    $odometerRaw = $canTotalMileageKm
+        ?? $validated['odometer']
+        ?? $metricNumber(['odometer', 'odometer_km', 'total_odometer', 'mileage', 'total_mileage', 'can.total_mileage_km']);
     $odometerKm = $odometerRaw !== null ? round((float) $odometerRaw, 2) : null;
     $obd = array_replace(
         $compactMetrics([
@@ -281,8 +306,8 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
             'rpm' => $metricNumber(['rpm', 'engine_rpm', 'tr_min', 'tr/min', 'obd.rpm', 'payload.obd.rpm', 'can.rpm', 'engine.rpm', 'obd_tr_min', 'io.36', '36', 'io.85', '85']),
             'speed' => $metricNumber(['obd_speed', 'obd.speed', 'payload.obd.speed', 'can.speed', 'vehicle.speed', 'speed', 'io.37', '37', 'io.24', '24']),
             'throttle_percent' => $percentMetric($metricNumber(['throttle', 'throttle_percent', 'papillon', 'obd.throttle_percent', 'payload.obd.throttle_percent', 'can.throttle', 'io.41', '41'])),
-            'engine_temperature_c' => $metricNumber(['engine_temperature', 'engine_temperature_c', 'coolant_temperature', 'temperature_moteur', 'obd.engine_temperature_c', 'payload.obd.engine_temperature_c', 'obd.coolant_temperature', 'can.engine_temperature', 'temperature.engine', 'io.32', '32']),
-            'module_voltage' => $voltageMetric($metricNumber(['module_voltage', 'control_module_voltage', 'tension_commande_module', 'obd.module_voltage', 'payload.obd.module_voltage', 'can.module_voltage', 'io.51', '51', 'io.66', '66'])),
+            'engine_temperature_c' => $canEngineTemperature ?? $metricNumber(['engine_temperature', 'engine_temperature_c', 'coolant_temperature', 'temperature_moteur', 'obd.engine_temperature_c', 'payload.obd.engine_temperature_c', 'obd.coolant_temperature', 'can.engine_temperature', 'temperature.engine', 'io.32', '32']),
+            'module_voltage' => $voltageMetric($metricNumber(['module_voltage', 'control_module_voltage', 'tension_commande_module', 'obd.module_voltage', 'payload.obd.module_voltage', 'can.module_voltage', 'io.51', '51'])),
             'engine_load_percent' => $percentMetric($metricNumber(['engine_load', 'engine_load_percent', 'absolute_load', 'absolute_load_value', 'valeur_absolue_de_charge', 'obd.engine_load_percent', 'payload.obd.engine_load_percent', 'can.engine_load', 'io.52', '52', 'io.31', '31'])),
             'fault_distance_km' => $metricNumber(['fault_distance', 'fault_distance_km', 'distance_with_fault', 'distance_with_mil', 'distance_avec_defaut_moteur', 'obd.fault_distance_km', 'payload.obd.fault_distance_km', 'io.43', '43']),
             'errors_count' => $metricNumber(['errors', 'errors_count', 'dtc_count', 'obd.errors_count', 'payload.obd.errors_count', 'io.30', '30']),
@@ -293,13 +318,17 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
     $can = array_replace(
         $compactMetrics([
             'fuel_level_percent' => $percentMetric($metricNumber(['fuel', 'fuel_level', 'fuel_level_percent', 'carburant', 'obd.fuel', 'obd.fuel_level', 'payload.can.fuel_level_percent', 'can.fuel', 'can.fuel_level', 'fuel.level', 'io.48', '48'])),
-            'total_mileage_km' => $metricNumber(['total_mileage', 'total_mileage_km', 'can.total_mileage_km', 'payload.can.total_mileage_km', 'io.16', '16']),
+            'total_mileage_km' => $canTotalMileageKm ?? $metricNumber(['total_mileage', 'total_mileage_km', 'can.total_mileage_km', 'payload.can.total_mileage_km']),
         ]),
         $compactMetrics($validated['can'] ?? []),
     );
 
     if (isset($obd['module_voltage'])) {
         $obd['module_voltage'] = $voltageMetric($obd['module_voltage']);
+    }
+
+    if ($canEngineTemperature !== null) {
+        $obd['engine_temperature_c'] = $canEngineTemperature;
     }
 
     foreach (['throttle_percent', 'engine_load_percent'] as $percentKey) {
@@ -310,6 +339,10 @@ Artisan::command('gps:ingest-position {--payload= : JSON payload sent by the loc
 
     if (isset($can['fuel_level_percent'])) {
         $can['fuel_level_percent'] = $percentMetric($can['fuel_level_percent']);
+    }
+
+    if ($canTotalMileageKm !== null) {
+        $can['total_mileage_km'] = $canTotalMileageKm;
     }
 
     $storedRuntimeSeconds = isset($obd['runtime_seconds']) ? (int) $obd['runtime_seconds'] : null;

@@ -38,6 +38,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('mobile-api', fn (Request $request): Limit => Limit::perMinute(120)->by(
             (string) ($request->user()?->id ?? $request->ip())
         ));
+        RateLimiter::for('android-downloads', fn (Request $request): Limit => Limit::perMinute(8)->by($request->ip()));
 
         Gate::define('manage-platform', fn (User $user): bool => $user->isSuperadmin());
 

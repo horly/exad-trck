@@ -1,12 +1,15 @@
 <?php
 
-use App\Models\Device;
+use App\Http\Middleware\ApplyClientPreview;
 use App\Models\Alert;
+use App\Models\Department;
+use App\Models\Device;
+use App\Models\Driver;
+use App\Models\DriverIdentifier;
 use App\Models\Fleet;
 use App\Models\Position;
 use App\Models\User;
 use App\Models\Vehicle;
-use App\Http\Middleware\ApplyClientPreview;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -59,6 +62,92 @@ test('client dashboard and operational lists are limited to the assigned fleet',
         ->assertForbidden();
 });
 
+test('client driver list is fleet scoped read only and hides every badge identifier', function () {
+    $ownFleet = Fleet::factory()->create(['name' => 'Flotte Conducteurs Client']);
+    $otherFleet = Fleet::factory()->create(['name' => 'Flotte Conducteurs Externe']);
+    $admin = User::factory()->admin($ownFleet->subscription)->forFleet($ownFleet)->create();
+    $department = Department::query()->create([
+        'fleet_id' => $ownFleet->id,
+        'name' => 'Transport Client',
+        'status' => 'active',
+    ]);
+    $vehicle = Vehicle::factory()->for($ownFleet)->create([
+        'name' => 'Vehicule Conducteur Client',
+        'registration_number' => 'DRV-CLIENT',
+    ]);
+    $driver = Driver::query()->create([
+        'fleet_id' => $ownFleet->id,
+        'department_id' => $department->id,
+        'first_name' => 'Arnold',
+        'last_name' => 'Lula',
+        'employee_id' => 'EMP-CLIENT',
+        'phone' => '+243810000001',
+        'status' => 'active',
+    ]);
+    $driver->vehicles()->attach($vehicle);
+    DriverIdentifier::query()->create([
+        'driver_id' => $driver->id,
+        'type' => 'ibutton',
+        'uid' => '38000009A29C2114',
+        'active' => true,
+    ]);
+    $otherDriver = Driver::query()->create([
+        'fleet_id' => $otherFleet->id,
+        'first_name' => 'Conducteur',
+        'last_name' => 'Externe',
+        'employee_id' => 'EMP-EXTERNE',
+        'status' => 'active',
+    ]);
+    DriverIdentifier::query()->create([
+        'driver_id' => $otherDriver->id,
+        'type' => 'ibutton',
+        'uid' => '6C0000028E742F14',
+        'active' => true,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('drivers.index'))
+        ->assertSuccessful()
+        ->assertSee('Arnold Lula')
+        ->assertSee('EMP-CLIENT')
+        ->assertSee('Transport Client')
+        ->assertSee('Vehicule Conducteur Client')
+        ->assertSee('+243810000001')
+        ->assertSee(route('drivers.index'), false)
+        ->assertDontSee('Conducteur Externe')
+        ->assertDontSee('38000009A29C2114')
+        ->assertDontSee('6C0000028E742F14')
+        ->assertDontSee('data-driver-create', false)
+        ->assertDontSee('data-driver-edit', false)
+        ->assertDontSee('driverModal', false)
+        ->assertDontSee(__('drivers.badge'))
+        ->assertDontSee(__('drivers.actions'));
+
+    $this->actingAs($admin)
+        ->get(route('drivers.index', ['search' => '38000009A29C2114']))
+        ->assertSuccessful()
+        ->assertDontSee('Arnold Lula');
+
+    $ajaxResponse = $this->actingAs($admin)
+        ->withHeader('X-Requested-With', 'XMLHttpRequest')
+        ->getJson(route('drivers.index'))
+        ->assertSuccessful();
+
+    expect($ajaxResponse->json('html'))
+        ->toContain('Arnold Lula')
+        ->not->toContain('Conducteur Externe')
+        ->not->toContain('38000009A29C2114')
+        ->not->toContain('data-driver-edit');
+
+    $this->actingAs($admin)->post(route('drivers.store'), [])->assertForbidden();
+    $this->actingAs($admin)->put(route('drivers.update', $driver), [])->assertForbidden();
+    $this->actingAs($admin)->delete(route('drivers.destroy', $driver))->assertForbidden();
+    $this->actingAs($admin)->put(route('drivers.update', $otherDriver), [])->assertForbidden();
+    $this->actingAs($admin)->delete(route('drivers.destroy', $otherDriver))->assertForbidden();
+
+    expect($driver->fresh()->full_name)->toBe('Arnold Lula');
+});
+
 test('client dashboard keeps its sections in the intended visual order', function () {
     $fleet = Fleet::factory()->create();
     $admin = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
@@ -90,6 +179,24 @@ test('superadmin can open an isolated client dashboard from the fleet list', fun
     $secondVehicle = Vehicle::factory()->for($secondFleet)->create(['name' => 'Vehicule Hors Apercu']);
     $firstUser = User::factory()->simpleUser($firstFleet->subscription)->forFleet($firstFleet)->create(['name' => 'Utilisateur Apercu']);
     User::factory()->simpleUser($secondFleet->subscription)->forFleet($secondFleet)->create(['name' => 'Utilisateur Hors Apercu']);
+    $firstDriver = Driver::query()->create([
+        'fleet_id' => $firstFleet->id,
+        'first_name' => 'Conducteur',
+        'last_name' => 'Apercu',
+        'status' => 'active',
+    ]);
+    DriverIdentifier::query()->create([
+        'driver_id' => $firstDriver->id,
+        'type' => 'ibutton',
+        'uid' => 'BADGE-APERCU',
+        'active' => true,
+    ]);
+    Driver::query()->create([
+        'fleet_id' => $secondFleet->id,
+        'first_name' => 'Conducteur',
+        'last_name' => 'Hors Apercu',
+        'status' => 'active',
+    ]);
     Device::factory()->online()->create([
         'subscription_id' => $firstFleet->subscription_id,
         'fleet_id' => $firstFleet->id,
@@ -138,6 +245,14 @@ test('superadmin can open an isolated client dashboard from the fleet list', fun
         ->assertSee('sidebar-client-preview', false);
 
     $this->actingAs($superadmin)
+        ->get(route('drivers.index'))
+        ->assertSuccessful()
+        ->assertSee('Conducteur Apercu')
+        ->assertDontSee('Conducteur Hors Apercu')
+        ->assertDontSee('BADGE-APERCU')
+        ->assertDontSee('data-driver-edit', false);
+
+    $this->actingAs($superadmin)
         ->get(route('users.index'))
         ->assertSuccessful()
         ->assertSee($firstUser->name)
@@ -176,7 +291,7 @@ test('superadmin can open an isolated client dashboard from the fleet list', fun
         ->assertForbidden();
 });
 
-test('client map hides fleet and tracker metadata and only searches vehicles', function () {
+test('client map hides tracker metadata while details show it without driver badge', function () {
     $fleet = Fleet::factory()->create(['name' => 'Flotte Client']);
     $otherFleet = Fleet::factory()->create(['name' => 'Flotte Externe']);
     $admin = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
@@ -191,6 +306,34 @@ test('client map hides fleet and tracker metadata and only searches vehicles', f
         'vehicle_id' => $vehicle->id,
         'name' => 'Boitier Secret',
         'imei' => '222222222222222',
+        'brand' => 'teltonika',
+        'model' => 'FMB140',
+        'sim_number' => '0900000001',
+        'operator_name' => 'Africell',
+        'protocol' => 'TCP',
+        'codec' => '8E',
+        'last_driver_identifier_uid' => '38000009A29C2114',
+    ]);
+    $department = Department::query()->create([
+        'fleet_id' => $fleet->id,
+        'name' => 'Transport Client',
+        'status' => 'active',
+    ]);
+    $driver = Driver::query()->create([
+        'fleet_id' => $fleet->id,
+        'department_id' => $department->id,
+        'first_name' => 'Arnold',
+        'last_name' => 'Lula',
+        'employee_id' => 'EMP-001',
+        'phone' => '+243810000001',
+        'status' => 'active',
+    ]);
+    $driver->vehicles()->attach($vehicle);
+    DriverIdentifier::query()->create([
+        'driver_id' => $driver->id,
+        'type' => 'ibutton',
+        'uid' => '38000009A29C2114',
+        'active' => true,
     ]);
     Device::factory()->online()->create([
         'subscription_id' => $otherFleet->subscription_id,
@@ -228,10 +371,20 @@ test('client map hides fleet and tracker metadata and only searches vehicles', f
     expect($detailsResponse->json('html'))
         ->toContain('Toyota Client')
         ->toContain(__('trackers.location_title'))
-        ->not->toContain('FTC920')
-        ->not->toContain(__('trackers.detail_model', ['model' => '']))
-        ->not->toContain('222222222222222')
-        ->not->toContain('device='.$device->id)
+        ->toContain('Arnold Lula')
+        ->toContain('EMP-001')
+        ->toContain('Transport Client')
+        ->toContain('+243810000001')
+        ->toContain(__('drivers.status_active'))
+        ->toContain('FMB140')
+        ->toContain('222222222222222')
+        ->toContain('0900000001')
+        ->toContain('Africell')
+        ->toContain('TCP')
+        ->toContain('8E')
+        ->toContain('device='.$device->id)
+        ->not->toContain('38000009A29C2114')
+        ->not->toContain(__('trackers.driver_identifier_uid_value', ['uid' => '']))
         ->not->toContain('/trackers/'.$device->id);
 
     $this->actingAs($admin)
@@ -345,6 +498,7 @@ test('simple user client permissions control optional modules', function () {
     ]);
 
     $this->actingAs($user)->get(route('dashboard'))->assertSuccessful();
+    $this->actingAs($user)->get(route('drivers.index'))->assertSuccessful();
     $this->actingAs($user)->get(route('map.index'))->assertSuccessful();
     $this->actingAs($user)->get(route('reports.index'))->assertForbidden();
     $this->actingAs($user)->get(route('garages.index'))->assertForbidden();

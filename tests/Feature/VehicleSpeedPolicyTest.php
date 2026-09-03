@@ -58,6 +58,34 @@ test('vehicle form creates updates and removes its speed policy', function () {
     $this->assertModelMissing($policy);
 });
 
+test('moving a vehicle to another fleet synchronizes its tracker fleet', function () {
+    $superadmin = User::factory()->superadmin()->create();
+    $originalFleet = Fleet::factory()->create();
+    $newFleet = Fleet::factory()->create();
+    $vehicle = Vehicle::factory()->for($originalFleet)->create([
+        'name' => 'Vehicule a transferer',
+        'registration_number' => 'TR-2026',
+    ]);
+    $device = Device::factory()->create([
+        'fleet_id' => $originalFleet->id,
+        'vehicle_id' => $vehicle->id,
+    ]);
+
+    $this->actingAs($superadmin)
+        ->put(route('vehicles.update', $vehicle), [
+            'fleet_id' => $newFleet->id,
+            'name' => $vehicle->name,
+            'registration_number' => $vehicle->registration_number,
+            'vehicle_type' => $vehicle->vehicle_type,
+            'subscription_plan' => $vehicle->subscription_plan,
+            'status' => $vehicle->status,
+        ])
+        ->assertRedirect(route('vehicles.index'));
+
+    expect($vehicle->refresh()->fleet_id)->toBe($newFleet->id)
+        ->and($device->refresh()->fleet_id)->toBe($newFleet->id);
+});
+
 test('gps ingestion alerts immediately once per overspeed episode and rearms at the limit', function () {
     $fleet = Fleet::factory()->create();
     $vehicle = Vehicle::factory()->create(['fleet_id' => $fleet->id]);

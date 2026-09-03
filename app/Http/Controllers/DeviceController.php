@@ -7,13 +7,15 @@ use App\Models\Driver;
 use App\Models\DriverIdentifier;
 use App\Models\Position;
 use App\Models\Vehicle;
+use App\Services\CanBusStateService;
 use App\Services\DeviceTripService;
 use App\Services\PositionAddressService;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
+use App\Support\DriverIdentifierUid;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -330,17 +332,27 @@ class DeviceController extends Controller
             ->with('status_type', 'danger');
     }
 
-    public function details(Request $request, Device $device, PositionAddressService $positionAddress): JsonResponse
+    public function details(
+        Request $request,
+        Device $device,
+        PositionAddressService $positionAddress,
+        CanBusStateService $canBusState,
+    ): JsonResponse
     {
         abort_unless(
             Device::query()->visibleTo($request->user())->whereKey($device->id)->exists(),
             403
         );
 
-        return $this->detailsResponse($device, $positionAddress, true);
+        return $this->detailsResponse($device, $positionAddress, $canBusState, true, true);
     }
 
-    public function vehicleDetails(Request $request, Vehicle $vehicle, PositionAddressService $positionAddress): JsonResponse
+    public function vehicleDetails(
+        Request $request,
+        Vehicle $vehicle,
+        PositionAddressService $positionAddress,
+        CanBusStateService $canBusState,
+    ): JsonResponse
     {
         abort_unless(
             Vehicle::query()->visibleTo($request->user())->whereKey($vehicle->id)->exists(),
@@ -352,14 +364,26 @@ class DeviceController extends Controller
             ->where('vehicle_id', $vehicle->id)
             ->firstOrFail();
 
-        return $this->detailsResponse($device, $positionAddress, $request->user()->isSuperadmin());
+        return $this->detailsResponse(
+            $device,
+            $positionAddress,
+            $canBusState,
+            showTechnicalDetails: true,
+            showDriverIdentifier: $request->user()->isSuperadmin(),
+        );
     }
 
-    private function detailsResponse(Device $device, PositionAddressService $positionAddress, bool $showTechnicalDetails): JsonResponse
-    {
+    private function detailsResponse(
+        Device $device,
+        PositionAddressService $positionAddress,
+        CanBusStateService $canBusState,
+        bool $showTechnicalDetails,
+        bool $showDriverIdentifier,
+    ): JsonResponse {
         $device->load([
             'fleet:id,name,code',
             'vehicle:id,fleet_id,name,registration_number',
+            'vehicle.fleet:id,name,code',
             'trackerEvents' => fn ($query) => $query
                 ->vehicleEvents()
                 ->with('position:id,latitude,longitude')
@@ -402,7 +426,7 @@ class DeviceController extends Controller
             $positionAddress,
             $locationPosition instanceof Position && $latestPosition instanceof Position && $locationPosition->is($latestPosition),
         );
-        $currentDriver = $this->currentDriverForDevice($device);
+        $currentDriver = $this->currentDriverForDevice($device, $showDriverIdentifier);
 
         return response()->json([
             'html' => view('trackers.partials.details', [
@@ -414,14 +438,18 @@ class DeviceController extends Controller
                 'direction' => $this->directionLabel((int) ($locationPosition?->angle ?? $device->last_angle)),
                 'locationUpdatedAt' => $locationUpdatedAt,
                 'parkingDuration' => $parkingStartedAt?->diffForHumans(null, true),
+                'canBusStates' => $canBusState->forDevice($device),
                 'showTechnicalDetails' => $showTechnicalDetails,
+                'showDriverIdentifier' => $showDriverIdentifier,
             ])->render(),
         ]);
     }
 
-    private function currentDriverForDevice(Device $device): ?Driver
+    private function currentDriverForDevice(Device $device, bool $includeIdentifier): ?Driver
     {
-        if ($device->vehicle_id === null || blank($device->last_driver_identifier_uid)) {
+        $vehicleFleetId = $device->vehicle?->fleet_id;
+
+        if ($vehicleFleetId === null || blank($device->last_driver_identifier_uid)) {
             return null;
         }
 
@@ -429,12 +457,15 @@ class DeviceController extends Controller
             ->with([
                 'driver.department:id,name,code',
             ])
-            ->where('uid', $device->last_driver_identifier_uid)
+            ->whereIn('uid', DriverIdentifierUid::candidates($device->last_driver_identifier_uid))
             ->where('active', true)
+            ->whereHas('driver', fn ($query) => $query->where('fleet_id', $vehicleFleetId))
             ->whereHas('driver.vehicles', fn ($query) => $query->whereKey($device->vehicle_id))
             ->first();
 
-        $identifier?->driver?->setRelation('primaryIdentifier', $identifier);
+        if ($includeIdentifier) {
+            $identifier?->driver?->setRelation('primaryIdentifier', $identifier);
+        }
 
         return $identifier?->driver;
     }

@@ -852,3 +852,113 @@ The battery voltage field must not be greater than 100.
 - La page de carte charge désormais les ressources Google Maps ou Mapbox à partir de ce réglage persistant. La production reste configurée sur Google Maps après la migration.
 - Archive de déploiement vérifiée avec le SHA-256 `144988604211e0c2bba40239ae61558a0721756660a9e40135c4346b8bda571e` et sauvegarde de retour arrière conservée dans `/tmp/exadtracking-before-map-provider-20260816-151026.tar.gz`.
 - Validation : empreintes des sept fichiers locaux/distants identiques, migration exécutée en lot 12, 145 tests Laravel et 1 321 assertions, caches reconstruits, `/up` et `/login` en HTTP 200, Apache et les services GPS actifs.
+
+## 2026-08-31 - Correction de l'erreur 500 apres l'enregistrement d'un chauffeur
+- Le journal Laravel de production a confirme une colonne `driver_id` ambigue dans la requete `primaryIdentifier` generee lors du rechargement de la liste des chauffeurs.
+- L'enregistrement du chauffeur avait bien reussi ; l'erreur se produisait ensuite pendant la redirection vers `/drivers`.
+- Les colonnes selectionnees pour l'identifiant principal sont maintenant qualifiees par la table `driver_identifiers`.
+- Un test de regression recharge la liste apres la creation d'un chauffeur avec badge et confirme l'affichage de l'identifiant.
+- Validation locale : 145 tests Laravel passes avec 1 323 assertions, syntaxe PHP valide et controle Pint cible reussi.
+- Deploiement limite a `app/Http/Controllers/DriverController.php`, sans migration, modification de schema ou changement de donnees. Le fichier distant correspond au SHA-256 local `0a1077aaca2421d0b08df539de4db22754e3e19075a703b13fe5eadcaebf283b` et conserve `exad-tracking:www-data` en mode `0644`.
+- Sauvegarde de retour arriere : `/tmp/exadtracking-before-driver-fix-20260831T190646Z.tar.gz`.
+- Une premiere commande a ete arretee avant la sauvegarde et avant toute modification par l'interpretation PowerShell de controles Linux. La relance sans substitution locale a ensuite termine normalement.
+- Les caches Laravel ont ete nettoyes et les caches de configuration et de vues reconstruits. La methode de liste charge correctement une vue avec le chauffeur existant ; `/login` et `/up` repondent en `200`, l'API mobile sans jeton en `401` et Apache reste actif.
+
+## 2026-09-01 - Correction de l'identification iButton et du remplacement de badge
+- La modification du badge `38000009A29C2114` etait bien enregistree pour Arnold Lula, mais la relation `primaryIdentifier` selectionnait d'abord l'ancien identifiant desactive et masquait le nouveau badge dans la liste.
+- La relation selectionne maintenant le dernier identifiant actif. Un test de regression remplace un ancien badge, confirme sa desactivation et verifie l'affichage du nouveau badge.
+- La normalisation des identifiants conducteur est centralisee. La sentinelle Teltonika `0000000000000000` est ignoree et ne peut plus ecraser la derniere cle valide.
+- La recherche accepte l'ordre d'octets direct et inverse des iButton Teltonika de 8 octets. Le test d'ingestion couvre `38000009A29C2114` et sa representation brute inversee `14219CA209000038`.
+- Les details web et mobile utilisent la meme resolution d'identifiant et remettent la valeur memorisee sur l'UID canonique enregistre en base apres correspondance.
+- La production a ete corrigee de maniere ciblee : l'identifiant actif d'Arnold est type `ibutton` et le FMB140 du vehicule affecte memorise `38000009A29C2114` comme derniere cle valide a la place de la sentinelle nulle.
+- Le dernier paquet controle ne contenait toujours pas l'AVL IO `78`; la correction logicielle conserve donc la cle valide, mais la lecture physique 1-Wire reste dependante de la configuration et du cablage du traceur.
+- Archive de deploiement controlee avec le SHA-256 `eb1abfabf481d83e187160b318380a30df94bfc0ef57aad4ea062acab2959da0`. Sauvegarde de retour arriere : `/tmp/exadtracking-before-ibutton-fix-20260901T120000Z.tar.gz`.
+- Validation : 147 tests Laravel avec 1 336 assertions, Pint cible reussi, syntaxe PHP et empreintes locales/distantes identiques, caches reconstruits, `/up` et `/login` en HTTP 200 et `gps-tcp.service` actif.
+- Aucun schema, migration, variable d'environnement ou code mobile n'a ete modifie. Les scripts, l'archive et le dossier de staging temporaires ont ete supprimes apres verification.
+
+## 2026-09-01 - Liste des chauffeurs client en lecture seule
+- La route `GET /drivers` est maintenant accessible a tous les comptes authentifies et limite les chauffeurs a `users.fleet_id`. La recherche, le tri, la pagination et les reponses AJAX appliquent la meme portee de flotte.
+- Les clients et l'apercu client disposent du lien Chauffeurs dans la navigation. La colonne badge, les UID, le bouton Nouveau, les actions, le modal, les attributs JSON d'edition et les scripts de mutation ne sont pas rendus dans leur HTML.
+- La recherche client ne consulte pas `driver_identifiers`, ce qui empeche d'utiliser un UID connu pour retrouver un chauffeur. Les relations de badge et les listes globales destinees au formulaire ne sont pas chargees pour les clients.
+- Les routes POST, PUT/PATCH et DELETE des chauffeurs restent protegees par `auth + superadmin`; les tentatives directes sur un chauffeur de la flotte ou d'une autre flotte repondent en `403`.
+- Les details traceur client affichent maintenant le modele, l'IMEI, la SIM, l'operateur, le protocole, le codec et les diagnostics. Les deux occurrences de l'identifiant conducteur restent masquees par une capacite independante reservee au superadmin.
+- L'API mobile renvoie egalement l'identite du traceur aux clients, sans `driver.identifier_uid`, `driver.identifier_type` ni `diagnostic.driver_identifier_uid`. Le superadmin conserve ces champs.
+- Validation locale : 148 tests Laravel passes avec 1 386 assertions, syntaxe PHP, compilation Blade, Pint cible et verification des routes reussis.
+- Archive de deploiement SHA-256 `8f0f7b4fb657375c9235c5894c2f5ae23dd0609c5a424b73e4ed655cbf09d756`. Sauvegarde de retour arriere : `/tmp/exadtracking-before-client-drivers-20260901T130000Z.tar.gz`.
+- Les dix fichiers distants correspondent exactement aux empreintes locales. Les caches configuration et vues ont ete reconstruits, `/up` et `/login` repondent en HTTP 200 et `gps-tcp.service` reste actif.
+- Aucun schema, migration, donnee metier, variable d'environnement ou code Flutter n'a ete modifie.
+
+## 2026-09-01 - Liste des chauffeurs dans l'application mobile
+- Ajout de la route privee `GET /api/v1/mobile/drivers`, limitee a la flotte du compte client et paginee. La ressource expose uniquement le nom, le matricule, le contact, la flotte, le departement, les vehicules autorises et le statut.
+- Aucun identifiant RFID, iButton ou NFC n'est charge, recherche ou renvoye. L'API ne declare aucune route mobile de creation, modification ou suppression de chauffeur.
+- L'application Flutter dispose maintenant d'une entree Chauffeurs dans Plus, d'une liste en lecture seule, d'une recherche locale, d'un rafraichissement manuel et du chargement de toutes les pages. Les details vehicule client ne rendent plus les identifiants conducteur dans les blocs Conducteur et Diagnostic.
+- Validation locale : 149 tests Laravel avec 1 402 assertions, analyse Flutter sans anomalie et 12 tests Flutter passes. L'APK de recette `1.0.0+10` a ete genere avec le SHA-256 `7414638a162d79029b9314a79b18f8cd4ba4c4cfca752d2a15520e2ea1e44dc5`, installe avec succes puis lance sur l'emulateur Android.
+- Archive de deploiement Linux controlee avec le SHA-256 `5c8ea851cffee6e01206748636a8006b95b9181b8fa7210b25ad3ca712e4d620`. Sauvegarde de retour arriere : `/tmp/exadtracking-before-mobile-drivers-20260901T132000Z.tar.gz`.
+- Deux premieres extractions ont ete arretees avant toute installation : le ZIP Windows utilisait des separateurs inverses puis avait laisse un staging sans droit de traversee. Le staging temporaire a ete repare et supprime avant l'installation depuis l'archive `tar.gz` validee.
+- Les trois fichiers de production correspondent aux empreintes locales, les caches ont ete reconstruits, `/up` repond en 200 et la route Chauffeurs sans jeton JSON en 401. L'environnement reste en production, debug desactive et maintenance inactive ; Apache, GPS TCP et la console serveur sont actifs.
+
+## 2026-09-01 - Page publique de telechargement Android
+- Publication de `https://exadtracking.app/application`, accessible sans authentification et reliee depuis la page de connexion. Le rendu responsive reprend le theme sombre et bleu d'EXAD Tracking, avec version actuelle, fonctionnalites, guide d'installation, langues francaise et anglaise et historique des versions.
+- Huit APK Android universels sont disponibles en telechargement prive via Laravel : version `1.0.0`, builds 3 a 10, Android 7.0 minimum. Les chemins de fichiers ne sont jamais fournis par la requete ; seuls les slugs declares dans `config/mobile_releases.php` sont acceptes.
+- Les APK sont stockes hors du dossier public dans `storage/app/private/mobile-releases/android`. Les telechargements utilisent le type `application/vnd.android.package-archive`, `nosniff`, cache immuable, prise en charge des requetes partielles et une limite de 8 requetes par minute et par adresse IP.
+- Les huit empreintes SHA-256 ont ete verifiees avant activation et sont consultables integralement sur la page. Les fichiers totalisent 434 780 160 octets et conservent le proprietaire `exad-tracking:exad-tracking` en mode `0644`.
+- La page avertit que les APK actuels utilisent le certificat Android de recette et qu'un futur certificat de distribution pourra imposer une reinstallation. Elle precise aussi qu'un retour vers un ancien build peut demander une desinstallation avec perte de session et preferences locales.
+- Validation locale : 155 tests Laravel avec 1 430 assertions, 6 tests cibles de telechargement avec 28 assertions, Pint, syntaxe PHP, compilation Blade, routes, page HTTP et en-tetes APK valides.
+- Archive code SHA-256 `3fbe0ff0d75d8430d57f9535202de84335b5294db13410ab595c9bdf6a6f8f71`; archive APK SHA-256 `bd521be3c2cf733c9e18025342fc7416f3b228f39c7e911938b88ad2151e6575`. Sauvegarde de retour arriere : `/tmp/exadtracking-before-public-mobile-downloads-20260901T140000Z.tar.gz`.
+- Les neuf fichiers applicatifs distants correspondent exactement aux empreintes locales. En production, `/application` et `/up` repondent en 200, le build 10 repond en 200 et en 206 sur une plage de 1 024 octets, et Apache, GPS TCP et la console serveur restent actifs.
+
+## 2026-09-01 - Affichage des versions Android completes
+- La page publique affiche desormais le couple Android `versionName+versionCode` pour chaque APK : `1.0.0+10` pour la version actuelle et `1.0.0+9` a `1.0.0+3` pour les archives. Le numero de build reste egalement indique separement.
+- La version complete est derivee de `version` et `build` dans le controleur afin d'eviter toute divergence avec la configuration, le nom du fichier et les metadonnees APK.
+- Les libelles accessibles des boutons de telechargement ont ete alignes en francais et en anglais, y compris pour le bouton principal.
+- Validation locale : 155 tests Laravel avec 1 436 assertions et 6 tests cibles avec 34 assertions. L'archive minimale de deploiement a ete verifiee avec le SHA-256 `4768a97e8988b8c15d8d96925a626024a84428a98b1451348f58a37aa33f82e9`.
+- Sauvegarde de retour arriere : `/tmp/exadtracking-before-version-labels-20260901-120004.tar.gz`, SHA-256 `0c51fb72e32ed12a5e401712b2c5d26ffc062f0dc1fc70b87b5b7da1fc970913`.
+- En production, `/application` repond en HTTP 200 et contient les huit versions completes. Le telechargement du build 10 repond en HTTP 200 avec `EXAD-Tracking-1.0.0+10.apk`; Apache 2, PHP 8.2 FPM et Supervisor sont actifs.
+- Aucun APK, schema, migration, donnee metier ni variable d'environnement n'a ete modifie.
+
+## 2026-09-02 - Correction de la flotte carte et de la resolution du chauffeur
+- Le diagnostic agrege de production a confirme une cause commune aux deux anomalies : 2 traceurs sur 4 conservaient une ancienne `fleet_id` differente de la flotte de leur vehicule.
+- Le filtre web et mobile utilise maintenant la flotte du vehicule comme source de verite pour un traceur affecte. Un traceur sans vehicule continue d'utiliser sa propre `fleet_id`.
+- Le scope de visibilite des traceurs ne permet plus a une ligne incoherente d'etre visible simultanement par l'ancienne et la nouvelle flotte.
+- Les details web et mobile resolvent le chauffeur avec la flotte du vehicule. L'iButton `38000009A29C2114`, son chauffeur actif et l'affectation au vehicule etaient valides ; seule la comparaison avec l'ancienne flotte du traceur bloquait l'affichage.
+- Lorsqu'un vehicule change de flotte, le traceur qui lui est affecte est desormais synchronise dans la meme transaction pour eviter toute nouvelle divergence.
+- Apres sauvegarde, les 2 `devices.fleet_id` incoherents ont ete realignes sur `vehicles.fleet_id`. Aucun chauffeur, badge, vehicule ni autre champ n'a ete modifie. Etat final : 4 traceurs affectes, 4 correspondances de flotte et 0 divergence.
+- Validation locale : 157 tests Laravel avec 1 451 assertions, dont 69 tests cibles avec 665 assertions, Pint et syntaxe PHP valides.
+- Archive de deploiement SHA-256 `35de0ed036a09d8967d20bbd8129e145ea2ec6778935b68a980c2e70ac35c233`. Sauvegarde code : `/tmp/exadtracking-before-fleet-driver-fix-20260902-103648.tar.gz` (`026116e08d52d92c3b483dbeb73ac686baf3a592b19074a5601af9b1650dac0d`). Sauvegarde des correspondances corrigees : `/tmp/exadtracking-before-fleet-realignment-20260902-103648.json` (`fc54291a3229d76cf797b06bf3a5fcd4db2ab22acb3ecd3209d524f84d76ed7e`). Les deux sauvegardes sont protegees en mode `0600`.
+- Les sept fichiers distants correspondent exactement aux empreintes locales. Apache 2, PHP 8.2 FPM et Supervisor sont actifs ; `/up` repond en HTTP 200 et `/map` redirige normalement vers l'authentification sans session.
+
+## 2026-09-03 - Deploiement cumulatif et amelioration des adresses de trajets
+- Deploiement des 36 fichiers applicatifs en attente couvrant les correctifs chauffeurs/iButton, la portee des flottes web et mobile, la liste des chauffeurs client en lecture seule, la page publique Android et le reverse geocoding des trajets.
+- Le reverse geocoding ne s'arrete plus sur la premiere commune renvoyee : une adresse generique laisse maintenant le fournisseur de secours chercher une rue. La requete Mapbox v6 n'utilise plus `limit=1` avec plusieurs types ni le type obsolete `poi`, toutes les features sont classees et `name` est combine avec `place_formatted` lorsque `full_address` manque.
+- Le cache passe de `reverse-geocode:v2` a `v3` afin de ne pas conserver pendant trente jours les anciennes adresses generiques. Si aucun fournisseur ne connait une rue pour les coordonnees demandees, la commune reste le meilleur libelle disponible.
+- Validation locale : 158 tests Laravel passes avec 1 453 assertions, test de regression Google generique vers rue Mapbox, syntaxe PHP et Pint cibles valides.
+- Archive de deploiement SHA-256 `d3e78826c4fe84d12df896815dee35b5572a5ad080638946d412226841f25157`. Sauvegarde de retour arriere : `/tmp/exadtracking-before-all-20260903-092806.tar.gz` (`02c6234bb426a2936653f38174b4cfd0255f423e83f90a9348f76fd1067927fc`).
+- Les 36 empreintes locales et distantes correspondent. Aucune migration n'etait en attente ; l'autoload et les caches Laravel ont ete reconstruits, puis PHP-FPM et Apache recharges.
+- Verification production : `/up`, `/login` et `/application` repondent en HTTP 200, la version Android `1.0.0+10` est affichee, l'API chauffeurs mobile sans jeton repond en 401, le mode maintenance est desactive et Apache, PHP-FPM, GPS TCP et Supervisor sont actifs.
+- Une premiere copie preservee a ete arretee sur la mise a jour interdite de l'horodatage du dossier racine ; la remise en ligne automatique a fonctionne, puis la copie a ete relancee sans preservation des metadonnees du dossier racine.
+
+## 2026-09-03 - Modal corporate, etats CAN complets et Android build 11
+- Le detail traceur Web adopte une presentation corporate avec synthese operationnelle, cartes compactes, donnees techniques repliables et une section OBD/CAN pleine largeur.
+- Les AVL Teltonika `90`, `132` et `517`, ainsi que les IO individuels `652-658`, `898-900`, `909-911` et `913`, sont maintenant normalises pour les portes, le toit, Webasto, l'embrayage, l'allumage, la cle, les freins, le moteur, le capot et le coffre. L'IO inverse `911` est traite explicitement.
+- L'ingestion ne confond plus l'odomètre de trajet `199` avec le kilometrage total. Les odometres CAN en metres sont convertis en kilometres et la temperature moteur `115` est convertie depuis son entier signe au dixieme de degre.
+- L'API mobile expose ces etats sans identifiant conducteur, et l'application Flutter les affiche dans la section OBD/CAN avec les memes libelles traduits que le Web.
+- L'APK Android universel `1.0.0+11` (versionCode 11) a ete compile, signe en APK Signature Scheme v2 et publie avec le SHA-256 `149b9a0a32e1e8cf478456a9282fe4ddb62e3b7c649608d7cb9c6ba7ecbbc3d7`. Les builds 3 a 10 restent disponibles dans les archives.
+- La compilation locale a necessite OpenJDK 17 car le JBR 25 d'Android Studio n'est pas pris en charge par la chaine Gradle courante. Un JDK Microsoft portable est configure pour les prochains builds ; les premieres tentatives ont echoue localement avant toute modification du VPS.
+- Validation avant deploiement : 164 tests Laravel avec 1 527 assertions, 12 tests Flutter passes, analyse Flutter sans anomalie et tests cibles API/telechargement/CAN passes.
+- Archive de deploiement SHA-256 `8f7c38fd22ddd95445fd7ac7d808f860165deb9ffe48397e3a5f7730bda0dd64`. Sauvegarde de retour arriere protegee en mode `0600` : `/tmp/exadtracking-before-canbus-20260903-103000.tar.gz`, SHA-256 `2948b83602df6cb01eac991b57c2e95b26d37d3f2ed1fc8d1370046b67d10ee4`.
+- Les 15 fichiers applicatifs et l'APK distant correspondent exactement aux empreintes locales. Aucune migration ni modification de donnee metier n'a ete necessaire.
+- Verification production : le FMB140 `353201357467643` restitue correctement ses derniers masques `90=0`, `132=33554435` et `517=317`; `/application` affiche `1.0.0+11`, le telechargement partiel repond en HTTP `206` avec le bon nom, et Apache, PHP-FPM, GPS TCP et Supervisor sont actifs.
+
+## 2026-09-03 - Compactage du modal de details traceur
+- Le modal de details passe de `1060px` a `900px`, avec des en-tetes, marges, cartes et lignes plus compacts. Les cartes sont alignees par rangee et les donnees techniques passent de trois a deux colonnes.
+- Les doublons d'etat, qualite GPS, stationnement et coordonnees ont ete retires des cartes secondaires puisqu'ils restent visibles dans la synthese operationnelle. Le CAN Bus est presente sur deux colonnes et conserve son adaptation mobile.
+- Validation locale : 164 tests Laravel avec 1 527 assertions, compilation Blade et controle des espaces valides.
+- Archive de deploiement SHA-256 `cda9fbb5edac154e611f06029f00da4f4cdf6da77ef4a387bfa7a9397508c6f1`. Sauvegarde de retour arriere : `/tmp/exadtracking-before-modal-compact-20260903-111329.tar.gz`, SHA-256 `c196287884722f934b93a1e2e07afac2944c156c588ca0a65279ee049208772a`.
+- Les quatre fichiers distants et la feuille CSS servie publiquement correspondent exactement aux empreintes locales. `/up` repond en HTTP 200, le mode maintenance est desactive et Apache, PHP-FPM, GPS TCP et Supervisor sont actifs.
+
+## 2026-09-03 - Modal details compact v2
+- La largeur maximale du modal passe de `900px` a `760px` et sa hauteur est plafonnee a `780px`. Le bouton de fermeture est force a l'extremite droite avec un en-tete reparti sur toute la largeur.
+- Le cache CSS des pages Carte et Traceurs passe a `20260903-tracker-modal-compact-v2` afin que les navigateurs chargent immediatement la correction.
+- Validation locale : compilation Blade reussie et 2 tests cibles passes avec 69 assertions.
+- Archive de deploiement SHA-256 `ba087fda6f2dedfc9fa2a5be12921071a8199f4434e4140c9c8e01ab800201f3`. Sauvegarde de retour arriere : `/tmp/exadtracking-before-modal-compact-v2-20260903-112423.tar.gz`, SHA-256 `4c2863871f1231c308c9ff81e0575a1af6872fa58d5e91da6a6c10e290321449`.
+- Les trois fichiers distants et la feuille CSS servie publiquement correspondent aux empreintes locales. `/up` repond en HTTP 200, le mode maintenance est desactive et Apache, PHP-FPM, GPS TCP et Supervisor sont actifs.

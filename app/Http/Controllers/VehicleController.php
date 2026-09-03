@@ -139,6 +139,7 @@ class VehicleController extends Controller
 
         DB::transaction(function () use ($vehicle, $data, $speedLimit): void {
             $vehicle->update($data);
+            $vehicle->device()->update(['fleet_id' => $vehicle->fleet_id]);
             $this->syncSpeedPolicy($vehicle, $speedLimit);
         });
 

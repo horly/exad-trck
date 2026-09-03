@@ -12,9 +12,14 @@
 </head>
 <body class="app-font-manrope dashboard-body">
     @php
-        $editingDriverId = (int) old('editing_driver_id', 0);
-        $driverFormAction = $editingDriverId ? route('drivers.update', $editingDriverId) : route('drivers.store');
-        $oldVehicleIds = collect(old('authorized_vehicle_ids', []))->map(fn ($id) => (int) $id)->all();
+        $canManageDrivers = $canManageDrivers ?? auth()->user()->isSuperadmin();
+        $editingDriverId = $canManageDrivers ? (int) old('editing_driver_id', 0) : 0;
+        $driverFormAction = $canManageDrivers
+            ? ($editingDriverId ? route('drivers.update', $editingDriverId) : route('drivers.store'))
+            : null;
+        $oldVehicleIds = $canManageDrivers
+            ? collect(old('authorized_vehicle_ids', []))->map(fn ($id) => (int) $id)->all()
+            : [];
     @endphp
 
     <div class="dashboard-shell">
@@ -30,12 +35,14 @@
                 @include('partials.topbar-actions')
             </header>
 
-            <div class="users-page-actions">
-                <button type="button" class="btn btn-primary users-primary-button" data-bs-toggle="modal" data-bs-target="#driverModal" data-driver-create>
-                    <i class="fa-solid fa-user-plus"></i>
-                    <span>{{ __('drivers.new') }}</span>
-                </button>
-            </div>
+            @if ($canManageDrivers)
+                <div class="users-page-actions">
+                    <button type="button" class="btn btn-primary users-primary-button" data-bs-toggle="modal" data-bs-target="#driverModal" data-driver-create>
+                        <i class="fa-solid fa-user-plus"></i>
+                        <span>{{ __('drivers.new') }}</span>
+                    </button>
+                </div>
+            @endif
 
             <div data-datatable-container>
                 @include('drivers.partials.table')
@@ -53,7 +60,8 @@
         </div>
     @endif
 
-    <div class="modal fade users-modal driver-modal" id="driverModal" tabindex="-1" aria-labelledby="driverModalTitle" aria-hidden="true">
+    @if ($canManageDrivers)
+        <div class="modal fade users-modal driver-modal" id="driverModal" tabindex="-1" aria-labelledby="driverModalTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered driver-modal-dialog">
             <div class="modal-content">
                 <form class="driver-modal-form" method="POST" action="{{ $driverFormAction }}" enctype="multipart/form-data" novalidate data-validate-form data-required-message="{{ __('validation.required') }}" data-email-message="{{ __('validation.email') }}" data-driver-form data-loading-form data-loading-text="{{ __('drivers.processing') }}" data-address-search-url="{{ route('addresses.search') }}">
@@ -248,19 +256,21 @@
                 </form>
             </div>
         </div>
-    </div>
+        </div>
+    @endif
 
     <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ asset('js/dashboard-sidebar.js') }}?v=20260716-fleet-submenu"></script>
     <script src="{{ asset('js/dashboard-controls.js') }}?v=20260529-shared-controls"></script>
     <script src="{{ asset('js/datatable-controls.js') }}?v=20260529-datatable-controls"></script>
     @include('partials.realtime-alerts')
-    <script src="{{ asset('js/confirm-delete.js') }}?v=20260529-delete-confirm"></script>
-    <script src="{{ asset('js/form-validation.js') }}?v=20260529-form-validation"></script>
-    <script src="{{ asset('js/form-loading.js') }}?v=20260529-form-loading"></script>
-    <script src="{{ asset('js/searchable-select.js') }}?v=20260719-database-selects"></script>
-    <script src="{{ asset('js/driver-address-search.js') }}?v=20260719-driver-geofence"></script>
-    <script>
+    @if ($canManageDrivers)
+        <script src="{{ asset('js/confirm-delete.js') }}?v=20260529-delete-confirm"></script>
+        <script src="{{ asset('js/form-validation.js') }}?v=20260529-form-validation"></script>
+        <script src="{{ asset('js/form-loading.js') }}?v=20260529-form-loading"></script>
+        <script src="{{ asset('js/searchable-select.js') }}?v=20260719-database-selects"></script>
+        <script src="{{ asset('js/driver-address-search.js') }}?v=20260719-driver-geofence"></script>
+        <script>
         (() => {
             const form = document.querySelector('[data-driver-form]');
             if (!form) return;
@@ -415,6 +425,7 @@
             driverToast.querySelector('[data-app-toast-close]')?.addEventListener('click', hideToast);
             setTimeout(hideToast, 5200);
         }
-    </script>
+        </script>
+    @endif
 </body>
 </html>

@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\MobileAlertController;
 use App\Http\Controllers\Api\V1\MobileAuthController;
 use App\Http\Controllers\Api\V1\MobileBootstrapController;
 use App\Http\Controllers\Api\V1\MobileDashboardController;
+use App\Http\Controllers\Api\V1\MobileDriverController;
 use App\Http\Controllers\Api\V1\MobileEventController;
 use App\Http\Controllers\Api\V1\MobileMapController;
 use App\Http\Controllers\Api\V1\MobileProfileController;
@@ -31,6 +32,7 @@ Route::prefix('v1/mobile')->name('api.v1.mobile.')->group(function (): void {
         Route::get('/bootstrap', MobileBootstrapController::class)->name('bootstrap');
         Route::get('/me', MobileProfileController::class)->name('me');
         Route::get('/dashboard', MobileDashboardController::class)->name('dashboard');
+        Route::get('/drivers', [MobileDriverController::class, 'index'])->name('drivers.index');
         Route::get('/vehicles', [MobileVehicleController::class, 'index'])->name('vehicles.index');
         Route::get('/vehicles/{vehicle}', [MobileVehicleController::class, 'show'])
             ->whereNumber('vehicle')

@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Department;
 use App\Models\Vehicle;
+use App\Support\DriverIdentifierUid;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -92,8 +93,6 @@ class StoreDriverRequest extends FormRequest
 
     private function normalizeIdentifier(mixed $value): ?string
     {
-        $normalized = strtoupper((string) preg_replace('/[\s:\-]+/', '', trim((string) $value)));
-
-        return $normalized !== '' ? $normalized : null;
+        return DriverIdentifierUid::normalize($value);
     }
 }

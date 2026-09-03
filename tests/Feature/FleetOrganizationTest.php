@@ -9,21 +9,22 @@ use App\Models\DriverSession;
 use App\Models\Fleet;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Support\DriverIdentifierUid;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
-test('core fleet organization stays reserved while clients manage garages and maintenance', function () {
+test('driver list is readable by clients while core fleet management stays reserved', function () {
     $superadmin = User::factory()->superadmin()->create();
     $fleet = Fleet::factory()->create();
     $admin = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
 
-    foreach ([route('drivers.index'), route('departments.index')] as $url) {
-        $this->actingAs($superadmin)->get($url)->assertSuccessful();
-        $this->actingAs($admin)->get($url)->assertForbidden();
-    }
+    $this->actingAs($superadmin)->get(route('drivers.index'))->assertSuccessful();
+    $this->actingAs($admin)->get(route('drivers.index'))->assertSuccessful();
+    $this->actingAs($superadmin)->get(route('departments.index'))->assertSuccessful();
+    $this->actingAs($admin)->get(route('departments.index'))->assertForbidden();
 
     foreach ([route('garages.index'), route('maintenance.index')] as $url) {
         $this->actingAs($superadmin)->get($url)->assertSuccessful();
@@ -176,6 +177,55 @@ test('superadmin can create a driver with a normalized badge and authorized vehi
         'uid' => 'ABCD1234',
         'active' => true,
     ]);
+
+    $this->actingAs($superadmin)
+        ->get(route('drivers.index'))
+        ->assertSuccessful()
+        ->assertSee('ABCD1234');
+});
+
+test('superadmin can replace a driver badge', function () {
+    $superadmin = User::factory()->superadmin()->create();
+    $fleet = Fleet::factory()->create();
+    $driver = Driver::query()->create([
+        'fleet_id' => $fleet->id,
+        'first_name' => 'Conducteur',
+        'last_name' => 'iButton',
+        'status' => 'active',
+    ]);
+    $oldIdentifier = $driver->identifiers()->create([
+        'type' => 'ibutton',
+        'uid' => '6C0000028E742F14',
+        'active' => true,
+    ]);
+
+    $this->actingAs($superadmin)
+        ->put(route('drivers.update', $driver), [
+            'fleet_id' => $fleet->id,
+            'first_name' => 'Conducteur',
+            'last_name' => 'iButton',
+            'identifier_type' => 'ibutton',
+            'rfid_uid' => '38000009A29C2114',
+            'status' => 'active',
+        ])
+        ->assertRedirect(route('drivers.index'))
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('status', __('drivers.updated'));
+
+    expect($oldIdentifier->fresh()->active)->toBeFalse();
+
+    $this->assertDatabaseHas('driver_identifiers', [
+        'driver_id' => $driver->id,
+        'type' => 'ibutton',
+        'uid' => '38000009A29C2114',
+        'active' => true,
+    ]);
+
+    $this->actingAs($superadmin)
+        ->get(route('drivers.index'))
+        ->assertSuccessful()
+        ->assertSee('38000009A29C2114')
+        ->assertDontSee('6C0000028E742F14');
 });
 
 test('superadmin can search real driver addresses with the configured map provider', function () {
@@ -287,7 +337,7 @@ test('gps ingestion opens and closes a session for an authorized driver badge', 
     $identifier = DriverIdentifier::query()->create([
         'driver_id' => $driver->id,
         'type' => 'ibutton',
-        'uid' => 'ABCD1234',
+        'uid' => '38000009A29C2114',
         'active' => true,
     ]);
 
@@ -299,7 +349,7 @@ test('gps ingestion opens and closes a session for an authorized driver badge', 
             'address' => 'Kinshasa',
             'ignition' => true,
             'gps_time' => now()->subMinute()->toIso8601String(),
-            'io' => ['ibutton_id' => 'ab-cd 12:34'],
+            'io' => ['ibutton_id' => '14219CA209000038'],
         ]),
     ]);
 
@@ -313,7 +363,7 @@ test('gps ingestion opens and closes a session for an authorized driver badge', 
         ->and($session->device_id)->toBe($device->id)
         ->and($session->status)->toBe('active')
         ->and($session->end_position_id)->toBeNull()
-        ->and($device->last_driver_identifier_uid)->toBe('ABCD1234');
+        ->and($device->last_driver_identifier_uid)->toBe('38000009A29C2114');
 
     $stopCode = Artisan::call('gps:ingest-position', [
         '--payload' => json_encode([
@@ -333,6 +383,31 @@ test('gps ingestion opens and closes a session for an authorized driver badge', 
         ->and($session->ended_at)->not->toBeNull()
         ->and($session->end_position_id)->not->toBeNull()
         ->and($session->metadata['close_reason'])->toBe('ignition_off');
+});
+
+test('gps ingestion ignores the all-zero iButton sentinel', function () {
+    $fleet = Fleet::factory()->create();
+    $vehicle = Vehicle::factory()->create(['fleet_id' => $fleet->id]);
+    $device = Device::factory()->create([
+        'vehicle_id' => $vehicle->id,
+        'fleet_id' => $fleet->id,
+    ]);
+
+    $exitCode = Artisan::call('gps:ingest-position', [
+        '--payload' => json_encode([
+            'imei' => $device->imei,
+            'lat' => -4.325,
+            'lng' => 15.312,
+            'ignition' => true,
+            'gps_time' => now()->toIso8601String(),
+            'driver_identifier_uid' => '0000000000000000',
+        ]),
+    ]);
+
+    expect($exitCode)->toBe(0)
+        ->and($device->fresh()->last_driver_identifier_uid)->toBeNull()
+        ->and(DriverSession::query()->count())->toBe(0)
+        ->and(DriverIdentifierUid::normalize('00000000abcd1234'))->toBe('00000000ABCD1234');
 });
 
 test('gps ingestion alerts once per driver geofence exit and rearms after reentry', function () {

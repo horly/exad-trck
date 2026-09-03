@@ -59,13 +59,14 @@ class MapController extends Controller
                 'type' => 'FeatureCollection',
                 'features' => $devices->map(function (Device $device) use ($trails, $showTechnicalDetails): array {
                     $trail = $trails[$device->id] ?? [];
+                    $fleet = $device->vehicle?->fleet ?: $device->fleet;
 
                     $properties = [
                         'id' => $showTechnicalDetails ? $device->id : 'vehicle-'.$device->vehicle_id,
                         'vehicle' => $device->vehicle?->name ?: __('trackers.no_vehicle'),
                         'registration' => $device->vehicle?->registration_number ?: '-',
-                        'fleet' => $device->fleet?->name ?: __('trackers.no_fleet'),
-                        'fleet_code' => $device->fleet?->code ?: '-',
+                        'fleet' => $fleet?->name ?: __('trackers.no_fleet'),
+                        'fleet_code' => $fleet?->code ?: '-',
                         'status' => $device->status,
                         'status_label' => __('trackers.status_'.$device->status),
                         'is_parking' => $this->movementService->isParking($device),
@@ -116,10 +117,10 @@ class MapController extends Controller
 
         return Device::query()
             ->visibleTo($user)
-            ->with(['vehicle:id,fleet_id,name,registration_number', 'fleet:id,name,code'])
+            ->with(['vehicle:id,fleet_id,name,registration_number', 'vehicle.fleet:id,name,code', 'fleet:id,name,code'])
             ->when(! $user->isSuperadmin(), fn ($query) => $query->whereNotNull('devices.vehicle_id'))
             ->when(in_array($status, self::STATUSES, true), fn ($query) => $query->where('devices.status', $status))
-            ->when($user->isSuperadmin() && $fleetId !== '' && $visibleFleetIds->contains($fleetId), fn ($query) => $query->where('devices.fleet_id', (int) $fleetId))
+            ->when($user->isSuperadmin() && $fleetId !== '' && $visibleFleetIds->contains($fleetId), fn ($query) => $query->inFleet((int) $fleetId))
             ->when($search !== '' && ! $user->isSuperadmin(), function ($query) use ($search): void {
                 $query->whereHas('vehicle', function ($query) use ($search): void {
                     $query

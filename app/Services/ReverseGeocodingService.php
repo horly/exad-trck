@@ -50,17 +50,27 @@ class ReverseGeocodingService
             ? ['mapbox', 'google']
             : ['google', 'mapbox'];
 
+        $bestAddress = null;
+
         foreach ($resolvers as $resolver) {
             $address = $resolver === 'google'
                 ? $this->resolveWithGoogle($latitude, $longitude)
                 : $this->resolveWithMapbox($latitude, $longitude);
 
-            if ($address !== null) {
+            if ($address === null) {
+                continue;
+            }
+
+            if ($this->isDetailedEnough($address)) {
                 return $address;
+            }
+
+            if ($bestAddress === null || $this->addressScore($address) > $this->addressScore($bestAddress)) {
+                $bestAddress = $address;
             }
         }
 
-        return null;
+        return $bestAddress;
     }
 
     private function resolveWithGoogle(float $latitude, float $longitude): ?string
@@ -134,8 +144,7 @@ class ReverseGeocodingService
                     'longitude' => $longitude,
                     'access_token' => $token,
                     'language' => app()->getLocale(),
-                    'limit' => 1,
-                    'types' => 'address,poi,street,neighborhood,locality,place',
+                    'types' => 'address,street,neighborhood,locality,place',
                     'permanent' => true,
                 ]);
 
@@ -149,19 +158,20 @@ class ReverseGeocodingService
                 return null;
             }
 
-            $feature = $response->json('features.0');
+            $features = collect($response->json('features', []))
+                ->filter(fn ($feature): bool => is_array($feature))
+                ->sortByDesc(fn (array $feature): int => $this->mapboxResultScore($feature))
+                ->values();
 
-            if (! is_array($feature)) {
-                return null;
+            foreach ($features as $feature) {
+                $address = $this->mapboxAddressFromFeature($feature);
+
+                if ($address !== null) {
+                    return $address;
+                }
             }
 
-            $address = $feature['properties']['full_address']
-                ?? $feature['properties']['place_formatted']
-                ?? $feature['properties']['name']
-                ?? $feature['place_name']
-                ?? null;
-
-            return $this->cleanAddress(is_string($address) ? $address : null);
+            return null;
         } catch (Throwable $exception) {
             Log::warning('Mapbox reverse geocoding exception.', [
                 'latitude' => $latitude,
@@ -249,6 +259,46 @@ class ReverseGeocodingService
         return $score + $this->addressScore($formattedAddress);
     }
 
+    private function mapboxAddressFromFeature(array $feature): ?string
+    {
+        $fullAddress = $this->cleanAddress(Arr::get($feature, 'properties.full_address'));
+
+        if ($fullAddress !== null) {
+            return $fullAddress;
+        }
+
+        $name = $this->cleanAddress(
+            Arr::get($feature, 'properties.name_preferred')
+                ?? Arr::get($feature, 'properties.name')
+        );
+        $place = $this->cleanAddress(
+            Arr::get($feature, 'properties.place_formatted')
+                ?? Arr::get($feature, 'place_name')
+        );
+
+        $address = collect([$name, $place])
+            ->filter()
+            ->unique(fn (string $part): string => Str::lower($part))
+            ->implode(', ');
+
+        return $this->cleanAddress($address !== '' ? $address : null);
+    }
+
+    private function mapboxResultScore(array $feature): int
+    {
+        $featureType = Arr::get($feature, 'properties.feature_type')
+            ?? Arr::first(Arr::wrap($feature['place_type'] ?? []));
+        $typeScore = [
+            'address' => 70,
+            'street' => 60,
+            'neighborhood' => 30,
+            'locality' => 20,
+            'place' => 10,
+        ][$featureType] ?? 0;
+
+        return $typeScore + $this->addressScore($this->mapboxAddressFromFeature($feature));
+    }
+
     private function addressScore(?string $address): int
     {
         $address = $this->cleanAddress($address);
@@ -263,7 +313,7 @@ class ReverseGeocodingService
 
         $score += min(30, count($parts) * 6);
 
-        if (preg_match('/\b(avenue|ave|av\.|rue|boulevard|route|street|road|drive|place|quartier|centre|cité)\b/u', $lower)) {
+        if ($this->containsStreet($lower)) {
             $score += 35;
         }
 
@@ -307,7 +357,15 @@ class ReverseGeocodingService
 
         return count($parts) <= 3
             && Str::contains($lower, ['république démocratique du congo', 'democratic republic of the congo'])
-            && ! preg_match('/\b(avenue|ave|av\.|rue|boulevard|route|street|road|drive|place|quartier|centre|cité)\b/u', $lower);
+            && ! $this->containsStreet($lower);
+    }
+
+    private function containsStreet(string $address): bool
+    {
+        return (bool) preg_match(
+            '/\b(avenue|ave|av\.|rue|boulevard|route|street|road|drive|lane|highway|chemin|chaussée)\b/u',
+            $address,
+        );
     }
 
     /**
@@ -343,7 +401,7 @@ class ReverseGeocodingService
     private function cacheKey(float $latitude, float $longitude): string
     {
         return sprintf(
-            'reverse-geocode:v2:%s:%0.5f:%0.5f',
+            'reverse-geocode:v3:%s:%0.5f:%0.5f',
             app()->getLocale(),
             $latitude,
             $longitude,

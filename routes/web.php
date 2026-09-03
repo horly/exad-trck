@@ -1,8 +1,8 @@
 <?php
 
+use App\Http\Controllers\AddressController;
 use App\Http\Controllers\AlertController;
 use App\Http\Controllers\AlertRuleController;
-use App\Http\Controllers\AddressController;
 use App\Http\Controllers\ClientPreviewController;
 use App\Http\Controllers\CustomizationController;
 use App\Http\Controllers\DashboardController;
@@ -11,13 +11,14 @@ use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\FleetController;
 use App\Http\Controllers\GarageController;
-use App\Http\Controllers\MapController;
 use App\Http\Controllers\MaintenancePlanController;
+use App\Http\Controllers\MapController;
+use App\Http\Controllers\MobileDownloadController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileTwoFactorController;
 use App\Http\Controllers\ReportController;
-use App\Http\Controllers\ServerLogController;
 use App\Http\Controllers\ServerConsoleTicketController;
+use App\Http\Controllers\ServerLogController;
 use App\Http\Controllers\ServerMonitoringController;
 use App\Http\Controllers\SubscriptionPlanController;
 use App\Http\Controllers\TrackerEventController;
@@ -33,6 +34,12 @@ Route::get('/', function () {
 
     return redirect()->route('dashboard');
 });
+
+Route::get('/application', [MobileDownloadController::class, 'index'])->name('mobile.downloads.index');
+Route::get('/application/android/{release}', [MobileDownloadController::class, 'download'])
+    ->middleware('throttle:android-downloads')
+    ->where('release', '[a-z0-9-]+')
+    ->name('mobile.downloads.android');
 
 Route::get('/lang/{locale}', function (string $locale): RedirectResponse {
     session(['locale' => $locale]);
@@ -64,6 +71,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/two-factor/recovery-codes/regenerate', [ProfileTwoFactorController::class, 'regenerateRecoveryCodes'])->middleware('throttle:6,1')->name('profile.two-factor.recovery-codes.regenerate');
 
     Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
+    Route::get('/drivers', [DriverController::class, 'index'])->name('drivers.index');
     Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
     Route::get('/alerts/recent', [AlertController::class, 'recent'])->name('alerts.recent');
     Route::patch('/alerts/{alert}/acknowledge', [AlertController::class, 'acknowledge'])->name('alerts.acknowledge');
@@ -105,7 +113,7 @@ Route::middleware(['auth', 'superadmin'])->group(function () {
     Route::get('/fleets/{fleet}/dashboard', [ClientPreviewController::class, 'store'])->name('fleets.dashboard');
     Route::post('/client-preview/exit', [ClientPreviewController::class, 'destroy'])->name('client-preview.exit');
     Route::resource('fleets', FleetController::class)->except(['show']);
-    Route::resource('drivers', DriverController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::resource('drivers', DriverController::class)->only(['store', 'update', 'destroy']);
     Route::resource('departments', DepartmentController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
     Route::put('/vehicles/{vehicle}', [VehicleController::class, 'update'])->name('vehicles.update');

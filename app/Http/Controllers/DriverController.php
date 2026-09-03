@@ -20,6 +20,8 @@ class DriverController extends Controller
 {
     public function index(Request $request): View|JsonResponse
     {
+        $user = $request->user();
+        $canManageDrivers = $user->isSuperadmin();
         $search = trim((string) $request->query('search', ''));
         $isAjax = $request->ajax();
         $columns = [
@@ -36,18 +38,23 @@ class DriverController extends Controller
         $direction = $request->query('direction') === 'asc' ? 'asc' : 'desc';
 
         $drivers = Driver::query()
+            ->visibleTo($user)
             ->with([
                 'fleet:id,name,code',
                 'department:id,name,code',
-                'primaryIdentifier:id,driver_id,type,uid,active',
-                'vehicles:id,name,registration_number',
+                ...($canManageDrivers ? [
+                    'primaryIdentifier:driver_identifiers.id,driver_identifiers.driver_id,driver_identifiers.type,driver_identifiers.uid,driver_identifiers.active',
+                ] : []),
+                'vehicles' => fn ($query) => $query
+                    ->visibleTo($user)
+                    ->select(['vehicles.id', 'vehicles.name', 'vehicles.registration_number']),
             ])
             ->select('drivers.*')
             ->leftJoin('fleets', 'fleets.id', '=', 'drivers.fleet_id')
             ->leftJoin('departments', 'departments.id', '=', 'drivers.department_id')
             ->addSelect('fleets.name as fleet_name', 'departments.name as department_name')
-            ->when($search !== '', function ($query) use ($search): void {
-                $query->where(function ($query) use ($search): void {
+            ->when($search !== '', function ($query) use ($search, $canManageDrivers): void {
+                $query->where(function ($query) use ($search, $canManageDrivers): void {
                     $query->where('drivers.first_name', 'like', "%{$search}%")
                         ->orWhere('drivers.middle_name', 'like', "%{$search}%")
                         ->orWhere('drivers.last_name', 'like', "%{$search}%")
@@ -55,8 +62,11 @@ class DriverController extends Controller
                         ->orWhere('drivers.phone', 'like', "%{$search}%")
                         ->orWhere('drivers.email', 'like', "%{$search}%")
                         ->orWhere('fleets.name', 'like', "%{$search}%")
-                        ->orWhere('departments.name', 'like', "%{$search}%")
-                        ->orWhereHas('identifiers', fn ($query) => $query->where('uid', 'like', "%{$search}%"));
+                        ->orWhere('departments.name', 'like', "%{$search}%");
+
+                    if ($canManageDrivers) {
+                        $query->orWhereHas('identifiers', fn ($query) => $query->where('uid', 'like', "%{$search}%"));
+                    }
                 });
             })
             ->when($sort, fn ($query) => $query->orderBy($columns[$sort], $direction)->orderByDesc('drivers.id'),
@@ -66,12 +76,13 @@ class DriverController extends Controller
 
         $data = [
             'drivers' => $drivers,
-            'fleets' => Fleet::query()->orderBy('name')->get(['id', 'name', 'code']),
-            'departmentsForForm' => Department::query()->orderBy('name')->get(['id', 'fleet_id', 'name', 'code']),
-            'vehiclesForForm' => Vehicle::query()->orderBy('name')->get(['id', 'fleet_id', 'name', 'registration_number']),
+            'fleets' => $canManageDrivers ? Fleet::query()->orderBy('name')->get(['id', 'name', 'code']) : collect(),
+            'departmentsForForm' => $canManageDrivers ? Department::query()->orderBy('name')->get(['id', 'fleet_id', 'name', 'code']) : collect(),
+            'vehiclesForForm' => $canManageDrivers ? Vehicle::query()->orderBy('name')->get(['id', 'fleet_id', 'name', 'registration_number']) : collect(),
             'search' => $search,
             'sort' => $sort,
             'direction' => $direction,
+            'canManageDrivers' => $canManageDrivers,
         ];
 
         if ($isAjax) {

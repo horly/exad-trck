@@ -6,23 +6,28 @@ use App\Models\Device;
 use App\Models\DriverIdentifier;
 use App\Models\Position;
 use App\Models\Vehicle;
+use App\Support\DriverIdentifierUid;
 
 class MobileVehicleDetailService
 {
     public function __construct(
         private readonly PositionAddressService $positionAddress,
+        private readonly CanBusStateService $canBusState,
     ) {}
 
     /**
      * @return array<string, mixed>
      */
-    public function build(Vehicle $vehicle, bool $includeTechnicalDetails = false): array
-    {
+    public function build(
+        Vehicle $vehicle,
+        bool $includeTrackerIdentity = false,
+        bool $includeDriverIdentifier = false,
+    ): array {
         $device = $vehicle->device;
 
         if (! $device instanceof Device) {
             return [
-                ...($includeTechnicalDetails ? ['tracker' => null] : []),
+                ...($includeTrackerIdentity ? ['tracker' => null] : []),
                 'location' => null,
                 'driver' => null,
                 'power' => null,
@@ -47,7 +52,7 @@ class MobileVehicleDetailService
         $locationAddress = $locationPosition instanceof Position
             ? $this->positionAddress->resolve($locationPosition)
             : null;
-        $driverIdentifier = $this->currentDriverIdentifier($device);
+        $driverIdentifier = $this->currentDriverIdentifier($device, $vehicle);
         $driver = $driverIdentifier?->driver;
         $gsmSignal = $device->last_gsm_signal;
 
@@ -56,7 +61,7 @@ class MobileVehicleDetailService
         }
 
         return [
-            ...($includeTechnicalDetails ? [
+            ...($includeTrackerIdentity ? [
                 'tracker' => [
                     'id' => $device->id,
                     'name' => $device->name,
@@ -89,8 +94,10 @@ class MobileVehicleDetailService
                 'full_name' => $driver->full_name,
                 'employee_id' => $driver->employee_id,
                 'department' => $driver->department?->name,
-                'identifier_uid' => $driverIdentifier?->uid ?: $device->last_driver_identifier_uid,
-                'identifier_type' => $driverIdentifier?->type,
+                ...($includeDriverIdentifier ? [
+                    'identifier_uid' => $driverIdentifier?->uid ?: $device->last_driver_identifier_uid,
+                    'identifier_type' => $driverIdentifier?->type,
+                ] : []),
                 'phone' => $driver->phone,
                 'status' => $driver->status,
             ] : null,
@@ -111,7 +118,9 @@ class MobileVehicleDetailService
             'diagnostic' => [
                 'satellites' => $device->last_satellites,
                 'protocol' => $device->protocol ? strtoupper($device->protocol) : null,
-                'driver_identifier_uid' => $device->last_driver_identifier_uid,
+                ...($includeDriverIdentifier ? [
+                    'driver_identifier_uid' => $device->last_driver_identifier_uid,
+                ] : []),
                 'odometer_km' => $this->floatOrNull($device->last_odometer_km ?? $device->last_can_total_mileage_km),
                 'engine_seconds' => $device->last_engine_seconds,
                 'io_count' => is_array($device->last_io) ? count($device->last_io) : 0,
@@ -130,6 +139,7 @@ class MobileVehicleDetailService
                 'fault_distance_km' => $device->last_obd_fault_distance_km,
                 'errors_count' => $device->last_obd_errors_count,
                 'distance_since_clear_km' => $device->last_obd_distance_since_clear_km,
+                'states' => $this->canBusState->forDevice($device),
                 'updated_at' => ($device->last_obd_updated_at ?: $device->last_seen_at ?: $device->last_position_at)?->toISOString(),
             ],
             'recent_events' => $device->trackerEvents->map(fn ($event): array => [
@@ -268,7 +278,7 @@ class MobileVehicleDetailService
             ]);
     }
 
-    private function currentDriverIdentifier(Device $device): ?DriverIdentifier
+    private function currentDriverIdentifier(Device $device, Vehicle $vehicle): ?DriverIdentifier
     {
         if ($device->vehicle_id === null || blank($device->last_driver_identifier_uid)) {
             return null;
@@ -276,8 +286,9 @@ class MobileVehicleDetailService
 
         return DriverIdentifier::query()
             ->with('driver.department:id,name,code')
-            ->where('uid', $device->last_driver_identifier_uid)
+            ->whereIn('uid', DriverIdentifierUid::candidates($device->last_driver_identifier_uid))
             ->where('active', true)
+            ->whereHas('driver', fn ($query) => $query->where('fleet_id', $vehicle->fleet_id))
             ->whereHas('driver.vehicles', fn ($query) => $query->whereKey($device->vehicle_id))
             ->first();
     }

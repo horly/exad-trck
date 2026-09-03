@@ -151,10 +151,19 @@ class Device extends Model
             return $query;
         }
 
-        return $query->where(function (Builder $query) use ($user): void {
+        return $query->inFleet($user->fleet_id ?? 0);
+    }
+
+    public function scopeInFleet(Builder $query, int $fleetId): Builder
+    {
+        return $query->where(function (Builder $query) use ($fleetId): void {
             $query
-                ->where('devices.fleet_id', $user->fleet_id ?? 0)
-                ->orWhereHas('vehicle', fn (Builder $query): Builder => $query->where('fleet_id', $user->fleet_id ?? 0));
+                ->whereHas('vehicle', fn (Builder $query): Builder => $query->where('fleet_id', $fleetId))
+                ->orWhere(function (Builder $query) use ($fleetId): void {
+                    $query
+                        ->whereNull('devices.vehicle_id')
+                        ->where('devices.fleet_id', $fleetId);
+                });
         });
     }
 }
