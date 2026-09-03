@@ -201,6 +201,8 @@ test('superadmin can open an isolated client dashboard from the fleet list', fun
         'subscription_id' => $firstFleet->subscription_id,
         'fleet_id' => $firstFleet->id,
         'vehicle_id' => $firstVehicle->id,
+        'brand' => 'teltonika',
+        'model' => 'FMB140',
     ]);
     Device::factory()->online()->create([
         'subscription_id' => $secondFleet->subscription_id,
@@ -265,6 +267,20 @@ test('superadmin can open an isolated client dashboard from the fleet list', fun
 
     expect($mapResponse->json('geojson.features.0.properties.vehicle'))
         ->toBe($firstVehicle->name);
+
+    $previewDetails = $this->actingAs($superadmin)
+        ->getJson(route('vehicles.tracker-details', $firstVehicle))
+        ->assertSuccessful()
+        ->json('html');
+
+    expect($previewDetails)->not->toContain(__('trackers.engine_control_title'));
+
+    $this->actingAs($superadmin)
+        ->postJson(route('vehicles.engine-commands.store', $firstVehicle), [
+            'action' => 'immobilize',
+            'confirmation' => true,
+        ])
+        ->assertForbidden();
 
     $this->actingAs($superadmin)
         ->post(route('garages.store'), [])
@@ -514,6 +530,7 @@ test('fleet admin has all client permissions and creates only users in its fleet
 
     expect($admin->hasClientPermission(User::PERMISSION_MAP_VIEW))->toBeTrue()
         ->and($admin->hasClientPermission(User::PERMISSION_REPORTS_GENERATE))->toBeTrue()
+        ->and($admin->hasClientPermission(User::PERMISSION_ENGINE_CONTROL))->toBeTrue()
         ->and($admin->hasClientPermission(User::PERMISSION_GARAGES_MANAGE))->toBeTrue()
         ->and($admin->hasClientPermission(User::PERMISSION_MAINTENANCE_MANAGE))->toBeTrue();
 
@@ -521,6 +538,7 @@ test('fleet admin has all client permissions and creates only users in its fleet
         ->get(route('users.index'))
         ->assertSuccessful()
         ->assertSee('Flotte Admin')
+        ->assertSee(__('users.permission_engine_control'))
         ->assertDontSee('name="fleet_id"', false);
 
     $this->actingAs($admin)
@@ -534,6 +552,7 @@ test('fleet admin has all client permissions and creates only users in its fleet
             'permissions' => [
                 User::PERMISSION_MAP_VIEW,
                 User::PERMISSION_REPORTS_GENERATE,
+                User::PERMISSION_ENGINE_CONTROL,
             ],
         ])
         ->assertRedirect(route('users.index'));
@@ -546,7 +565,53 @@ test('fleet admin has all client permissions and creates only users in its fleet
         ->and($createdUser->permissions)->toBe([
             User::PERMISSION_MAP_VIEW,
             User::PERMISSION_REPORTS_GENERATE,
+            User::PERMISSION_ENGINE_CONTROL,
         ]);
+});
+
+test('fleet admin can grant and revoke engine control permission for a user', function () {
+    $fleet = Fleet::factory()->create();
+    $admin = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
+    $user = User::factory()->simpleUser($fleet->subscription)->forFleet($fleet)->create([
+        'permissions' => [User::PERMISSION_MAP_VIEW],
+    ]);
+
+    $this->actingAs($admin)
+        ->put(route('users.update', $user), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => 'user',
+            'permissions' => [
+                User::PERMISSION_MAP_VIEW,
+                User::PERMISSION_ENGINE_CONTROL,
+            ],
+        ])
+        ->assertRedirect(route('users.index'));
+
+    expect($user->fresh()->permissions)->toBe([
+        User::PERMISSION_MAP_VIEW,
+        User::PERMISSION_ENGINE_CONTROL,
+    ]);
+
+    $this->actingAs($admin)
+        ->put(route('users.update', $user), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => 'user',
+            'permissions' => [User::PERMISSION_MAP_VIEW],
+        ])
+        ->assertRedirect(route('users.index'));
+
+    expect($user->fresh()->permissions)->toBe([User::PERMISSION_MAP_VIEW]);
+
+    $this->actingAs($user->fresh())
+        ->put(route('users.update', $user), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => 'user',
+            'permissions' => [User::PERMISSION_ENGINE_CONTROL],
+        ])
+        ->assertForbidden();
 });
 
 test('fleet admin cannot manage a user from another fleet or create core resources', function () {
@@ -627,7 +692,6 @@ test('superadmin assigns new admins to exactly one fleet', function () {
     $admin = User::query()->where('email', 'fleet-admin@example.com')->firstOrFail();
 
     expect($admin->fleet_id)->toBe($fleet->id)
-        ->and($admin->subscription_id)->toBe($fleet->subscription_id)
         ->and($admin->fleets()->count())->toBe(1)
         ->and($admin->fleets()->firstOrFail()->pivot->permission)->toBe('manager');
 });

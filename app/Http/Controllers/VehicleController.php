@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\AlertRule;
 use App\Models\Fleet;
 use App\Models\Vehicle;
-use App\Models\VehicleSubscriptionPlan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -53,7 +52,6 @@ class VehicleController extends Controller
             'registration_number' => 'registration_number',
             'fleet' => 'fleet_name',
             'vehicle_type' => 'vehicle_type',
-            'subscription_plan' => 'subscription_plan',
             'status' => 'vehicles.status',
         ];
         $sort = $isDatatableRequest && array_key_exists((string) $request->query('sort'), $sortableColumns)
@@ -78,7 +76,6 @@ class VehicleController extends Controller
                             ->orWhere('brand', 'like', "%{$search}%")
                             ->orWhere('model', 'like', "%{$search}%")
                             ->orWhere('vehicle_type', 'like', "%{$search}%")
-                            ->orWhere('subscription_plan', 'like', "%{$search}%")
                             ->orWhere('vehicles.status', 'like', "%{$search}%")
                             ->orWhere('fleets.name', 'like', "%{$search}%");
                     }
@@ -99,7 +96,6 @@ class VehicleController extends Controller
             'direction' => $direction,
             'canManageVehicles' => $canManageVehicles,
             'manageableFleets' => $this->manageableFleets($request),
-            'subscriptionPlans' => $this->subscriptionPlansForForm(),
             'vehicleTypes' => self::VEHICLE_TYPES,
         ];
 
@@ -188,7 +184,6 @@ class VehicleController extends Controller
      *     color?: string|null,
      *     year?: int|null,
      *     vehicle_type: string,
-     *     subscription_plan: string,
      *     speed_limit_kmh?: int|null,
      *     status: string
      * }
@@ -216,7 +211,6 @@ class VehicleController extends Controller
             'color' => ['nullable', 'string', 'max:50'],
             'year' => ['nullable', 'integer', 'min:1950', 'max:2100'],
             'vehicle_type' => ['required', Rule::in(self::VEHICLE_TYPES)],
-            'subscription_plan' => ['required', Rule::in($this->activeSubscriptionPlanCodes())],
             'speed_limit_kmh' => ['nullable', 'integer', 'min:1', 'max:300'],
             'status' => ['required', Rule::in(['active', 'inactive', 'maintenance'])],
         ]);
@@ -257,35 +251,6 @@ class VehicleController extends Controller
         }
 
         $policy->update($attributes);
-    }
-
-    private function subscriptionPlansForForm()
-    {
-        $plans = VehicleSubscriptionPlan::query()->active()->ordered()->get(['code', 'name']);
-
-        if ($plans->isNotEmpty()) {
-            return $plans;
-        }
-
-        return collect(VehicleSubscriptionPlan::defaultPlans())
-            ->map(fn (array $plan, string $code): VehicleSubscriptionPlan => new VehicleSubscriptionPlan([
-                'code' => $code,
-                'name' => $plan['name'],
-            ]))
-            ->values();
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function activeSubscriptionPlanCodes(): array
-    {
-        $codes = VehicleSubscriptionPlan::query()
-            ->active()
-            ->pluck('code')
-            ->all();
-
-        return $codes !== [] ? $codes : array_keys(VehicleSubscriptionPlan::defaultPlans());
     }
 
     private function manageableFleets(Request $request)

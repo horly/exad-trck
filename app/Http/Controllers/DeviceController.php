@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Device;
+use App\Models\DeviceCommand;
 use App\Models\Driver;
 use App\Models\DriverIdentifier;
 use App\Models\Position;
@@ -337,14 +338,22 @@ class DeviceController extends Controller
         Device $device,
         PositionAddressService $positionAddress,
         CanBusStateService $canBusState,
-    ): JsonResponse
-    {
+    ): JsonResponse {
         abort_unless(
             Device::query()->visibleTo($request->user())->whereKey($device->id)->exists(),
             403
         );
 
-        return $this->detailsResponse($device, $positionAddress, $canBusState, true, true);
+        return $this->detailsResponse(
+            $device,
+            $positionAddress,
+            $canBusState,
+            showTechnicalDetails: true,
+            showDriverIdentifier: true,
+            canControlEngine: $request->user()->can('control-engine', $device),
+            engineCommandUrl: route('trackers.engine-commands.store', $device),
+            engineDetailsUrl: route('trackers.details', $device),
+        );
     }
 
     public function vehicleDetails(
@@ -352,8 +361,7 @@ class DeviceController extends Controller
         Vehicle $vehicle,
         PositionAddressService $positionAddress,
         CanBusStateService $canBusState,
-    ): JsonResponse
-    {
+    ): JsonResponse {
         abort_unless(
             Vehicle::query()->visibleTo($request->user())->whereKey($vehicle->id)->exists(),
             403
@@ -370,6 +378,10 @@ class DeviceController extends Controller
             $canBusState,
             showTechnicalDetails: true,
             showDriverIdentifier: $request->user()->isSuperadmin(),
+            canControlEngine: ! (bool) $request->attributes->get('client_preview', false)
+                && $request->user()->can('control-engine', $device),
+            engineCommandUrl: route('vehicles.engine-commands.store', $vehicle),
+            engineDetailsUrl: route('vehicles.tracker-details', $vehicle),
         );
     }
 
@@ -379,6 +391,9 @@ class DeviceController extends Controller
         CanBusStateService $canBusState,
         bool $showTechnicalDetails,
         bool $showDriverIdentifier,
+        bool $canControlEngine,
+        string $engineCommandUrl,
+        string $engineDetailsUrl,
     ): JsonResponse {
         $device->load([
             'fleet:id,name,code',
@@ -427,6 +442,20 @@ class DeviceController extends Controller
             $locationPosition instanceof Position && $latestPosition instanceof Position && $locationPosition->is($latestPosition),
         );
         $currentDriver = $this->currentDriverForDevice($device, $showDriverIdentifier);
+        $engineCommand = $canControlEngine
+            ? DeviceCommand::query()
+                ->where('device_id', $device->id)
+                ->latest('id')
+                ->first()
+            : null;
+        $lastConfirmedEngineCommand = $canControlEngine
+            ? DeviceCommand::query()
+                ->where('device_id', $device->id)
+                ->where('status', DeviceCommand::STATUS_CONFIRMED)
+                ->latest('confirmed_at')
+                ->latest('id')
+                ->first()
+            : null;
 
         return response()->json([
             'html' => view('trackers.partials.details', [
@@ -441,6 +470,11 @@ class DeviceController extends Controller
                 'canBusStates' => $canBusState->forDevice($device),
                 'showTechnicalDetails' => $showTechnicalDetails,
                 'showDriverIdentifier' => $showDriverIdentifier,
+                'canControlEngine' => $canControlEngine,
+                'engineCommandUrl' => $engineCommandUrl,
+                'engineDetailsUrl' => $engineDetailsUrl,
+                'engineCommand' => $engineCommand,
+                'engineImmobilized' => $lastConfirmedEngineCommand?->action === DeviceCommand::ACTION_IMMOBILIZE,
             ])->render(),
         ]);
     }
@@ -598,7 +632,6 @@ class DeviceController extends Controller
      * @return array{
      *     vehicle_id: int,
      *     fleet_id: int|null,
-     *     subscription_id: int|null,
      *     imei: string,
      *     name?: string|null,
      *     brand: string,
@@ -631,9 +664,6 @@ class DeviceController extends Controller
         $vehicle = $manageableVehicles->firstWhere('id', (int) $data['vehicle_id']);
 
         $data['fleet_id'] = $vehicle?->fleet_id;
-        $data['subscription_id'] = $request->user()->isSuperadmin()
-            ? $vehicle?->fleet?->managers()->whereNotNull('subscription_id')->value('subscription_id')
-            : $request->user()->subscription_id;
 
         return $data;
     }

@@ -4,7 +4,7 @@ namespace App\Providers;
 
 use App\Models\Alert;
 use App\Models\ApplicationSetting;
-use App\Models\Subscription;
+use App\Models\Device;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -39,20 +39,30 @@ class AppServiceProvider extends ServiceProvider
             (string) ($request->user()?->id ?? $request->ip())
         ));
         RateLimiter::for('android-downloads', fn (Request $request): Limit => Limit::perMinute(8)->by($request->ip()));
+        RateLimiter::for('engine-control', fn (Request $request): Limit => Limit::perMinute(3)->by(
+            (string) ($request->user()?->id ?? $request->ip())
+        ));
 
         Gate::define('manage-platform', fn (User $user): bool => $user->isSuperadmin());
 
-        Gate::define('manage-subscriptions', fn (User $user): bool => $user->isSuperadmin());
-
         Gate::define('manage-users', fn (User $user): bool => $user->isSuperadmin() || $user->isAdmin());
 
-        Gate::define('view-subscription', function (User $user, Subscription|int|null $subscription): bool {
-            return $user->canAccessSubscription($subscription);
-        });
+        Gate::define('control-engine', function (User $user, Device $device): bool {
+            $vehicle = $device->vehicle;
 
-        Gate::define('manage-subscription-users', function (User $user, Subscription|int|null $subscription): bool {
-            return $user->isSuperadmin()
-                || ($user->isAdmin() && $user->canAccessSubscription($subscription));
+            if (! $user->isActive()
+                || ! $device->supportsEngineImmobilization()
+                || $vehicle === null) {
+                return false;
+            }
+
+            if ($user->isSuperadmin()) {
+                return true;
+            }
+
+            return $user->fleet_id !== null
+                && (int) $user->fleet_id === (int) $vehicle->fleet_id
+                && $user->hasClientPermission(User::PERMISSION_ENGINE_CONTROL);
         });
 
         View::composer('partials.topbar-actions', function ($view): void {

@@ -53,7 +53,6 @@ test('every management form modal displays a contextual title icon', function ()
 
     foreach ([
         'users.index' => 'fa-user-plus',
-        'subscriptions.index' => 'fa-layer-group',
         'fleets.index' => 'fa-warehouse',
         'vehicles.index' => 'fa-car-side',
         'trackers.index' => 'fa-satellite-dish',
@@ -75,7 +74,7 @@ test('database backed selects are searchable and match standard field height', f
     $superadmin = User::factory()->superadmin()->create();
 
     foreach ([
-        'vehicles.index' => 2,
+        'vehicles.index' => 1,
         'departments.index' => 1,
         'drivers.index' => 2,
         'fleets.index' => 1,

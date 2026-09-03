@@ -2,7 +2,7 @@
 
 return [
     'title' => 'Flottes',
-    'subscription' => 'Exploitation',
+    'eyebrow' => 'Gestion de flotte',
     'navigation_main' => 'Navigation principale',
     'new_fleet' => 'Nouvelle flotte',
     'logout' => 'Déconnexion',
@@ -18,9 +18,6 @@ return [
     'initial_admin' => 'Admin responsable',
     'choose_admin' => 'Choisir un admin',
     'initial_admin_hint' => 'Cet admin gérera ensuite les autres utilisateurs de la flotte.',
-    'premium' => 'Premium',
-    'standard' => 'Standard',
-    'basic' => 'Basique',
     'actions' => 'Actions',
     'search' => 'Rechercher...',
     'rows' => 'lignes',

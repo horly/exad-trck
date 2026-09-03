@@ -10,7 +10,6 @@ return [
     'sidebar_toggle' => 'Collapse or expand sidebar',
     'version' => 'EXAD Tracking - v.1.0',
     'breadcrumb' => 'ADMIN / DASHBOARD',
-    'subscriptions' => 'Subscriptions',
     'users' => 'Users',
     'admins' => 'Administrators',
     'organizations' => 'Organizations',

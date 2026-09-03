@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 
 class Device extends Model
 {
@@ -130,6 +132,16 @@ class Device extends Model
         return $this->hasMany(DriverSession::class);
     }
 
+    public function deviceCommands(): HasMany
+    {
+        return $this->hasMany(DeviceCommand::class);
+    }
+
+    public function immobilizationProfile(): HasOne
+    {
+        return $this->hasOne(DeviceImmobilizationProfile::class);
+    }
+
     public function subscription(): BelongsTo
     {
         return $this->belongsTo(Subscription::class);
@@ -143,6 +155,18 @@ class Device extends Model
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class);
+    }
+
+    public function supportsEngineImmobilization(): bool
+    {
+        $brand = Str::lower(trim((string) $this->brand));
+        $model = Str::upper(trim((string) $this->model));
+        $supportedModels = config("engine-immobilization.supported_devices.{$brand}", []);
+
+        return in_array($model, array_map(
+            static fn (mixed $supportedModel): string => Str::upper(trim((string) $supportedModel)),
+            is_array($supportedModels) ? $supportedModels : [],
+        ), true);
     }
 
     public function scopeVisibleTo(Builder $query, User $user): Builder

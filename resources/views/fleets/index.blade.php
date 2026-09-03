@@ -18,7 +18,7 @@
             <header class="dashboard-topbar">
                 @include('partials.sidebar-toggle')
                 <div>
-                    <p class="eyebrow mb-1">{{ __('fleets.subscription') }}</p>
+                    <p class="eyebrow mb-1">{{ __('fleets.eyebrow') }}</p>
                     <h1>{{ __('fleets.title') }}</h1>
                 </div>
 

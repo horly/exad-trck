@@ -5822,6 +5822,575 @@ body.theme-dark .alert-summary-card small {
     grid-column: 1 / -1;
 }
 
+.tracker-engine-control {
+    border-color: #d7e0ef !important;
+    overflow: hidden;
+    padding: 0 !important;
+}
+
+.tracker-engine-control-header {
+    background: linear-gradient(100deg, #101b3c, #172d67);
+    border: 0 !important;
+    color: #fff;
+    margin: 0 !important;
+    padding: 13px 16px !important;
+}
+
+.tracker-engine-control-header h3 {
+    color: #fff !important;
+    margin-top: 2px;
+}
+
+.tracker-engine-control-eyebrow {
+    color: #aebfe9;
+    display: block;
+    font-size: 0.6rem;
+    font-weight: 850;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.tracker-engine-control-status {
+    align-items: center;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 0.66rem;
+    font-weight: 850;
+    gap: 6px;
+    padding: 6px 9px;
+}
+
+.tracker-engine-control-status--ready {
+    background: rgba(34, 197, 94, 0.14);
+    border-color: rgba(134, 239, 172, 0.3);
+    color: #bbf7d0;
+}
+
+.tracker-engine-control-status--pending {
+    background: rgba(245, 158, 11, 0.16);
+    border-color: rgba(253, 230, 138, 0.28);
+    color: #fde68a;
+}
+
+.tracker-engine-control-status--locked {
+    background: rgba(239, 68, 68, 0.16);
+    border-color: rgba(252, 165, 165, 0.3);
+    color: #fecaca;
+}
+
+.tracker-engine-control-layout {
+    display: grid;
+    gap: 12px;
+    padding: 14px 16px 13px;
+}
+
+.tracker-engine-control-summary {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+}
+
+.tracker-engine-control-visual {
+    align-items: center;
+    background: #fff1f2;
+    border: 1px solid #fecdd3;
+    border-radius: 11px;
+    color: #be123c;
+    display: inline-flex;
+    flex: 0 0 38px;
+    height: 38px;
+    justify-content: center;
+}
+
+.tracker-engine-control-summary strong {
+    color: #17233b;
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 900;
+}
+
+.tracker-engine-control-summary p {
+    color: #64748b;
+    font-size: 0.69rem;
+    line-height: 1.45;
+    margin: 3px 0 0;
+}
+
+.tracker-engine-safety {
+    display: grid;
+    gap: 7px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.tracker-engine-safety-item {
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 9px;
+    color: #64748b;
+    display: flex;
+    font-size: 0.65rem;
+    font-weight: 750;
+    gap: 7px;
+    min-height: 34px;
+    padding: 7px 9px;
+}
+
+.tracker-engine-safety-item--passed {
+    background: #eefbf5;
+    border-color: #c4f1dd;
+    color: #157553;
+}
+
+.tracker-engine-safety-item--waiting i {
+    color: #d28a0a;
+}
+
+.tracker-engine-control-alert {
+    align-items: center;
+    background: #fff8e7;
+    border: 1px solid #f8df9a;
+    border-radius: 10px;
+    color: #855b0b;
+    display: flex;
+    font-size: 0.68rem;
+    font-weight: 700;
+    gap: 9px;
+    padding: 9px 11px;
+}
+
+.tracker-engine-control-alert a {
+    color: #6b4600;
+    font-weight: 900;
+    margin-left: auto;
+}
+
+.tracker-engine-control-form {
+    border-top: 1px solid #e8edf5;
+    display: grid;
+    gap: 10px;
+    padding-top: 12px;
+}
+
+.tracker-engine-control-fields {
+    display: grid;
+    gap: 9px;
+    grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(120px, 0.75fr));
+}
+
+.tracker-engine-control-fields label {
+    display: grid;
+    gap: 5px;
+}
+
+.tracker-engine-control-fields label > span {
+    color: #44536a;
+    font-size: 0.64rem;
+    font-weight: 850;
+}
+
+.tracker-engine-control-fields input,
+.tracker-engine-control-fields textarea {
+    background: #fff;
+    border: 1px solid #cfd9e7;
+    border-radius: 9px;
+    color: #17233b;
+    font-size: 0.72rem;
+    min-height: 38px;
+    padding: 8px 10px;
+    resize: vertical;
+    width: 100%;
+}
+
+.tracker-engine-control-fields input:focus,
+.tracker-engine-control-fields textarea:focus {
+    border-color: #4169d8;
+    box-shadow: 0 0 0 3px rgba(65, 105, 216, 0.12);
+    outline: none;
+}
+
+.tracker-engine-mapping-confirmation {
+    align-items: flex-start;
+    color: #596a82;
+    display: flex;
+    font-size: 0.66rem;
+    font-weight: 700;
+    gap: 8px;
+    line-height: 1.45;
+}
+
+.tracker-engine-mapping-confirmation input {
+    accent-color: #1f46bb;
+    margin-top: 2px;
+}
+
+.tracker-engine-control-actions {
+    display: grid;
+    gap: 9px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tracker-engine-button {
+    align-items: center;
+    border: 1px solid;
+    border-radius: 10px;
+    display: flex;
+    font-size: 0.74rem;
+    font-weight: 900;
+    gap: 10px;
+    justify-content: center;
+    min-height: 46px;
+    padding: 8px 12px;
+}
+
+.tracker-engine-button span {
+    display: grid;
+    gap: 1px;
+    text-align: left;
+}
+
+.tracker-engine-button small {
+    font-size: 0.58rem;
+    font-weight: 650;
+    opacity: 0.76;
+}
+
+.tracker-engine-button--danger {
+    background: #b42338;
+    border-color: #b42338;
+    color: #fff;
+}
+
+.tracker-engine-button--release {
+    background: #f8fafc;
+    border-color: #bdcbe0;
+    color: #1d3567;
+}
+
+.tracker-engine-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+}
+
+.tracker-engine-control-response {
+    border-radius: 8px;
+    display: none;
+    font-size: 0.68rem;
+    font-weight: 750;
+    padding: 8px 10px;
+}
+
+.tracker-engine-control-response.is-success,
+.tracker-engine-control-response.is-error {
+    display: block;
+}
+
+.tracker-engine-control-response.is-success {
+    background: #eaf9f2;
+    color: #157553;
+}
+
+.tracker-engine-control-response.is-error {
+    background: #fff1f2;
+    color: #b42338;
+}
+
+.tracker-engine-control-footnote {
+    align-items: center;
+    color: #718198;
+    display: flex;
+    font-size: 0.62rem;
+    font-weight: 650;
+    gap: 7px;
+    margin: 0;
+}
+
+/* Compact engine command: one state-aware action with a SweetAlert confirmation. */
+.tracker-engine-control {
+    background: #fff;
+}
+
+.tracker-engine-control-header {
+    background: #fff;
+    border-bottom: 1px solid #e5ebf4 !important;
+    color: #17233b;
+    margin: 0 16px !important;
+    padding: 14px 0 11px !important;
+}
+
+.tracker-engine-control-header h3 {
+    color: #17233b !important;
+    font-size: 0.78rem;
+    margin: 0;
+}
+
+.tracker-engine-control-actions {
+    display: grid;
+    gap: 0;
+    grid-template-columns: 1fr;
+    padding: 2px 16px 8px;
+}
+
+.tracker-engine-button {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid #edf1f6;
+    border-radius: 0;
+    color: #34435a;
+    display: grid;
+    font-size: 0.74rem;
+    font-weight: 760;
+    gap: 11px;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    justify-content: stretch;
+    min-height: 54px;
+    padding: 8px 2px;
+    text-align: left;
+    width: 100%;
+}
+
+.tracker-engine-button:last-child {
+    border-bottom: 0;
+}
+
+.exad-engine-swal {
+    border-radius: 16px;
+    color: #17233b;
+    font-family: "IBM Plex Mono", monospace;
+    max-width: min(460px, calc(100vw - 24px));
+    padding: 18px 20px 20px;
+}
+
+.exad-engine-swal .swal2-title {
+    font-size: 1rem;
+    line-height: 1.45;
+    padding-top: 8px;
+}
+
+.exad-engine-swal .swal2-html-container {
+    color: #607089;
+    font-size: 0.74rem;
+    line-height: 1.65;
+}
+
+.exad-engine-swal .swal2-actions button {
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 0.7rem;
+    font-weight: 800;
+    min-height: 40px;
+}
+
+.tracker-engine-button:not(:disabled):hover {
+    background: #f8fafc;
+}
+
+.tracker-engine-button--danger,
+.tracker-engine-button--release {
+    background: transparent;
+    border-color: #edf1f6;
+    color: #34435a;
+}
+
+.tracker-engine-button-icon {
+    align-items: center;
+    background: #f1f5f9;
+    border-radius: 9px;
+    color: #64748b;
+    display: inline-flex;
+    height: 32px;
+    justify-content: center;
+    width: 32px;
+}
+
+.tracker-engine-button--danger .tracker-engine-button-icon {
+    background: #fff1f2;
+    color: #c51e3a;
+}
+
+.tracker-engine-button--release .tracker-engine-button-icon {
+    background: #ecfdf5;
+    color: #13845f;
+}
+
+.tracker-engine-button:disabled {
+    cursor: default;
+    opacity: 1;
+}
+
+.tracker-engine-button:disabled > span:nth-child(2) {
+    color: #94a3b8;
+}
+
+.tracker-engine-switch {
+    background: #cbd5e1;
+    border-radius: 999px;
+    display: inline-flex;
+    height: 18px;
+    padding: 2px;
+    transition: background-color 160ms ease;
+    width: 32px;
+}
+
+.tracker-engine-switch::after {
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+    content: "";
+    height: 14px;
+    transform: translateX(0);
+    transition: transform 160ms ease;
+    width: 14px;
+}
+
+.tracker-engine-button--danger .tracker-engine-switch.is-active {
+    background: #c51e3a;
+}
+
+.tracker-engine-button--release .tracker-engine-switch.is-active {
+    background: #15936a;
+}
+
+.tracker-engine-switch.is-active::after {
+    transform: translateX(14px);
+}
+
+.tracker-engine-dialog {
+    background: #fff;
+    border: 0;
+    border-radius: 16px;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+    color: #17233b;
+    max-height: min(720px, calc(100dvh - 32px));
+    max-width: calc(100vw - 32px);
+    padding: 0;
+    width: 520px;
+}
+
+.tracker-engine-dialog::backdrop {
+    background: rgba(15, 23, 42, 0.58);
+    backdrop-filter: blur(2px);
+}
+
+.tracker-engine-control-form {
+    border: 0;
+    display: grid;
+    gap: 14px;
+    margin: 0;
+    padding: 18px;
+}
+
+.tracker-engine-dialog-header {
+    align-items: flex-start;
+    border-bottom: 1px solid #e7edf5;
+    display: flex;
+    justify-content: space-between;
+    margin: -18px -18px 0;
+    padding: 15px 18px;
+}
+
+.tracker-engine-dialog-header span {
+    color: #718198;
+    display: block;
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    margin-bottom: 3px;
+    text-transform: uppercase;
+}
+
+.tracker-engine-dialog-header h3 {
+    color: #17233b;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.tracker-engine-dialog-close {
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #dbe4ef;
+    border-radius: 9px;
+    color: #52627a;
+    display: inline-flex;
+    flex: 0 0 34px;
+    height: 34px;
+    justify-content: center;
+}
+
+.tracker-engine-control-fields {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tracker-engine-control-fields label:first-child {
+    grid-column: 1 / -1;
+}
+
+.tracker-engine-control-fields label {
+    display: grid;
+    gap: 5px;
+}
+
+.tracker-engine-control-fields label > span {
+    color: #44536a;
+    font-size: 0.66rem;
+    font-weight: 800;
+}
+
+.tracker-engine-control-fields input,
+.tracker-engine-control-fields textarea {
+    background: #fff;
+    border: 1px solid #cfd9e7;
+    border-radius: 9px;
+    color: #17233b;
+    font-size: 0.72rem;
+    min-height: 40px;
+    padding: 8px 10px;
+    resize: vertical;
+    width: 100%;
+}
+
+.tracker-engine-dialog-actions {
+    align-items: center;
+    border-top: 1px solid #e7edf5;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin: 0 -18px -18px;
+    padding: 13px 18px;
+}
+
+.tracker-engine-dialog-cancel,
+.tracker-engine-dialog-confirm {
+    border: 1px solid;
+    border-radius: 9px;
+    font-size: 0.7rem;
+    font-weight: 850;
+    min-height: 38px;
+    padding: 8px 14px;
+}
+
+.tracker-engine-dialog-cancel {
+    background: #fff;
+    border-color: #cfd9e7;
+    color: #44536a;
+}
+
+.tracker-engine-dialog-confirm {
+    background: #172d67;
+    border-color: #172d67;
+    color: #fff;
+}
+
+.tracker-engine-dialog-confirm:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
 .tracker-can-section + .tracker-can-section {
     border-top: 1px solid #e5ebf4;
     margin-top: 18px;
@@ -6017,6 +6586,80 @@ body.theme-dark .alert-summary-card small {
     background: #08182e;
 }
 
+.dashboard-dark .tracker-engine-control-layout,
+.dashboard-dark .tracker-engine-control-fields input,
+.dashboard-dark .tracker-engine-control-fields textarea {
+    background: #0b1c37;
+    color: #eef5ff;
+}
+
+.dashboard-dark .tracker-engine-control-summary strong,
+.dashboard-dark .tracker-engine-control-fields label > span {
+    color: #e5efff;
+}
+
+.dashboard-dark .tracker-engine-control-summary p,
+.dashboard-dark .tracker-engine-mapping-confirmation,
+.dashboard-dark .tracker-engine-control-footnote {
+    color: #9eb3d2;
+}
+
+.dashboard-dark .tracker-engine-safety-item {
+    background: #0d213d;
+    border-color: #274567;
+}
+
+.dashboard-dark .tracker-engine-safety-item--passed {
+    background: rgba(21, 117, 83, 0.18);
+    border-color: rgba(85, 208, 158, 0.28);
+    color: #8ee0bd;
+}
+
+.dashboard-dark .tracker-engine-control,
+.dashboard-dark .tracker-engine-control-header,
+.dashboard-dark .tracker-engine-dialog,
+.dashboard-dark .tracker-engine-control-form {
+    background: #0b1c37;
+    color: #eef5ff;
+}
+
+.dashboard-dark .tracker-engine-control-header,
+.dashboard-dark .tracker-engine-dialog-header,
+.dashboard-dark .tracker-engine-dialog-actions,
+.dashboard-dark .tracker-engine-button {
+    border-color: #1d3b67 !important;
+}
+
+.dashboard-dark .tracker-engine-control-header h3,
+.dashboard-dark .tracker-engine-dialog-header h3,
+.dashboard-dark .tracker-engine-control-fields label > span {
+    color: #eef5ff !important;
+}
+
+.dashboard-dark .tracker-engine-button,
+.dashboard-dark .tracker-engine-button--danger,
+.dashboard-dark .tracker-engine-button--release {
+    color: #c5d4e9;
+}
+
+.dashboard-dark .tracker-engine-button:not(:disabled):hover,
+.dashboard-dark .tracker-engine-dialog-close {
+    background: #102643;
+}
+
+.dashboard-dark .tracker-engine-control-fields input,
+.dashboard-dark .tracker-engine-control-fields textarea {
+    background: #08182e;
+    border-color: #274567;
+    color: #eef5ff;
+}
+
+.dashboard-dark .tracker-engine-dialog-cancel {
+    background: #102643;
+    border-color: #274567;
+    color: #c5d4e9;
+}
+
 .dashboard-dark .tracker-can-section + .tracker-can-section {
     border-color: #1d3b67;
 }
@@ -6071,6 +6714,14 @@ body.theme-dark .alert-summary-card small {
         grid-template-columns: 1fr;
     }
 
+    .tracker-engine-control-fields {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .tracker-engine-control-fields label:first-child {
+        grid-column: 1 / -1;
+    }
+
     .tracker-can-state-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -6104,6 +6755,30 @@ body.theme-dark .alert-summary-card small {
     .tracker-obd-measurements-grid,
     .tracker-can-state-grid {
         grid-template-columns: 1fr;
+    }
+
+    .tracker-engine-safety {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .tracker-engine-control-fields,
+    .tracker-engine-control-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .tracker-engine-control-fields label:first-child {
+        grid-column: auto;
+    }
+
+    .tracker-engine-dialog {
+        max-height: calc(100dvh - 20px);
+        max-width: calc(100vw - 20px);
+        width: 100%;
+    }
+
+    .tracker-engine-dialog-actions {
+        align-items: stretch;
+        flex-direction: column-reverse;
     }
 
     .tracker-obd-measurements-grid > div:nth-child(2) {

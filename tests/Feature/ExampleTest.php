@@ -12,18 +12,15 @@ use App\Models\Subscription;
 use App\Models\TrackerEvent;
 use App\Models\User;
 use App\Models\Vehicle;
-use App\Models\VehicleSubscriptionFeature;
-use App\Models\VehicleSubscriptionPlan;
 use App\Services\ReverseGeocodingService;
 use Database\Seeders\AlertRuleSeeder;
-use Database\Seeders\VehicleSubscriptionFeatureSeeder;
-use Database\Seeders\VehicleSubscriptionPlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
 
 uses(RefreshDatabase::class);
 
@@ -100,40 +97,23 @@ test('authenticated users can view dashboard metrics', function () {
         ->assertSee('vendor/datamaps/datamaps.world.min.js', false);
 });
 
-test('superadmin can add subscription plans from a modal with existing features', function () {
-    $this->seed(VehicleSubscriptionFeatureSeeder::class);
-    $this->seed(VehicleSubscriptionPlanSeeder::class);
-
+test('subscription management is no longer exposed', function () {
     $superadmin = User::factory()->superadmin()->create();
 
+    expect(Route::has('subscriptions.index'))->toBeFalse()
+        ->and(Route::has('subscriptions.update'))->toBeFalse();
+
     $this->actingAs($superadmin)
         ->withSession(['locale' => 'fr'])
-        ->get(route('subscriptions.index'))
+        ->get('/subscriptions')
+        ->assertNotFound();
+
+    $this->actingAs($superadmin)
+        ->withSession(['locale' => 'fr'])
+        ->get(route('dashboard'))
         ->assertSuccessful()
-        ->assertSee('Nouvel abonnement')
-        ->assertSee('data-bs-target="#subscriptionPlanModal"', false)
-        ->assertSee('subscriptionPlanModal', false)
-        ->assertSee('Matrice');
-
-    $features = VehicleSubscriptionFeature::query()->pluck('code')->take(3)->all();
-
-    $this->actingAs($superadmin)
-        ->withSession(['locale' => 'fr'])
-        ->patch(route('subscriptions.update'), [
-            'new_plan' => [
-                'name' => 'Entreprise',
-                'description' => 'Plan personnalise pour flotte avancee.',
-                'color' => '#1f4ed8',
-                'features' => $features,
-            ],
-        ])
-        ->assertRedirect(route('subscriptions.index'))
-        ->assertSessionHas('status');
-
-    $plan = VehicleSubscriptionPlan::query()->where('code', 'entreprise')->first();
-
-    expect($plan)->not->toBeNull()
-        ->and($plan->features)->toBe($features);
+        ->assertDontSee('Abonnements')
+        ->assertDontSee('/subscriptions', false);
 });
 
 test('superadmin console pages load realtime alert toasts globally', function () {
@@ -251,11 +231,9 @@ test('fleets table uses shared datatable interactions', function () {
         if ($index === 1) {
             Vehicle::factory()->create([
                 'fleet_id' => $fleet->id,
-                'subscription_plan' => 'premium',
             ]);
             Vehicle::factory()->create([
                 'fleet_id' => $fleet->id,
-                'subscription_plan' => 'basic',
             ]);
         }
     }
@@ -271,7 +249,9 @@ test('fleets table uses shared datatable interactions', function () {
         ->assertSee('datatable-pagination', false)
         ->assertSee('Flotte 1')
         ->assertSee('>2</td>', false)
-        ->assertSee('>1</td>', false)
+        ->assertDontSee('Basique')
+        ->assertDontSee('Standard')
+        ->assertDontSee('Premium')
         ->assertDontSee('Flotte 6')
         ->assertSee('data-confirm-delete', false)
         ->assertSee('Supprimer cette flotte ?', false);
@@ -316,6 +296,8 @@ test('vehicles table uses shared datatable interactions and fleet access', funct
         ->assertSee('Affichage de 1 à 5 sur 6')
         ->assertSee('datatable-pagination', false)
         ->assertSee('Véhicule 1')
+        ->assertDontSee('name="subscription_plan"', false)
+        ->assertDontSee('Abonnement')
         ->assertDontSee('Véhicule 6')
         ->assertSee('data-confirm-delete', false)
         ->assertSee('Supprimer ce véhicule ?', false);
@@ -346,7 +328,6 @@ test('superadmin can create and delete vehicles in managed fleets', function () 
             'brand' => 'Toyota',
             'model' => 'Hilux',
             'vehicle_type' => 'truck',
-            'subscription_plan' => 'premium',
             'status' => 'active',
         ])
         ->assertRedirect(route('vehicles.index'))
@@ -356,8 +337,7 @@ test('superadmin can create and delete vehicles in managed fleets', function () 
 
     expect($vehicle)
         ->not->toBeNull()
-        ->and($vehicle->fleet_id)->toBe($fleet->id)
-        ->and($vehicle->subscription_plan)->toBe('premium');
+        ->and($vehicle->fleet_id)->toBe($fleet->id);
 
     $this->actingAs($superadmin)
         ->delete(route('vehicles.destroy', $vehicle))
@@ -473,7 +453,7 @@ test('superadmin can create and delete trackers for managed vehicles', function 
         ->and($device->operator_name)->toBe('Vodacom')
         ->and($device->status)->toBe('inactive')
         ->and($device->fleet_id)->toBe($fleet->id)
-        ->and($device->subscription_id)->toBe($subscription->id);
+        ->and($device->subscription_id)->toBeNull();
 
     $this->actingAs($superadmin)
         ->delete(route('trackers.destroy', $device))
@@ -1856,7 +1836,7 @@ test('authenticated users can view the map page with google maps as default prov
         ->assertSee('js/google-map.js', false)
         ->assertSee('trackerDetailsModal', false)
         ->assertSee('js/tracker-details.js', false)
-        ->assertSee('20260903-tracker-details-corporate', false)
+        ->assertSee('20260903-engine-control', false)
         ->assertDontSee('vendor/mapbox/mapbox-gl.css', false)
         ->assertDontSee('vendor/mapbox/mapbox-gl.js', false)
         ->assertDontSee('js/map.js?v=20260602-mapbox-trips', false)

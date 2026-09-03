@@ -7,6 +7,7 @@ use App\Http\Controllers\ClientPreviewController;
 use App\Http\Controllers\CustomizationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
+use App\Http\Controllers\DeviceCommandController;
 use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\FleetController;
@@ -20,7 +21,6 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ServerConsoleTicketController;
 use App\Http\Controllers\ServerLogController;
 use App\Http\Controllers\ServerMonitoringController;
-use App\Http\Controllers\SubscriptionPlanController;
 use App\Http\Controllers\TrackerEventController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VehicleController;
@@ -72,6 +72,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
     Route::get('/drivers', [DriverController::class, 'index'])->name('drivers.index');
+    Route::post('/vehicles/{vehicle}/engine-commands', DeviceCommandController::class)
+        ->middleware('throttle:engine-control')
+        ->name('vehicles.engine-commands.store');
     Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
     Route::get('/alerts/recent', [AlertController::class, 'recent'])->name('alerts.recent');
     Route::patch('/alerts/{alert}/acknowledge', [AlertController::class, 'acknowledge'])->name('alerts.acknowledge');
@@ -108,8 +111,6 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware(['auth', 'superadmin'])->group(function () {
-    Route::get('/subscriptions', [SubscriptionPlanController::class, 'index'])->name('subscriptions.index');
-    Route::patch('/subscriptions', [SubscriptionPlanController::class, 'update'])->name('subscriptions.update');
     Route::get('/fleets/{fleet}/dashboard', [ClientPreviewController::class, 'store'])->name('fleets.dashboard');
     Route::post('/client-preview/exit', [ClientPreviewController::class, 'destroy'])->name('client-preview.exit');
     Route::resource('fleets', FleetController::class)->except(['show']);
@@ -121,6 +122,9 @@ Route::middleware(['auth', 'superadmin'])->group(function () {
     Route::post('/trackers', [DeviceController::class, 'store'])->name('trackers.store');
     Route::get('/trackers', [DeviceController::class, 'index'])->name('trackers.index');
     Route::get('/trackers/{device}/details', [DeviceController::class, 'details'])->name('trackers.details');
+    Route::post('/trackers/{device}/engine-commands', DeviceCommandController::class)
+        ->middleware('throttle:engine-control')
+        ->name('trackers.engine-commands.store');
     Route::get('/trackers/{device}/trips', [DeviceController::class, 'trips'])->name('trackers.trips');
     Route::put('/trackers/{device}', [DeviceController::class, 'update'])->name('trackers.update');
     Route::delete('/trackers/{device}', [DeviceController::class, 'destroy'])->name('trackers.destroy');

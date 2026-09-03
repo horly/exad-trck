@@ -11,7 +11,7 @@
         <link rel="stylesheet" href="{{ asset('vendor/mapbox/mapbox-gl.css') }}">
     @endif
     <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v=20260528-compact-ui">
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260903-tracker-modal-compact-v2">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v=20260903-engine-control-toggle">
     <link rel="stylesheet" href="{{ asset('css/map.css') }}?v=20260708-map-search-normalized">
 </head>
 <body class="app-font-manrope dashboard-body">
@@ -197,7 +197,8 @@
         <script src="{{ asset('js/searchable-select.js') }}?v=20260719-database-selects"></script>
     @endif
     @include('partials.realtime-alerts')
-    <script src="{{ asset('js/tracker-details.js') }}?v=20260903-tracker-details-corporate"></script>
+    <script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}?v=11.26.25"></script>
+    <script src="{{ asset('js/tracker-details.js') }}?v=20260903-engine-control-toggle"></script>
     <script src="{{ asset('js/tracker-trips.js') }}?v=20260714-trip-controls-icons"></script>
     @if ($mapProvider === 'google')
         <script src="{{ asset('js/google-map.js') }}?v=20260721-client-details"></script>

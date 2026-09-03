@@ -63,6 +63,15 @@ class VehicleSubscriptionPlan extends Model
         return $features !== [] ? $features : self::FEATURES;
     }
 
+    public static function includesFeature(string $planCode, string $feature): bool
+    {
+        $plan = static::query()->where('code', $planCode)->first(['features']);
+        $features = $plan?->features
+            ?? data_get(static::defaultPlans(), $planCode.'.features', []);
+
+        return in_array($feature, is_array($features) ? $features : [], true);
+    }
+
     /**
      * @return array<string, array{name: string, description: string, color: string, sort_order: int, features: list<string>}>
      */
@@ -124,4 +133,3 @@ class VehicleSubscriptionPlan extends Model
         return $query->orderBy('sort_order')->orderBy('name');
     }
 }
-

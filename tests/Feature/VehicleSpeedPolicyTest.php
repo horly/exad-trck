@@ -20,7 +20,6 @@ test('vehicle form creates updates and removes its speed policy', function () {
         'name' => 'Toyota Hilux Police',
         'registration_number' => 'EX-8080',
         'vehicle_type' => 'pickup',
-        'subscription_plan' => 'basic',
         'status' => 'active',
         'speed_limit_kmh' => 80,
     ];
@@ -77,7 +76,6 @@ test('moving a vehicle to another fleet synchronizes its tracker fleet', functio
             'name' => $vehicle->name,
             'registration_number' => $vehicle->registration_number,
             'vehicle_type' => $vehicle->vehicle_type,
-            'subscription_plan' => $vehicle->subscription_plan,
             'status' => $vehicle->status,
         ])
         ->assertRedirect(route('vehicles.index'));

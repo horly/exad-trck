@@ -51,9 +51,6 @@
                             <i class="{{ $sortIcon('vehicles') }}"></i>
                         </a>
                     </th>
-                    <th>{{ __('fleets.basic') }}</th>
-                    <th>{{ __('fleets.standard') }}</th>
-                    <th>{{ __('fleets.premium') }}</th>
                     <th>
                         <a class="datatable-sort-link {{ $sort === 'status' ? 'active' : '' }}" href="{{ $sortLink('status') }}" data-datatable-sort>
                             <span>{{ __('fleets.status') }}</span>
@@ -88,9 +85,6 @@
                             @endforelse
                         </td>
                         <td>{{ $fleet->vehicles_count }}</td>
-                        <td>{{ $fleet->basic_vehicles_count }}</td>
-                        <td>{{ $fleet->standard_vehicles_count }}</td>
-                        <td>{{ $fleet->premium_vehicles_count }}</td>
                         <td>
                             <span class="status-pill status-{{ $fleet->status }}">
                                 {{ $fleet->status === 'active' ? __('fleets.active') : __('fleets.inactive') }}
@@ -137,7 +131,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ $canManageFleets ? 9 : 8 }}" class="empty-state">
+                        <td colspan="{{ $canManageFleets ? 6 : 5 }}" class="empty-state">
                             {{ __('fleets.empty') }}
                         </td>
                     </tr>

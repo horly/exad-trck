@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Enums\UserRole;
 use App\Models\Fleet;
 use App\Models\User;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -33,12 +33,7 @@ class FleetController extends Controller
         $fleets = Fleet::query()
             ->visibleTo($request->user())
             ->with(['users:id,name,email,role'])
-            ->withCount([
-                'vehicles',
-                'vehicles as premium_vehicles_count' => fn ($query) => $query->where('subscription_plan', 'premium'),
-                'vehicles as standard_vehicles_count' => fn ($query) => $query->where('subscription_plan', 'standard'),
-                'vehicles as basic_vehicles_count' => fn ($query) => $query->where('subscription_plan', 'basic'),
-            ])
+            ->withCount('vehicles')
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($query) use ($search): void {
                     $query->where('name', 'like', "%{$search}%")
@@ -91,7 +86,6 @@ class FleetController extends Controller
         $data = $this->validatedFleetData($request);
         $managerId = isset($data['admin_id']) ? (int) $data['admin_id'] : null;
         unset($data['admin_id']);
-        $data['subscription_id'] = null;
 
         DB::transaction(function () use ($data, $managerId): void {
             $fleet = Fleet::query()->create($data);
@@ -202,7 +196,7 @@ class FleetController extends Controller
             ->whereIn('id', $currentManagerIds)
             ->where('fleet_id', $fleet->id)
             ->when($managerId !== null, fn ($query) => $query->where('id', '!=', $managerId))
-            ->update(['fleet_id' => null, 'subscription_id' => null]);
+            ->update(['fleet_id' => null]);
 
         $fleet->users()->detach($currentManagerIds->when(
             $managerId !== null,
@@ -222,10 +216,7 @@ class FleetController extends Controller
             ->whereKey($managerId)
             ->firstOrFail();
 
-        $manager->forceFill([
-            'fleet_id' => $fleet->id,
-            'subscription_id' => $fleet->subscription_id,
-        ])->save();
+        $manager->forceFill(['fleet_id' => $fleet->id])->save();
 
         $fleet->users()->syncWithoutDetaching([
             $manager->id => ['permission' => 'manager'],

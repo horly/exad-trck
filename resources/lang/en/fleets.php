@@ -2,7 +2,7 @@
 
 return [
     'title' => 'Fleets',
-    'subscription' => 'Subscription',
+    'eyebrow' => 'Fleet management',
     'navigation_main' => 'Main navigation',
     'new_fleet' => 'New fleet',
     'logout' => 'Logout',
@@ -18,9 +18,6 @@ return [
     'initial_admin' => 'Responsible admin',
     'choose_admin' => 'Choose an admin',
     'initial_admin_hint' => 'This admin will manage the other users of the fleet later.',
-    'premium' => 'Premium',
-    'standard' => 'Standard',
-    'basic' => 'Basic',
     'actions' => 'Actions',
     'search' => 'Search...',
     'rows' => 'rows',
@@ -34,7 +31,7 @@ return [
     'inactive' => 'Inactive',
     'edit' => 'Edit',
     'delete' => 'Delete',
-    'empty' => 'No fleet is available for your subscription.',
+    'empty' => 'No fleet is available.',
     'create_title' => 'New fleet',
     'create_eyebrow' => 'Creation',
     'edit_title' => 'Edit fleet',

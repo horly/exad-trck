@@ -62,12 +62,6 @@
                             <i class="{{ $sortIcon('vehicle_type') }}"></i>
                         </a>
                     </th>
-                    <th>
-                        <a class="datatable-sort-link {{ $sort === 'subscription_plan' ? 'active' : '' }}" href="{{ $sortLink('subscription_plan') }}" data-datatable-sort>
-                            <span>{{ __('vehicles.subscription_plan') }}</span>
-                            <i class="{{ $sortIcon('subscription_plan') }}"></i>
-                        </a>
-                    </th>
                     <th>{{ __('vehicles.device') }}</th>
                     <th>
                         <a class="datatable-sort-link {{ $sort === 'status' ? 'active' : '' }}" href="{{ $sortLink('status') }}" data-datatable-sort>
@@ -94,11 +88,6 @@
                             <span class="technical-code">{{ $vehicle->fleet?->code }}</span>
                         </td>
                         <td>{{ __('vehicles.type_' . $vehicle->vehicle_type) }}</td>
-                        <td>
-                            <span class="role-badge role-{{ $vehicle->subscription_plan }}">
-                                {{ __('vehicles.plan_' . $vehicle->subscription_plan) }}
-                            </span>
-                        </td>
                         <td>
                             @if ($vehicle->device)
                                 @if ($canManageVehicles)
@@ -136,7 +125,6 @@
                                         data-color="{{ $vehicle->color }}"
                                         data-year="{{ $vehicle->year }}"
                                         data-vehicle-type="{{ $vehicle->vehicle_type }}"
-                                        data-subscription-plan="{{ $vehicle->subscription_plan }}"
                                         data-status="{{ $vehicle->status }}"
                                         data-speed-limit-kmh="{{ $vehicle->speedPolicy?->is_active ? (int) $vehicle->speedPolicy->threshold_value : '' }}"
                                         aria-label="{{ __('vehicles.edit') }}"
@@ -165,7 +153,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ $canManageVehicles ? 9 : 8 }}" class="empty-state">{{ __('vehicles.empty') }}</td>
+                        <td colspan="{{ $canManageVehicles ? 8 : 7 }}" class="empty-state">{{ __('vehicles.empty') }}</td>
                     </tr>
                 @endforelse
             </tbody>

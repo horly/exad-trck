@@ -102,7 +102,6 @@ class UserController extends Controller
 
         DB::transaction(function () use ($actor, $data, $role, $fleet, $permissions): void {
             $user = User::query()->create([
-                'subscription_id' => $fleet->subscription_id,
                 'fleet_id' => $fleet->id,
                 'created_by' => $actor->id,
                 'name' => $data['name'],
@@ -132,9 +131,8 @@ class UserController extends Controller
         $role = $actor->isSuperadmin() ? UserRole::from($data['role']) : UserRole::User;
         $fleet = $this->targetFleet($request, $data);
 
-        DB::transaction(function () use ($actor, $data, $role, $fleet, $user): void {
+        DB::transaction(function () use ($data, $role, $fleet, $user): void {
             $user->fill([
-                'subscription_id' => $fleet->subscription_id,
                 'fleet_id' => $fleet->id,
                 'name' => $data['name'],
                 'email' => $data['email'],

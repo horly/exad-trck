@@ -46,10 +46,6 @@
         @endif
 
         @if ($user->isSuperadmin())
-            <a class="nav-link {{ $active === 'subscriptions' ? 'active' : '' }}" href="{{ route('subscriptions.index') }}">
-                <i class="fa-solid fa-layer-group"></i>
-                <span>{{ __('dashboard.subscriptions') }}</span>
-            </a>
             <div class="sidebar-nav-group {{ $fleetSectionActive ? 'is-open' : '' }}" data-sidebar-menu>
                 <button type="button" class="nav-link sidebar-nav-group-toggle {{ $fleetSectionActive ? 'active' : '' }}" aria-expanded="{{ $fleetSectionActive ? 'true' : 'false' }}" data-sidebar-menu-toggle>
                     <i class="fa-solid fa-truck-fast"></i>

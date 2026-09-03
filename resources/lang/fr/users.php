@@ -74,6 +74,8 @@ return [
     'permission_map_view_description' => 'Accéder à la carte et aux positions des véhicules de la flotte.',
     'permission_reports_generate' => 'Générer des rapports',
     'permission_reports_generate_description' => 'Consulter et exporter les rapports de la flotte.',
+    'permission_engine_control' => 'Commander l’immobilisation moteur',
+    'permission_engine_control_description' => 'Autoriser ce compte à immobiliser ou réactiver le démarrage des véhicules compatibles de sa flotte. L’accès à la carte doit également être accordé.',
     'permission_garages_manage' => 'Gérer les garages',
     'permission_garages_manage_description' => 'Créer et modifier les garages propres à la flotte.',
     'permission_maintenance_manage' => 'Gérer les entretiens',

@@ -10,7 +10,6 @@ return [
     'sidebar_toggle' => 'Réduire ou agrandir la barre latérale',
     'version' => 'EXAD Tracking - v.1.0',
     'breadcrumb' => 'ADMIN / TABLEAU DE BORD',
-    'subscriptions' => 'Abonnements',
     'users' => 'Utilisateurs',
     'admins' => 'Administrateurs',
     'organizations' => 'Entreprises',

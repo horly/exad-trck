@@ -1172,3 +1172,50 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - L'APK mobile contenant les boutons cartographiques adaptes a ete installe puis lance avec succes sur `emulator-5554`. Sa distribution Wi-Fi locale sur `http://192.168.1.68:8091/app-release.apk` repond en `200`.
 - Validation avant livraison : 140 tests Laravel avec 1 289 assertions, analyse Flutter sans anomalie et 6 tests Flutter passes.
 - Cette livraison mobile reste une version de test signee avec le certificat Android de developpement. Aucune publication Play Store n'a ete effectuee.
+
+## 2026-09-03 - Immobilisation moteur par traceur compatible
+- Mise en place d'une chaine complete de commande distante persistante entre Laravel et l'ecouteur GPS, avec suivi des statuts, tentatives, expiration, acquittement et confirmation.
+- La demande d'immobilisation attend obligatoirement l'arret complet du vehicule ; aucune commande de coupure n'est remise au traceur pendant la conduite.
+- La compatibilite est geree par une matrice extensible marque-modele, appliquee dans l'autorisation et dans l'action metier. Le FMB140 est autorise et le FMB003 est explicitement exclu.
+- Le detail du traceur presente un seul bouton qui alterne entre immobilisation et autorisation du demarrage. La confirmation se fait par une alerte SweetAlert compacte, sans formulaire.
+- Tous les textes fonctionnels utilisent `traceur` ou `tracker` au lieu d'une marque. Les noms de marque sont conserves uniquement lorsqu'ils identifient reellement le materiel ou le protocole interne.
+- L'acces reste limite au superadministrateur, protege par la session, CSRF et un limiteur de frequence. Les controles serveur de securite moteur restent independants de l'interface.
+- Validation : 176 tests Laravel passes avec 1 574 assertions, compilation Blade et controles syntaxiques PHP/JavaScript reussis.
+- Production controlee : FMB003 refuse, FMB140 autorise, Apache et l'ecouteur GPS actifs, `/up` et `/login` en HTTP 200.
+
+## 2026-09-03 - Delegation de l'immobilisation moteur aux comptes clients
+- Les administrateurs de flotte peuvent maintenant immobiliser ou reactiver le demarrage des vehicules compatibles de leur propre flotte. Les utilisateurs standards restent interdits par defaut.
+- Une autorisation individuelle `engine.control`, presentee dans la gestion des utilisateurs sous le libelle `Commander l'immobilisation moteur`, permet a l'administrateur de flotte d'accorder puis de retirer cette capacite a un utilisateur precis. L'utilisateur ne peut pas se l'attribuer lui-meme.
+- L'autorisation serveur exige cumulativement un compte actif, la meme flotte que le vehicule, un modele de traceur compatible et un abonnement comprenant l'arret moteur distant. Les verifications de securite moteur existantes restent appliquees apres verrouillage transactionnel.
+- L'interface client utilise des routes basees sur le vehicule et ne divulgue pas l'identifiant interne du traceur. Le bouton reste masque pour les comptes non autorises et pendant la previsualisation client. L'acces a la carte doit aussi etre accorde aux utilisateurs standards pour ouvrir les details du vehicule.
+- Aucune migration n'est requise : l'autorisation est stockee dans le champ JSON `permissions` deja existant.
+- Validation locale : 181 tests Laravel passes avec 1 602 assertions, dont 23 tests cibles avec 252 assertions ; Pint, syntaxe PHP, routes et compilation Blade valides.
+- Aucun deploiement ni commit n'a ete effectue pour cette evolution.
+
+## 2026-09-03 - Deploiement de la delegation client de l'immobilisation
+- Les administrateurs clients peuvent maintenant utiliser l'immobilisation moteur sur les vehicules compatibles de leur flotte. La permission individuelle `engine.control` est disponible dans la gestion des utilisateurs pour deleguer ou retirer cette capacite a un compte standard.
+- Le deploiement cible les 10 fichiers d'autorisation, de resolution vehicule-traceur, d'interface, de traductions et de routes. Aucune migration, donnee metier ou configuration d'environnement n'a ete modifiee.
+- L'archive de deploiement `deploy-exadtracking-client-engine-permission-20260903-150821.tar.gz` a pour SHA-256 `8ab06b73134f6a67130f94a921fc3cb32a87f4bc4c9931e470e9caa293ac8ce4`.
+- La sauvegarde de retour arriere est `/tmp/exadtracking-before-client-engine-permission-20260903-152020.tar.gz`, protegee en mode `0600`, avec le SHA-256 `4beeed2ec7a1c02d477c3c5aa99e90bafbdd80f13b9b107d28c6da5effcaf8c6`.
+- Les 10 fichiers distants correspondent exactement aux empreintes locales. Les caches Laravel ont ete nettoyes, puis les caches de configuration et de vues reconstruits ; le signal de redemarrage des workers a ete emis.
+- Verification production : route client protegee par session, CSRF et limiteur `engine-control`, environnement `production`, debug desactive, maintenance inactive, `/up` et `/login` en HTTP 200, `/map` en redirection authentifiee, Apache, PHP-FPM, GPS TCP et Supervisor actifs.
+- Aucun commit n'a ete cree.
+
+## 2026-09-03 - Retrait des abonnements prepare localement
+- La rubrique `Abonnements`, ses routes de consultation et de modification, son controleur, sa vue et ses traductions ont ete retires. L'URL historique `/subscriptions` retourne desormais une page introuvable.
+- Les formulaires et tableaux Vehicules n'affichent plus de champ, de colonne ou de badge de plan. La recherche et le tri par plan ont egalement ete supprimes.
+- Le tableau Flottes ne repartit plus les vehicules entre Basique, Standard et Premium ; il conserve uniquement le nombre total de vehicules. Son en-tete utilise maintenant le libelle generique `Gestion de flotte`.
+- L'immobilisation moteur n'est plus conditionnee par une offre ou un plan. Elle reste protegee par le compte actif, la flotte, la permission individuelle, la compatibilite du traceur et les controles de securite qui interdisent toute coupure pendant la conduite.
+- Les nouveaux utilisateurs et traceurs sont relies directement a leur flotte sans nouvelle ecriture de `subscription_id`. Les colonnes historiques `subscription_id` et `subscription_plan` sont conservees en base, sans suppression ni migration destructive, pour proteger les donnees existantes.
+- Aucun contrat de l'API mobile n'exposait d'abonnement ; aucune reponse mobile n'a donc ete modifiee.
+- Validation locale : 182 tests Laravel passes avec 1 597 assertions, dont 113 tests cibles avec 1 031 assertions ; Pint, syntaxe PHP, compilation Blade, inventaire des routes et controle des occurrences visibles valides.
+- Cette evolution n'est pas encore deployee et aucun commit n'a ete cree.
+
+## 2026-09-03 - Deploiement du retrait des abonnements
+- La suppression des abonnements a ete deployee vers `/var/www/exadtracking.app` : 21 fichiers applicatifs ont ete mis a jour et les quatre anciens fichiers du controleur, de la vue et des traductions Abonnements ont ete retires.
+- L'archive transferee est `/tmp/deploy-exadtracking-remove-subscriptions-20260903-154237.tar.gz`, avec le SHA-256 `622bc9fb6eaae463bc64816e202997672cc398fe974c193095eb5d7b74bd4759` verifie avant installation.
+- La sauvegarde de retour arriere est `/tmp/exadtracking-before-remove-subscriptions-20260903-154433.tar.gz`, protegee en mode `0600`, avec le SHA-256 `afa930744c0e181b2fb3f31488a2e51152a390f4ecad04d8bf5594d558a3b395`.
+- Laravel a ete place temporairement en maintenance pendant la copie, puis les caches ont ete nettoyes et les caches de configuration et de vues reconstruits. Les workers de queue ont recu le signal de redemarrage et l'application a ete remise en ligne sans erreur d'installation.
+- Aucune migration, suppression de colonne ou modification de donnee metier n'a ete realisee. Les anciennes valeurs `subscription_id` et `subscription_plan` restent conservees en base pour permettre un retour arriere sans perte de donnees.
+- Validation avant deploiement : 182 tests Laravel passes avec 1 597 assertions, dont 113 tests cibles avec 1 031 assertions ; Pint, syntaxe PHP, compilation Blade, routes et controle des occurrences visibles valides.
+- Aucun commit n'a ete cree.

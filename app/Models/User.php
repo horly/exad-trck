@@ -25,6 +25,8 @@ class User extends Authenticatable
 
     public const PERMISSION_REPORTS_GENERATE = 'reports.generate';
 
+    public const PERMISSION_ENGINE_CONTROL = 'engine.control';
+
     public const PERMISSION_GARAGES_MANAGE = 'garages.manage';
 
     public const PERMISSION_MAINTENANCE_MANAGE = 'maintenance.manage';
@@ -32,6 +34,7 @@ class User extends Authenticatable
     public const CLIENT_PERMISSIONS = [
         self::PERMISSION_MAP_VIEW,
         self::PERMISSION_REPORTS_GENERATE,
+        self::PERMISSION_ENGINE_CONTROL,
         self::PERMISSION_GARAGES_MANAGE,
         self::PERMISSION_MAINTENANCE_MANAGE,
     ];
@@ -152,27 +155,9 @@ class User extends Authenticatable
             : null;
     }
 
-    public function canAccessSubscription(Subscription|int|null $subscription): bool
-    {
-        if ($this->isSuperadmin()) {
-            return true;
-        }
-
-        $subscriptionId = $subscription instanceof Subscription ? $subscription->id : $subscription;
-
-        return $subscriptionId !== null && (int) $this->subscription_id === (int) $subscriptionId;
-    }
-
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', 'active')->whereNull('disabled_at');
-    }
-
-    public function scopeForSubscription(Builder $query, Subscription|int $subscription): Builder
-    {
-        $subscriptionId = $subscription instanceof Subscription ? $subscription->id : $subscription;
-
-        return $query->where('subscription_id', $subscriptionId);
     }
 
     public function scopeSuperadmins(Builder $query): Builder

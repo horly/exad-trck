@@ -12,28 +12,21 @@ use Illuminate\Support\Facades\Hash;
 
 uses(RefreshDatabase::class);
 
-test('superadmin can access every subscription', function () {
-    $firstSubscription = Subscription::factory()->create();
-    $secondSubscription = Subscription::factory()->create();
+test('subscription abilities are no longer registered', function () {
     $superadmin = User::factory()->superadmin()->create();
 
-    expect($superadmin->canAccessSubscription($firstSubscription))->toBeTrue()
-        ->and($superadmin->canAccessSubscription($secondSubscription))->toBeTrue()
-        ->and(Gate::forUser($superadmin)->allows('manage-subscriptions'))->toBeTrue();
+    expect(Gate::forUser($superadmin)->has('manage-subscriptions'))->toBeFalse()
+        ->and(Gate::forUser($superadmin)->has('view-subscription'))->toBeFalse()
+        ->and(Gate::forUser($superadmin)->has('manage-subscription-users'))->toBeFalse();
 });
 
-test('admin and user are limited to their subscription', function () {
-    $ownSubscription = Subscription::factory()->create();
-    $otherSubscription = Subscription::factory()->create();
-    $admin = User::factory()->admin($ownSubscription)->create();
-    $user = User::factory()->simpleUser($ownSubscription)->create();
+test('client users remain unable to manage platform resources', function () {
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->simpleUser()->create();
 
-    expect($admin->canAccessSubscription($ownSubscription))->toBeTrue()
-        ->and($admin->canAccessSubscription($otherSubscription))->toBeFalse()
-        ->and($user->canAccessSubscription($ownSubscription))->toBeTrue()
-        ->and($user->canAccessSubscription($otherSubscription))->toBeFalse()
-        ->and(Gate::forUser($admin)->allows('manage-subscription-users', $ownSubscription))->toBeTrue()
-        ->and(Gate::forUser($admin)->allows('manage-subscription-users', $otherSubscription))->toBeFalse()
+    expect(Gate::forUser($admin)->allows('manage-platform'))->toBeFalse()
+        ->and(Gate::forUser($user)->allows('manage-platform'))->toBeFalse()
+        ->and(Gate::forUser($admin)->allows('manage-users'))->toBeTrue()
         ->and(Gate::forUser($user)->allows('manage-users'))->toBeFalse();
 });
 

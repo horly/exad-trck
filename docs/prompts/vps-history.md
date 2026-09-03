@@ -962,3 +962,49 @@ The battery voltage field must not be greater than 100.
 - Validation locale : compilation Blade reussie et 2 tests cibles passes avec 69 assertions.
 - Archive de deploiement SHA-256 `ba087fda6f2dedfc9fa2a5be12921071a8199f4434e4140c9c8e01ab800201f3`. Sauvegarde de retour arriere : `/tmp/exadtracking-before-modal-compact-v2-20260903-112423.tar.gz`, SHA-256 `4c2863871f1231c308c9ff81e0575a1af6872fa58d5e91da6a6c10e290321449`.
 - Les trois fichiers distants et la feuille CSS servie publiquement correspondent aux empreintes locales. `/up` repond en HTTP 200, le mode maintenance est desactive et Apache, PHP-FPM, GPS TCP et Supervisor sont actifs.
+
+## 2026-09-03 - Immobilisation moteur securisee et interface simplifiee
+- L'arret moteur a distance est transporte vers les traceurs compatibles par commandes persistantes, avec historique des tentatives, expiration, acquittement et confirmation. Les trois migrations de commandes et de profils d'immobilisation ont ete appliquees en lot 13.
+- L'immobilisation ne peut jamais etre reclamee par l'ecouteur GPS pendant la conduite : le serveur exige une telemetrie recente, une vitesse nulle, un contact coupe, un regime moteur nul et une fenetre d'arret confirmee. La liberation du demarrage reste disponible pour annuler ou inverser une demande.
+- La compatibilite est centralisee dans une matrice marque-modele et reverifiee dans le Gate Laravel ainsi que dans l'action metier. Le FMB140 est actuellement autorise ; le FMB003 est masque dans l'interface et refuse meme lors d'une requete directe.
+- L'interface affiche un seul bouton dynamique : `Immobiliser le demarrage`, puis `Autoriser le demarrage` des qu'une immobilisation est demandee ou confirmee. L'ancien formulaire a ete supprime et remplace par une confirmation SweetAlert2 `11.26.25` oui/non.
+- Les textes visibles emploient desormais le terme generique `traceur`/`tracker`. Le nom Teltonika reste uniquement dans l'identite reelle du materiel, la matrice de compatibilite et les composants internes du protocole.
+- L'acces reste reserve au superadministrateur authentifie, avec protection CSRF et limitation a trois commandes par minute. Le motif d'audit est produit automatiquement par le serveur et les demandes opposees se remplacent de maniere transactionnelle.
+- Validation locale finale : 176 tests Laravel passes avec 1 574 assertions ; tests cibles de commande et de securite passes, Pint, syntaxe PHP/JavaScript et compilation Blade valides.
+- Archive principale SHA-256 `c1a0d21c8c1dca5775d1c3210ed1c1b53b67f9143fbb151b44bd01fe0df29704`. Sauvegarde de retour arriere protegee en mode `0600` : `/tmp/exadtracking-before-engine-toggle-20260903-143000.tar.gz`, SHA-256 `23c8164cdc75fe6e2c289e51dc5b084e3b0a118a0a6a8bf38ce4699f5ca037ee`.
+- Une premiere finalisation s'est arretee sur un changement de groupe refuse pour un fichier existant. Le garde de maintenance a immediatement remis Laravel en ligne ; la finalisation a ensuite reussi sans modifier les proprietaires existants.
+- Le correctif de vocabulaire a ete deploye avec l'archive SHA-256 `4cfbbccae2e673886dc269ada5a3402d913dd499abe0a3454b3a099cb284a8ec`. Sa sauvegarde est `/tmp/exadtracking-before-tracker-wording-20260903-143503.tar.gz`, SHA-256 `2d98252a9e211b660da1b10dd4699845fd87abae2acf59561d28699336307c96`, en mode `0600`.
+- Verification production finale : `FMB003_BLOCKED`, `FMB140_ALLOWED`, SweetAlert servi en HTTP 200, `/up` et `/login` en HTTP 200, mode maintenance desactive, Apache et `gps-tcp.service` actifs.
+
+## 2026-09-03 - Delegation client de l'immobilisation preparee localement
+- Le controle moteur est etendu aux administrateurs clients pour les vehicules compatibles de leur propre flotte. Les utilisateurs standards restent bloques sauf attribution explicite de la permission `engine.control` par leur administrateur.
+- La gestion existante des utilisateurs permet d'accorder et de revoquer cette permission sans migration. Un utilisateur standard ne peut ni gerer les comptes ni s'accorder lui-meme l'autorisation.
+- Le serveur reverifie le compte actif, la flotte du vehicule, la compatibilite du traceur, la fonctionnalite d'abonnement et l'autorisation apres verrouillage transactionnel. Les controles qui interdisent toute coupure pendant la conduite ne changent pas.
+- Les details client n'exposent que des URL fondees sur le vehicule, masquent le bouton sans autorisation et le masquent egalement en previsualisation client, ou les commandes POST sont interdites.
+- Validation locale : 181 tests Laravel passes avec 1 602 assertions, dont 23 tests cibles avec 252 assertions ; Pint, syntaxe PHP, routes et compilation Blade valides.
+- Cette evolution n'est pas encore deployee en production et aucun commit n'a ete cree.
+
+## 2026-09-03 - Deploiement de la delegation client de l'immobilisation
+- Deploiement cible de 10 fichiers vers `/var/www/exadtracking.app` pour autoriser l'administrateur client et les utilisateurs standards munis de la permission `engine.control` a commander les vehicules compatibles de leur propre flotte.
+- Archive transferee : `/tmp/deploy-exadtracking-client-engine-permission-20260903-150821.tar.gz`, SHA-256 `8ab06b73134f6a67130f94a921fc3cb32a87f4bc4c9931e470e9caa293ac8ce4`.
+- Sauvegarde de retour arriere : `/tmp/exadtracking-before-client-engine-permission-20260903-152020.tar.gz`, SHA-256 `4beeed2ec7a1c02d477c3c5aa99e90bafbdd80f13b9b107d28c6da5effcaf8c6`, permissions `0600`.
+- Aucune migration ni donnee metier n'a ete modifiee. Les caches Laravel ont ete nettoyes, les caches de configuration et de vues reconstruits et les workers de queue signales.
+- Les 10 empreintes distantes correspondent aux fichiers locaux et la syntaxe PHP distante est valide. Les routes plateforme et vehicule sont presentes ; la route client applique authentification, CSRF, limitation `engine-control` et previsualisation client.
+- Etat final : environnement `production`, debug desactive, maintenance inactive, `/up` et `/login` en HTTP 200, `/map` en HTTP 302 sans session, appel POST sans jeton CSRF refuse en HTTP 419, Apache, PHP-FPM, `gps-tcp.service` et Supervisor actifs.
+- Aucun commit n'a ete cree.
+
+## 2026-09-03 - Retrait des abonnements prepare localement
+- Suppression locale de la surface Abonnements : menu, routes, controleur, vue et traductions. Les plans disparaissent aussi des formulaires et tableaux Vehicules ainsi que des repartitions du tableau Flottes.
+- Les restrictions fonctionnelles par plan ont ete retirees. L'immobilisation moteur depend maintenant uniquement de l'autorisation, de la flotte, du modele compatible et des garde-fous de securite moteur.
+- Les nouveaux comptes et traceurs ne recopient plus `subscription_id`. Les colonnes et donnees historiques restent intactes afin d'eviter une migration destructive ; `fleet_id` demeure la frontiere d'acces serveur et mobile.
+- Validation locale : 182 tests Laravel passes avec 1 597 assertions, 113 tests cibles avec 1 031 assertions, syntaxe PHP, Pint, compilation Blade et routes valides. Aucune occurrence d'abonnement ne subsiste dans les vues, traductions ou routes actives.
+- Aucun fichier de production n'a encore ete modifie, aucune migration n'est requise et aucun commit n'a ete cree.
+
+## 2026-09-03 - Deploiement du retrait des abonnements
+- Deploiement cible de 21 fichiers vers `/var/www/exadtracking.app`, avec retrait controle des quatre anciens fichiers `SubscriptionPlanController.php`, `subscriptions/index.blade.php` et des traductions `subscriptions.php` francaise et anglaise.
+- Archive transferee : `/tmp/deploy-exadtracking-remove-subscriptions-20260903-154237.tar.gz`, SHA-256 local et distant `622bc9fb6eaae463bc64816e202997672cc398fe974c193095eb5d7b74bd4759`.
+- Sauvegarde de retour arriere : `/tmp/exadtracking-before-remove-subscriptions-20260903-154433.tar.gz`, SHA-256 `afa930744c0e181b2fb3f31488a2e51152a390f4ecad04d8bf5594d558a3b395`, permissions `0600`.
+- L'installation a active le mode maintenance uniquement pendant la copie, puis a execute `optimize:clear`, reconstruit les caches de configuration et de vues, signale les workers de queue et remis Laravel en ligne sans erreur.
+- Aucune migration, suppression de colonne, donnee metier ou variable d'environnement n'a ete modifiee. Les colonnes historiques des abonnements restent intactes pour garantir un retour arriere non destructif.
+- Validation locale avant livraison : 182 tests Laravel avec 1 597 assertions, 113 tests cibles avec 1 031 assertions, Pint, syntaxe PHP, compilation Blade et inventaire des routes valides.
+- Aucun commit n'a ete cree.

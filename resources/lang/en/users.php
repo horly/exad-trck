@@ -74,6 +74,8 @@ return [
     'permission_map_view_description' => 'Access the map and positions for vehicles in the fleet.',
     'permission_reports_generate' => 'Generate reports',
     'permission_reports_generate_description' => 'View and export reports for the fleet.',
+    'permission_engine_control' => 'Control engine immobilization',
+    'permission_engine_control_description' => 'Allow this account to immobilize or re-enable starting for compatible vehicles in its fleet. Map access must also be granted.',
     'permission_garages_manage' => 'Manage garages',
     'permission_garages_manage_description' => 'Create and edit garages belonging to the fleet.',
     'permission_maintenance_manage' => 'Manage maintenance',

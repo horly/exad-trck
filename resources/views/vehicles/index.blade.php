@@ -148,18 +148,6 @@
                                 </div>
 
                                 <div>
-                                    <label for="vehicle_subscription_plan" class="form-label">{{ __('vehicles.subscription_plan') }} *</label>
-                                    <select id="vehicle_subscription_plan" name="subscription_plan" class="form-select @error('subscription_plan') is-invalid @enderror" required data-vehicle-plan data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-layer-group">
-                                        @foreach ($subscriptionPlans as $plan)
-                                            <option value="{{ $plan->code }}" @selected(old('subscription_plan', 'basic') === $plan->code)>{{ $plan->name }}</option>
-                                        @endforeach
-                                    </select>
-                                    @error('subscription_plan')
-                                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div>
                                     <label for="vehicle_status" class="form-label">{{ __('vehicles.status') }} *</label>
                                     <select id="vehicle_status" name="status" class="form-select @error('status') is-invalid @enderror" required data-vehicle-status>
                                         <option value="active" @selected(old('status', 'active') === 'active')>{{ __('vehicles.status_active') }}</option>
@@ -228,7 +216,6 @@
                     color: form.querySelector('[data-vehicle-color]'),
                     year: form.querySelector('[data-vehicle-year]'),
                     type: form.querySelector('[data-vehicle-type]'),
-                    plan: form.querySelector('[data-vehicle-plan]'),
                     status: form.querySelector('[data-vehicle-status]'),
                     speedLimit: form.querySelector('[data-vehicle-speed-limit]'),
                 };
@@ -253,7 +240,6 @@
                         submit.textContent = @json(__('vehicles.create'));
                         form.reset();
                         fields.type.value = 'passenger_car';
-                        fields.plan.value = 'basic';
                         fields.status.value = 'active';
                         fields.speedLimit.value = '';
                         return;
@@ -277,11 +263,9 @@
                     fields.year.value = editButton.dataset.year || '';
                     const vehicleType = editButton.dataset.vehicleType || 'passenger_car';
                     fields.type.value = legacyTypes[vehicleType] || vehicleType;
-                    fields.plan.value = editButton.dataset.subscriptionPlan || 'basic';
                     fields.status.value = editButton.dataset.status || 'active';
                     fields.speedLimit.value = editButton.dataset.speedLimitKmh || '';
                     fields.fleet.dispatchEvent(new Event('searchable-select:refresh'));
-                    fields.plan.dispatchEvent(new Event('searchable-select:refresh'));
                 });
 
                 @if ($errors->any())

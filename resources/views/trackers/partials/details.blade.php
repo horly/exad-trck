@@ -226,6 +226,17 @@
         $parkingDuration !== null => __('trackers.parking_value', ['duration' => $parkingDuration]),
         default => __('trackers.parking_unknown'),
     };
+    $canControlEngine = $canControlEngine ?? false;
+    $engineCommand = $engineCommand ?? null;
+    $engineImmobilized = (bool) ($engineImmobilized ?? false);
+    $engineCommandActive = $engineCommand?->isActive() ?? false;
+    $engineLockRequested = $engineCommandActive
+        ? $engineCommand?->action === 'immobilize'
+        : $engineImmobilized;
+    $engineNextAction = $engineLockRequested ? 'release' : 'immobilize';
+    $engineNextLabel = $engineNextAction === 'immobilize'
+        ? __('trackers.engine_control_immobilize')
+        : __('trackers.engine_control_release');
 @endphp
 
 <section class="tracker-details-overview" aria-label="{{ __('trackers.details_overview_label') }}">
@@ -646,6 +657,39 @@
     </article>
         </div>
     </details>
+
+    @if ($canControlEngine)
+        <article class="tracker-details-card tracker-engine-control tracker-details-card-wide" data-engine-control>
+            <div class="tracker-details-card-header tracker-engine-control-header">
+                <h3>{{ __('trackers.engine_control_title') }}</h3>
+            </div>
+
+            <div class="tracker-engine-control-actions">
+                <button
+                    type="button"
+                    class="tracker-engine-button tracker-engine-button--{{ $engineNextAction === 'immobilize' ? 'danger' : 'release' }}"
+                    data-engine-control-trigger
+                    data-action="{{ $engineNextAction }}"
+                    data-url="{{ $engineCommandUrl }}"
+                    data-refresh-url="{{ $engineDetailsUrl }}"
+                    data-csrf="{{ csrf_token() }}"
+                    data-confirm-title="{{ $engineNextAction === 'immobilize' ? __('trackers.engine_control_immobilize_confirm') : __('trackers.engine_control_release_confirm') }}"
+                    data-confirm-text="{{ $engineNextAction === 'immobilize' ? __('trackers.engine_control_safe_description') : __('trackers.engine_control_release_description') }}"
+                    data-confirm-button="{{ $engineNextLabel }}"
+                    data-cancel-button="{{ __('trackers.cancel') }}"
+                    data-success-title="{{ __('trackers.engine_control_success_title') }}"
+                    data-error-title="{{ __('trackers.engine_control_error_title') }}"
+                    aria-pressed="{{ $engineLockRequested ? 'true' : 'false' }}"
+                >
+                    <span class="tracker-engine-button-icon" aria-hidden="true">
+                        <i class="fa-solid {{ $engineNextAction === 'immobilize' ? 'fa-lock' : 'fa-lock-open' }}"></i>
+                    </span>
+                    <span>{{ $engineNextLabel }}</span>
+                    <span class="tracker-engine-switch {{ $engineLockRequested ? 'is-active' : '' }}" aria-hidden="true"></span>
+                </button>
+            </div>
+        </article>
+    @endif
 
     <article class="tracker-details-card tracker-details-card--events tracker-details-card-wide">
         <div class="tracker-details-card-header">
