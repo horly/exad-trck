@@ -83,6 +83,7 @@
         }
 
         const action = trigger.dataset.action;
+        const output = Number(trigger.dataset.output);
         const confirmTitle = trigger.dataset.confirmTitle || trigger.textContent.trim();
         const confirmText = trigger.dataset.confirmText || '';
         const swal = window.Swal;
@@ -102,7 +103,7 @@
             })
             : { isConfirmed: window.confirm([confirmTitle, confirmText].filter(Boolean).join('\n\n')) };
 
-        if (!confirmation.isConfirmed || !action || !trigger.dataset.url) {
+        if (!confirmation.isConfirmed || !action || ![1, 2].includes(output) || !trigger.dataset.url) {
             return;
         }
 
@@ -117,7 +118,7 @@
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': trigger.dataset.csrf || '',
                 },
-                body: JSON.stringify({ action, confirmation: true }),
+                body: JSON.stringify({ action, output, confirmation: true }),
             });
             const payload = await response.json().catch(() => ({}));
 

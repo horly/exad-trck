@@ -8,6 +8,10 @@ use Illuminate\Support\Carbon;
 
 class EngineImmobilizationSafetyService
 {
+    public function __construct(
+        private readonly CanBusStateService $canBusState,
+    ) {}
+
     /**
      * @return array{safe: bool, code: string, checks: array<string, bool>, sample_count: int, window_seconds: int, latest_at: ?string}
      */
@@ -30,7 +34,8 @@ class EngineImmobilizationSafetyService
             foreach ($positions as $position) {
                 $window->push($position);
 
-                if ($position->server_time?->diffInSeconds($latestAt) >= $windowSeconds) {
+                if ($window->count() >= $minimumSamples
+                    && $position->server_time?->diffInSeconds($latestAt) >= $windowSeconds) {
                     break;
                 }
             }
@@ -73,7 +78,8 @@ class EngineImmobilizationSafetyService
         $io = is_array($io) ? $io : [];
         $obdSpeed = $this->firstNumber($payload, $io, ['obd.speed'], [37, 24]);
         $rpm = $this->firstNumber($payload, $io, ['obd.rpm'], [85, 36]);
-        $engineRunning = $this->firstNumber($payload, $io, ['can.engine_running'], [517]);
+        $engineRunning = $this->canBusState->decode($io, $payload)['engine_running'] ?? null;
+        $reportedEngineRunning = $this->firstNumber($payload, [], ['can.engine_running'], []);
 
         return [
             'gps_speed' => (float) $position->speed === 0.0,
@@ -81,7 +87,7 @@ class EngineImmobilizationSafetyService
             'movement' => $position->movement === false && $this->ioBoolean($io, 240) === false,
             'ignition' => $position->ignition === false && $this->ioBoolean($io, 239) === false,
             'rpm' => $rpm !== null && $rpm === 0.0,
-            'engine_state' => $engineRunning !== 1.0,
+            'engine_state' => $engineRunning === false && $reportedEngineRunning !== 1.0,
         ];
     }
 

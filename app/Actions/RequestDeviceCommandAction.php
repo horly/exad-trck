@@ -4,7 +4,6 @@ namespace App\Actions;
 
 use App\Models\Device;
 use App\Models\DeviceCommand;
-use App\Models\DeviceImmobilizationProfile;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,35 +17,27 @@ class RequestDeviceCommandAction
         Device $device,
         User $user,
         string $action,
+        int $output,
         Request $request,
     ): DeviceCommand {
-        return DB::transaction(function () use ($device, $user, $action, $request): DeviceCommand {
+        return DB::transaction(function () use ($device, $user, $action, $output, $request): DeviceCommand {
             $lockedDevice = Device::query()->with('vehicle')->lockForUpdate()->findOrFail($device->id);
             $this->ensureEligible($lockedDevice);
             Gate::forUser($user)->authorize('control-engine', $lockedDevice);
 
-            $profile = DeviceImmobilizationProfile::query()->where('device_id', $lockedDevice->id)->lockForUpdate()->first();
-
-            if ($profile === null) {
-                $profile = DeviceImmobilizationProfile::query()->create([
-                    'device_id' => $lockedDevice->id,
-                    'verified_by' => $user->id,
-                    'verified_at' => now(),
-                    'verification_note' => 'DOUT1 + DOUT2 capability verified from supported device matrix.',
-                ]);
-            }
-
-            if (! $profile->is_active || $profile->verified_at === null) {
+            if (! in_array($output, [1, 2], true)) {
                 throw ValidationException::withMessages([
-                    'action' => __('trackers.engine_control_profile_inactive'),
+                    'output' => __('trackers.output_control_invalid'),
                 ]);
             }
 
             $active = DeviceCommand::query()
                 ->where('device_id', $lockedDevice->id)
                 ->whereIn('status', DeviceCommand::ACTIVE_STATUSES)
+                ->where('expires_at', '>', now())
                 ->lockForUpdate()
-                ->first();
+                ->get()
+                ->first(fn (DeviceCommand $command): bool => $command->targetsOutput($output));
 
             if ($active?->action === $action) {
                 return $active;
@@ -61,8 +52,13 @@ class RequestDeviceCommandAction
                 ]);
             }
 
-            $outputs = $profile->outputsFor($action);
-            $states = implode('', [$outputs[1], $outputs[2]]);
+            $state = $action === DeviceCommand::ACTION_IMMOBILIZE ? 1 : 0;
+            $outputs = [
+                1 => $output === 1 ? $state : null,
+                2 => $output === 2 ? $state : null,
+            ];
+            $states = $output === 1 ? "{$state}?" : "?{$state}";
+            $timeouts = $output === 1 ? '0 ?' : '? 0';
 
             return DeviceCommand::query()->create([
                 'uuid' => (string) Str::uuid(),
@@ -76,11 +72,11 @@ class RequestDeviceCommandAction
                 'status' => $action === DeviceCommand::ACTION_IMMOBILIZE
                     ? DeviceCommand::STATUS_PENDING_SAFETY
                     : DeviceCommand::STATUS_READY,
-                'command_text' => "setigndigout {$states} 0 0",
+                'command_text' => "setigndigout {$states} {$timeouts}",
                 'desired_outputs' => $outputs,
                 'reason' => $action === DeviceCommand::ACTION_IMMOBILIZE
-                    ? __('trackers.engine_control_audit_immobilize')
-                    : __('trackers.engine_control_audit_release'),
+                    ? __('trackers.output_control_audit_activate', ['output' => $output])
+                    : __('trackers.output_control_audit_release', ['output' => $output]),
                 'request_ip' => $request->ip(),
                 'request_user_agent' => Str::limit((string) $request->userAgent(), 500, ''),
                 'expires_at' => now()->addMinutes((int) config('engine-immobilization.command_ttl_minutes', 10)),

@@ -6,6 +6,7 @@ use App\Models\ApplicationSetting;
 use App\Models\Device;
 use App\Models\Driver;
 use App\Models\DriverIdentifier;
+use App\Models\DriverSession;
 use App\Models\Fleet;
 use App\Models\Position;
 use App\Models\Subscription;
@@ -958,11 +959,19 @@ test('superadmin can open tracker details with fleet and latest events', functio
         'status' => 'active',
     ]);
     $driver->vehicles()->attach($vehicle);
-    DriverIdentifier::query()->create([
+    $identifier = DriverIdentifier::query()->create([
         'driver_id' => $driver->id,
         'type' => 'ibutton',
         'uid' => '6C0000028E742F14',
         'active' => true,
+    ]);
+    DriverSession::query()->create([
+        'driver_id' => $driver->id,
+        'driver_identifier_id' => $identifier->id,
+        'vehicle_id' => $vehicle->id,
+        'device_id' => $device->id,
+        'started_at' => now(),
+        'status' => 'active',
     ]);
     Position::factory()->forDevice($device)->create([
         'latitude' => -4.33509,

@@ -3,16 +3,17 @@
 namespace App\Services;
 
 use App\Models\Device;
-use App\Models\DriverIdentifier;
 use App\Models\Position;
+use App\Models\User;
 use App\Models\Vehicle;
-use App\Support\DriverIdentifierUid;
 
 class MobileVehicleDetailService
 {
     public function __construct(
         private readonly PositionAddressService $positionAddress,
         private readonly CanBusStateService $canBusState,
+        private readonly EngineControlStateService $engineControlState,
+        private readonly CurrentDriverSessionService $currentDriverSessions,
     ) {}
 
     /**
@@ -22,6 +23,7 @@ class MobileVehicleDetailService
         Vehicle $vehicle,
         bool $includeTrackerIdentity = false,
         bool $includeDriverIdentifier = false,
+        ?User $engineControlUser = null,
     ): array {
         $device = $vehicle->device;
 
@@ -34,31 +36,33 @@ class MobileVehicleDetailService
                 'gsm' => null,
                 'diagnostic' => null,
                 'obd_can' => null,
+                'engine_control' => null,
                 'recent_events' => [],
             ];
         }
 
-        $device->load([
-            'trackerEvents' => fn ($query) => $query
+        $device->setRelation('vehicle', $vehicle);
+        $device->setRelation(
+            'trackerEvents',
+            $device->trackerEvents()
                 ->vehicleEvents()
                 ->latest('started_at')
                 ->latest('id')
-                ->limit(5),
-        ]);
+                ->limit(5)
+                ->get()
+        );
         $latestPosition = $this->latestPosition($device);
-        $latestStoppedPosition = $this->latestStoppedPosition($device);
         $parkingStart = $this->parkingStartPosition($device);
+        $latestStoppedPosition = $parkingStart === null
+            ? $this->latestStoppedPosition($device)
+            : null;
         $locationPosition = $parkingStart ?: ($latestStoppedPosition ?: $latestPosition);
         $locationAddress = $locationPosition instanceof Position
             ? $this->positionAddress->resolve($locationPosition)
             : null;
-        $driverIdentifier = $this->currentDriverIdentifier($device, $vehicle);
-        $driver = $driverIdentifier?->driver;
-        $gsmSignal = $device->last_gsm_signal;
-
-        if ($gsmSignal !== null && $gsmSignal <= 5) {
-            $gsmSignal = min(100, $gsmSignal * 20);
-        }
+        $currentDriverSession = $this->currentDriverSessions->forDevice($device);
+        $driverIdentifier = $currentDriverSession?->identifier;
+        $driver = $currentDriverSession?->driver;
 
         return [
             ...($includeTrackerIdentity ? [
@@ -71,9 +75,7 @@ class MobileVehicleDetailService
                 ],
             ] : []),
             'location' => [
-                'gps_quality_percent' => $device->last_satellites !== null
-                    ? min(100, max(0, $device->last_satellites * 7))
-                    : null,
+                'gps_quality_percent' => $device->gpsQualityPercent(),
                 'latitude' => $locationPosition?->latitude !== null
                     ? (float) $locationPosition->latitude
                     : ($device->last_latitude !== null ? (float) $device->last_latitude : null),
@@ -95,7 +97,7 @@ class MobileVehicleDetailService
                 'employee_id' => $driver->employee_id,
                 'department' => $driver->department?->name,
                 ...($includeDriverIdentifier ? [
-                    'identifier_uid' => $driverIdentifier?->uid ?: $device->last_driver_identifier_uid,
+                    'identifier_uid' => $driverIdentifier?->uid,
                     'identifier_type' => $driverIdentifier?->type,
                 ] : []),
                 'phone' => $driver->phone,
@@ -104,12 +106,12 @@ class MobileVehicleDetailService
             'power' => [
                 'external_voltage' => $this->floatOrNull($device->last_external_voltage),
                 'internal_battery_voltage' => $this->floatOrNull($device->last_battery_voltage),
-                'battery_level_percent' => $device->last_battery_level,
+                'battery_level_percent' => $device->batteryLevelPercent(),
                 'ignition' => $device->last_ignition,
                 'updated_at' => ($device->last_seen_at ?: $device->last_position_at)?->toISOString(),
             ],
             'gsm' => [
-                'signal_percent' => $gsmSignal,
+                'signal_percent' => $device->networkSignalPercent(),
                 'operator_name' => $device->operator_name,
                 'sim_number' => $device->sim_number,
                 'codec' => $device->codec,
@@ -119,7 +121,7 @@ class MobileVehicleDetailService
                 'satellites' => $device->last_satellites,
                 'protocol' => $device->protocol ? strtoupper($device->protocol) : null,
                 ...($includeDriverIdentifier ? [
-                    'driver_identifier_uid' => $device->last_driver_identifier_uid,
+                    'driver_identifier_uid' => $driverIdentifier?->uid,
                 ] : []),
                 'odometer_km' => $this->floatOrNull($device->last_odometer_km ?? $device->last_can_total_mileage_km),
                 'engine_seconds' => $device->last_engine_seconds,
@@ -142,6 +144,9 @@ class MobileVehicleDetailService
                 'states' => $this->canBusState->forDevice($device),
                 'updated_at' => ($device->last_obd_updated_at ?: $device->last_seen_at ?: $device->last_position_at)?->toISOString(),
             ],
+            'engine_control' => $engineControlUser
+                ? $this->engineControlState->forDevice($device, $engineControlUser)
+                : null,
             'recent_events' => $device->trackerEvents->map(fn ($event): array => [
                 'id' => $event->id,
                 'type' => $event->type,
@@ -160,8 +165,6 @@ class MobileVehicleDetailService
             ->whereNotNull('longitude')
             ->when($device->last_position_at, fn ($query, $lastPositionAt) => $query->where('gps_time', '<=', $lastPositionAt))
             ->latest('gps_time')
-            ->latest('server_time')
-            ->latest('id')
             ->first([
                 'id',
                 'device_id',
@@ -193,8 +196,6 @@ class MobileVehicleDetailService
             })
             ->when($device->last_position_at, fn ($query, $lastPositionAt) => $query->where('gps_time', '<=', $lastPositionAt))
             ->latest('gps_time')
-            ->latest('server_time')
-            ->latest('id')
             ->first([
                 'id',
                 'device_id',
@@ -224,10 +225,25 @@ class MobileVehicleDetailService
             ->whereNotNull('longitude')
             ->when($device->last_position_at, fn ($query, $lastPositionAt) => $query->where('gps_time', '<=', $lastPositionAt))
             ->latest('gps_time')
-            ->latest('server_time')
-            ->latest('id')
             ->limit(250)
             ->get([
+                'id',
+                'gps_time',
+                'server_time',
+                'ignition',
+            ]);
+        $parkingStart = null;
+
+        foreach ($positions as $position) {
+            if ($position->ignition !== false) {
+                break;
+            }
+
+            $parkingStart = $position;
+        }
+
+        if ($parkingStart instanceof Position) {
+            return Position::query()->find($parkingStart->id, [
                 'id',
                 'device_id',
                 'gps_time',
@@ -242,25 +258,15 @@ class MobileVehicleDetailService
                 'ignition',
                 'raw_data',
             ]);
-        $parkingStart = null;
-
-        foreach ($positions as $position) {
-            if ($position->ignition !== false) {
-                break;
-            }
-
-            $parkingStart = $position;
         }
 
-        return $parkingStart ?: Position::query()
+        return Position::query()
             ->where('device_id', $device->id)
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->where('ignition', false)
             ->when($device->last_position_at, fn ($query, $lastPositionAt) => $query->where('gps_time', '<=', $lastPositionAt))
             ->latest('gps_time')
-            ->latest('server_time')
-            ->latest('id')
             ->first([
                 'id',
                 'device_id',
@@ -276,21 +282,6 @@ class MobileVehicleDetailService
                 'ignition',
                 'raw_data',
             ]);
-    }
-
-    private function currentDriverIdentifier(Device $device, Vehicle $vehicle): ?DriverIdentifier
-    {
-        if ($device->vehicle_id === null || blank($device->last_driver_identifier_uid)) {
-            return null;
-        }
-
-        return DriverIdentifier::query()
-            ->with('driver.department:id,name,code')
-            ->whereIn('uid', DriverIdentifierUid::candidates($device->last_driver_identifier_uid))
-            ->where('active', true)
-            ->whereHas('driver', fn ($query) => $query->where('fleet_id', $vehicle->fleet_id))
-            ->whereHas('driver.vehicles', fn ($query) => $query->whereKey($device->vehicle_id))
-            ->first();
     }
 
     private function floatOrNull(mixed $value): ?float

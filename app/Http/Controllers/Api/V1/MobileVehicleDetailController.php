@@ -28,6 +28,7 @@ class MobileVehicleDetailController extends Controller
                     $model,
                     includeTrackerIdentity: true,
                     includeDriverIdentifier: $request->user()->isSuperadmin(),
+                    engineControlUser: $request->user(),
                 ),
             ],
         ]);

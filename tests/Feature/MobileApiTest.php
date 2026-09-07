@@ -2,8 +2,10 @@
 
 use App\Models\Department;
 use App\Models\Device;
+use App\Models\DeviceCommand;
 use App\Models\Driver;
 use App\Models\DriverIdentifier;
+use App\Models\DriverSession;
 use App\Models\Fleet;
 use App\Models\MobileSession;
 use App\Models\Position;
@@ -11,6 +13,7 @@ use App\Models\TrackerEvent;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Laravel\Fortify\Fortify;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -220,6 +223,10 @@ test('mobile operational data is restricted to the client fleet without tracker 
         'last_ignition' => true,
         'last_latitude' => -4.325,
         'last_longitude' => 15.312,
+        'last_satellites' => 10,
+        'last_gsm_signal' => 4,
+        'last_battery_level' => 0,
+        'last_battery_voltage' => 4.015,
     ]);
     Position::factory()->forDevice($device)->create([
         'latitude' => -4.326,
@@ -247,6 +254,12 @@ test('mobile operational data is restricted to the client fleet without tracker 
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.name', 'Vehicule Mobile');
 
+    $response
+        ->assertJsonPath('data.0.tracking.gps_status', 'available')
+        ->assertJsonPath('data.0.tracking.gps_quality_percent', 70)
+        ->assertJsonPath('data.0.tracking.network_signal_percent', 80)
+        ->assertJsonPath('data.0.tracking.battery_level_percent', 79);
+
     $json = json_encode($response->json(), JSON_THROW_ON_ERROR);
     expect($json)
         ->not->toContain('123456789012345')
@@ -266,12 +279,68 @@ test('mobile operational data is restricted to the client fleet without tracker 
         ->assertJsonPath('data.geojson.features.0.properties.is_moving', true)
         ->assertJsonPath('data.geojson.features.0.properties.is_parking', false)
         ->assertJsonPath('data.geojson.features.0.properties.is_stationary_running', false)
+        ->assertJsonPath('data.geojson.features.0.properties.gps_status', 'available')
+        ->assertJsonPath('data.geojson.features.0.properties.gps_quality_percent', 70)
+        ->assertJsonPath('data.geojson.features.0.properties.network_signal_percent', 80)
+        ->assertJsonPath('data.geojson.features.0.properties.battery_level_percent', 79)
         ->assertJsonCount(3, 'data.geojson.features.0.properties.trail');
 
     expect(json_encode($map->json(), JSON_THROW_ON_ERROR))
         ->not->toContain('123456789012345')
         ->not->toContain('Traceur Technique')
         ->not->toContain('FMB920-SECRET');
+});
+
+test('tracker telemetry percentages are normalized for mobile displays', function () {
+    $device = Device::factory()->make([
+        'status' => 'online',
+        'last_satellites' => 18,
+        'last_gsm_signal' => 4,
+        'last_battery_level' => 130,
+    ]);
+
+    expect($device->gpsStatus())->toBe('available')
+        ->and($device->gpsQualityPercent())->toBe(100)
+        ->and($device->networkSignalPercent())->toBe(80)
+        ->and($device->batteryLevelPercent())->toBe(100);
+
+    $device->forceFill([
+        'status' => 'offline',
+        'last_satellites' => null,
+        'last_gsm_signal' => null,
+        'last_battery_level' => null,
+        'last_battery_voltage' => null,
+    ]);
+
+    expect($device->gpsStatus())->toBe('unavailable')
+        ->and($device->gpsQualityPercent())->toBeNull()
+        ->and($device->networkSignalPercent())->toBeNull()
+        ->and($device->batteryLevelPercent())->toBeNull();
+});
+
+test('tracker battery percentage uses internal voltage when zero is a sentinel value', function () {
+    $device = Device::factory()->make([
+        'status' => 'online',
+        'last_battery_level' => 0,
+        'last_battery_voltage' => 4.015,
+    ]);
+
+    expect($device->batteryLevelPercent())->toBe(79);
+});
+
+test('an online tracker with a valid position keeps its gps available without a satellite metric', function () {
+    $device = Device::factory()->make([
+        'status' => 'online',
+        'last_satellites' => null,
+        'last_latitude' => -4.325,
+        'last_longitude' => 15.312,
+    ]);
+
+    expect($device->gpsStatus())->toBe('available');
+
+    $device->forceFill(['status' => 'offline']);
+
+    expect($device->gpsStatus())->toBe('unavailable');
 });
 
 test('mobile drivers are read only fleet scoped and never expose identifiers', function () {
@@ -336,6 +405,134 @@ test('mobile drivers are read only fleet scoped and never expose identifiers', f
         ->getJson(route('api.v1.mobile.drivers.index', ['search' => '38000009A29C2114']))
         ->assertSuccessful()
         ->assertJsonCount(0, 'data');
+});
+
+test('mobile departments are fleet scoped and managed according to the client role', function () {
+    $fleet = Fleet::factory()->create(['name' => 'Flotte Mobile']);
+    $otherFleet = Fleet::factory()->create(['name' => 'Flotte Interdite']);
+    $admin = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
+    $simpleUser = User::factory()->simpleUser($fleet->subscription)->forFleet($fleet)->create();
+    Department::query()->create([
+        'fleet_id' => $fleet->id,
+        'name' => 'Operations',
+        'code' => 'OPS',
+        'status' => 'active',
+    ]);
+    Department::query()->create([
+        'fleet_id' => $otherFleet->id,
+        'name' => 'Secret',
+        'status' => 'active',
+    ]);
+    $adminToken = $this->postJson(route('api.v1.mobile.auth.login'), mobileCredentials($admin))
+        ->assertSuccessful()->json('data.tokens.access_token');
+
+    $this->app['auth']->forgetGuards();
+    $this->flushHeaders()->withToken($adminToken)
+        ->getJson(route('api.v1.mobile.departments.index', ['fleet_id' => $otherFleet->id]))
+        ->assertSuccessful()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.name', 'Operations')
+        ->assertJsonPath('management.can_manage', true)
+        ->assertJsonPath('management.can_delete', false);
+
+    $this->app['auth']->forgetGuards();
+    $this->flushHeaders()->withToken($adminToken)
+        ->postJson(route('api.v1.mobile.departments.store'), [
+            'fleet_id' => $otherFleet->id,
+            'name' => 'Logistique',
+            'code' => 'LOG',
+            'status' => 'active',
+        ])
+        ->assertCreated()
+        ->assertJsonPath('data.fleet.id', $fleet->id);
+
+    expect(Department::query()->where('name', 'Logistique')->firstOrFail()->fleet_id)->toBe($fleet->id);
+
+    $simpleToken = $this->postJson(route('api.v1.mobile.auth.login'), mobileCredentials($simpleUser))
+        ->assertSuccessful()->json('data.tokens.access_token');
+    $this->app['auth']->forgetGuards();
+    $this->flushHeaders()->withToken($simpleToken)
+        ->postJson(route('api.v1.mobile.departments.store'), [
+            'fleet_id' => $fleet->id,
+            'name' => 'Interdit',
+            'status' => 'active',
+        ])
+        ->assertForbidden();
+});
+
+test('mobile engine control exposes two independent safe outputs only to authorized users', function () {
+    $fleet = Fleet::factory()->create();
+    $admin = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
+    $vehicle = Vehicle::factory()->for($fleet)->create();
+    $device = Device::factory()->online()->create([
+        'subscription_id' => $fleet->subscription_id,
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $vehicle->id,
+        'brand' => 'teltonika',
+        'model' => 'FMB140',
+        'last_seen_at' => now(),
+        'last_ignition' => false,
+    ]);
+    $token = $this->postJson(route('api.v1.mobile.auth.login'), mobileCredentials($admin))
+        ->assertSuccessful()
+        ->assertJsonPath('data.user.permissions.engine_control', true)
+        ->json('data.tokens.access_token');
+
+    $this->app['auth']->forgetGuards();
+    $this->flushHeaders()->withToken($token)
+        ->getJson(route('api.v1.mobile.vehicles.details', $vehicle))
+        ->assertSuccessful()
+        ->assertJsonPath('data.details.engine_control.supported', true)
+        ->assertJsonPath('data.details.engine_control.allowed', true)
+        ->assertJsonPath('data.details.engine_control.next_action', DeviceCommand::ACTION_IMMOBILIZE)
+        ->assertJsonPath('data.details.engine_control.outputs.1.active', false)
+        ->assertJsonPath('data.details.engine_control.outputs.1.busy', false)
+        ->assertJsonPath('data.details.engine_control.outputs.1.next_action', DeviceCommand::ACTION_IMMOBILIZE)
+        ->assertJsonPath('data.details.engine_control.outputs.2.active', false)
+        ->assertJsonMissingPath('data.details.engine_control.command.command_text');
+
+    $this->app['auth']->forgetGuards();
+    $this->flushHeaders()->withToken($token)
+        ->postJson(route('api.v1.mobile.vehicles.engine-commands.store', $vehicle), [
+            'action' => DeviceCommand::ACTION_IMMOBILIZE,
+            'output' => 1,
+            'confirmation' => true,
+        ])
+        ->assertAccepted()
+        ->assertJsonPath('status', DeviceCommand::STATUS_PENDING_SAFETY);
+
+    $this->app['auth']->forgetGuards();
+    $this->flushHeaders()->withToken($token)
+        ->getJson(route('api.v1.mobile.vehicles.details', $vehicle))
+        ->assertSuccessful()
+        ->assertJsonPath('data.details.engine_control.busy', true)
+        ->assertJsonPath('data.details.engine_control.next_action', DeviceCommand::ACTION_RELEASE)
+        ->assertJsonPath('data.details.engine_control.outputs.1.active', true)
+        ->assertJsonPath('data.details.engine_control.outputs.1.busy', true)
+        ->assertJsonPath('data.details.engine_control.outputs.1.next_action', DeviceCommand::ACTION_RELEASE)
+        ->assertJsonPath('data.details.engine_control.outputs.2.active', false)
+        ->assertJsonPath('data.details.engine_control.outputs.2.busy', false);
+
+    expect(DeviceCommand::query()->firstOrFail()->device_id)->toBe($device->id);
+
+    $device->update(['model' => 'FMB003']);
+    $this->app['auth']->forgetGuards();
+    $this->flushHeaders()->withToken($token)
+        ->getJson(route('api.v1.mobile.vehicles.details', $vehicle))
+        ->assertSuccessful()
+        ->assertJsonPath('data.details.engine_control.supported', false)
+        ->assertJsonPath('data.details.engine_control.allowed', false)
+        ->assertJsonPath('data.details.engine_control.next_action', null)
+        ->assertJsonCount(0, 'data.details.engine_control.outputs');
+
+    $this->app['auth']->forgetGuards();
+    $this->flushHeaders()->withToken($token)
+        ->postJson(route('api.v1.mobile.vehicles.engine-commands.store', $vehicle), [
+            'action' => DeviceCommand::ACTION_RELEASE,
+            'output' => 1,
+            'confirmation' => true,
+        ])
+        ->assertForbidden();
 });
 
 test('simple mobile users need the map permission', function () {
@@ -511,11 +708,20 @@ test('mobile client vehicle details include tracker identity without driver iden
         'status' => 'active',
     ]);
     $driver->vehicles()->attach($vehicle);
-    DriverIdentifier::query()->create([
+    $identifier = DriverIdentifier::query()->create([
         'driver_id' => $driver->id,
         'type' => 'rfid',
         'uid' => '6C0000028E742F14',
         'active' => true,
+    ]);
+    DriverSession::query()->create([
+        'driver_id' => $driver->id,
+        'driver_identifier_id' => $identifier->id,
+        'vehicle_id' => $vehicle->id,
+        'device_id' => $device->id,
+        'start_position_id' => $position->id,
+        'started_at' => now(),
+        'status' => 'active',
     ]);
     TrackerEvent::query()->create([
         'fleet_id' => $fleet->id,
@@ -648,6 +854,27 @@ test('mobile superadmin vehicle details include the tracker technical identity',
         'model' => 'FMB920',
         'last_driver_identifier_uid' => 'SUPERADMIN-BADGE',
     ]);
+    $driver = Driver::query()->create([
+        'fleet_id' => $fleet->id,
+        'first_name' => 'Conducteur',
+        'last_name' => 'Direction',
+        'status' => 'active',
+    ]);
+    $driver->vehicles()->attach($vehicle);
+    $identifier = DriverIdentifier::query()->create([
+        'driver_id' => $driver->id,
+        'type' => 'rfid',
+        'uid' => 'SUPERADMINBADGE',
+        'active' => true,
+    ]);
+    DriverSession::query()->create([
+        'driver_id' => $driver->id,
+        'driver_identifier_id' => $identifier->id,
+        'vehicle_id' => $vehicle->id,
+        'device_id' => $device->id,
+        'started_at' => now(),
+        'status' => 'active',
+    ]);
     $accessToken = $this->postJson(
         route('api.v1.mobile.auth.login'),
         mobileCredentials($superadmin),
@@ -662,5 +889,61 @@ test('mobile superadmin vehicle details include the tracker technical identity',
         ->assertJsonPath('data.details.tracker.imei', '868120000000001')
         ->assertJsonPath('data.details.tracker.brand', 'teltonika')
         ->assertJsonPath('data.details.tracker.model', 'FMB920')
-        ->assertJsonPath('data.details.diagnostic.driver_identifier_uid', 'SUPERADMIN-BADGE');
+        ->assertJsonPath('data.details.diagnostic.driver_identifier_uid', 'SUPERADMINBADGE');
+});
+
+test('mobile vehicle details keep position queries index friendly for large histories', function () {
+    config(['services.google_maps.api_key' => '', 'services.mapbox.public_token' => '']);
+    Http::preventStrayRequests();
+
+    $fleet = Fleet::factory()->create();
+    $admin = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
+    $vehicle = Vehicle::factory()->for($fleet)->create(['name' => 'Vehicule grand historique']);
+    $device = Device::factory()->online()->create([
+        'subscription_id' => $fleet->subscription_id,
+        'fleet_id' => $fleet->id,
+        'vehicle_id' => $vehicle->id,
+        'last_ignition' => false,
+        'last_position_at' => now(),
+    ]);
+
+    foreach (range(1, 5) as $minutesAgo) {
+        Position::factory()->forDevice($device)->create([
+            'gps_time' => now()->subMinutes($minutesAgo),
+            'server_time' => now()->subMinutes($minutesAgo),
+            'latitude' => -4.32,
+            'longitude' => 15.31,
+            'ignition' => false,
+            'movement' => false,
+            'speed' => 0,
+            'address' => 'Avenue test, Kinshasa',
+            'raw_data' => ['payload' => ['io' => array_fill(0, 100, 0)]],
+        ]);
+    }
+
+    $token = $this->postJson(route('api.v1.mobile.auth.login'), mobileCredentials($admin))
+        ->assertSuccessful()
+        ->json('data.tokens.access_token');
+    $queries = [];
+    DB::listen(function ($query) use (&$queries): void {
+        $sql = strtolower($query->sql);
+
+        if (str_contains($sql, 'positions') || str_contains($sql, 'tracker_events')) {
+            $queries[] = $sql;
+        }
+    });
+
+    $this->app['auth']->forgetGuards();
+    $this->flushHeaders()->withToken($token)
+        ->getJson(route('api.v1.mobile.vehicles.details', $vehicle))
+        ->assertSuccessful()
+        ->assertJsonPath('data.details.location.address', 'Avenue test, Kinshasa');
+
+    expect($queries)->not->toBeEmpty()
+        ->and(collect($queries)->contains(fn (string $sql): bool => str_contains($sql, 'limit 250')))->toBeTrue()
+        ->and(collect($queries)->every(fn (string $sql): bool => ! preg_match('/order by .*server_time.*desc/', $sql)))->toBeTrue()
+        ->and(collect($queries)->every(fn (string $sql): bool => ! str_contains($sql, 'row_number()')))->toBeTrue();
+
+    $parkingQuery = collect($queries)->first(fn (string $sql): bool => str_contains($sql, 'limit 250'));
+    expect($parkingQuery)->not->toContain('raw_data');
 });

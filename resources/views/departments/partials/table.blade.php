@@ -43,7 +43,9 @@
                             </a>
                         </th>
                     @endforeach
-                    <th class="text-end">{{ __('departments.actions') }}</th>
+                    @if ($canManageDepartments)
+                        <th class="text-end">{{ __('departments.actions') }}</th>
+                    @endif
                 </tr>
             </thead>
             <tbody>
@@ -65,8 +67,10 @@
                         <td>
                             <span class="status-pill status-{{ $department->status }}">{{ __('departments.status_' . $department->status) }}</span>
                         </td>
+                        @if ($canManageDepartments)
                         <td class="text-end">
                             <div class="users-actions">
+                                @can('update-department', $department)
                                 <button
                                     type="button"
                                     class="icon-action icon-action-edit"
@@ -84,6 +88,9 @@
                                 >
                                     <i class="fa-regular fa-pen-to-square"></i>
                                 </button>
+                                @endcan
+                                @can('delete-department', $department)
+                                @if ((int) $department->drivers_count === 0)
                                 <form
                                     method="POST"
                                     action="{{ route('departments.destroy', $department) }}"
@@ -100,11 +107,18 @@
                                         <i class="fa-regular fa-trash-can"></i>
                                     </button>
                                 </form>
+                                @else
+                                    <button type="button" class="icon-action icon-action-delete" aria-label="{{ __('departments.delete') }}" title="{{ __('departments.delete_blocked') }}" disabled>
+                                        <i class="fa-regular fa-trash-can"></i>
+                                    </button>
+                                @endif
+                                @endcan
                             </div>
                         </td>
+                        @endif
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="empty-state">{{ __('departments.empty') }}</td></tr>
+                    <tr><td colspan="{{ $canManageDepartments ? 7 : 6 }}" class="empty-state">{{ __('departments.empty') }}</td></tr>
                 @endforelse
             </tbody>
         </table>

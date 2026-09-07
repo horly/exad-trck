@@ -32,3 +32,17 @@ test('vetoes every moving or running signal', () => {
 test('vetoes absent safety telemetry', () => {
   assert.equal(isSafeCurrentTelemetry({ speed: 0, ignition: 0, movement: 0, io: {} }), false);
 });
+
+test('decodes the complete P4 word before evaluating engine safety', () => {
+  assert.equal(isSafeCurrentTelemetry({
+    ...stopped,
+    can: { engine_running: 317 },
+    io: { ...stopped.io, 517: 317 },
+  }), true);
+
+  assert.equal(isSafeCurrentTelemetry({
+    ...stopped,
+    can: { engine_running: 0 },
+    io: { ...stopped.io, 517: 2048 },
+  }), false);
+});

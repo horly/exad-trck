@@ -5,12 +5,14 @@ use App\Http\Controllers\Api\V1\MobileAuthController;
 use App\Http\Controllers\Api\V1\MobileBootstrapController;
 use App\Http\Controllers\Api\V1\MobileDashboardController;
 use App\Http\Controllers\Api\V1\MobileDriverController;
+use App\Http\Controllers\Api\V1\MobileDepartmentController;
 use App\Http\Controllers\Api\V1\MobileEventController;
 use App\Http\Controllers\Api\V1\MobileMapController;
 use App\Http\Controllers\Api\V1\MobileProfileController;
 use App\Http\Controllers\Api\V1\MobileVehicleController;
 use App\Http\Controllers\Api\V1\MobileVehicleDetailController;
 use App\Http\Controllers\Api\V1\MobileVehicleTripController;
+use App\Http\Controllers\DeviceCommandController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
@@ -33,6 +35,14 @@ Route::prefix('v1/mobile')->name('api.v1.mobile.')->group(function (): void {
         Route::get('/me', MobileProfileController::class)->name('me');
         Route::get('/dashboard', MobileDashboardController::class)->name('dashboard');
         Route::get('/drivers', [MobileDriverController::class, 'index'])->name('drivers.index');
+        Route::get('/departments', [MobileDepartmentController::class, 'index'])->name('departments.index');
+        Route::post('/departments', [MobileDepartmentController::class, 'store'])->name('departments.store');
+        Route::put('/departments/{department}', [MobileDepartmentController::class, 'update'])
+            ->whereNumber('department')
+            ->name('departments.update');
+        Route::delete('/departments/{department}', [MobileDepartmentController::class, 'destroy'])
+            ->whereNumber('department')
+            ->name('departments.destroy');
         Route::get('/vehicles', [MobileVehicleController::class, 'index'])->name('vehicles.index');
         Route::get('/vehicles/{vehicle}', [MobileVehicleController::class, 'show'])
             ->whereNumber('vehicle')
@@ -41,6 +51,10 @@ Route::prefix('v1/mobile')->name('api.v1.mobile.')->group(function (): void {
             ->middleware('client.permission:'.User::PERMISSION_MAP_VIEW)
             ->whereNumber('vehicle')
             ->name('vehicles.details');
+        Route::post('/vehicles/{vehicle}/engine-commands', DeviceCommandController::class)
+            ->middleware(['client.permission:'.User::PERMISSION_MAP_VIEW, 'throttle:engine-control'])
+            ->whereNumber('vehicle')
+            ->name('vehicles.engine-commands.store');
         Route::get('/vehicles/{vehicle}/trips', MobileVehicleTripController::class)
             ->middleware('client.permission:'.User::PERMISSION_MAP_VIEW)
             ->whereNumber('vehicle')

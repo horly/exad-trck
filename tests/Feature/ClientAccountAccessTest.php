@@ -6,6 +6,7 @@ use App\Models\Department;
 use App\Models\Device;
 use App\Models\Driver;
 use App\Models\DriverIdentifier;
+use App\Models\DriverSession;
 use App\Models\Fleet;
 use App\Models\Position;
 use App\Models\User;
@@ -278,6 +279,7 @@ test('superadmin can open an isolated client dashboard from the fleet list', fun
     $this->actingAs($superadmin)
         ->postJson(route('vehicles.engine-commands.store', $firstVehicle), [
             'action' => 'immobilize',
+            'output' => 1,
             'confirmation' => true,
         ])
         ->assertForbidden();
@@ -345,11 +347,19 @@ test('client map hides tracker metadata while details show it without driver bad
         'status' => 'active',
     ]);
     $driver->vehicles()->attach($vehicle);
-    DriverIdentifier::query()->create([
+    $identifier = DriverIdentifier::query()->create([
         'driver_id' => $driver->id,
         'type' => 'ibutton',
         'uid' => '38000009A29C2114',
         'active' => true,
+    ]);
+    DriverSession::query()->create([
+        'driver_id' => $driver->id,
+        'driver_identifier_id' => $identifier->id,
+        'vehicle_id' => $vehicle->id,
+        'device_id' => $device->id,
+        'started_at' => now(),
+        'status' => 'active',
     ]);
     Device::factory()->online()->create([
         'subscription_id' => $otherFleet->subscription_id,

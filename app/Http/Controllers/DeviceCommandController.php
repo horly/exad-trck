@@ -23,15 +23,17 @@ class DeviceCommandController extends Controller
             $device,
             $request->user(),
             $data['action'],
+            (int) $data['output'],
             $request,
         );
 
         return response()->json([
             'ok' => true,
             'status' => $command->status,
+            'output' => (int) $data['output'],
             'message' => $command->action === DeviceCommand::ACTION_IMMOBILIZE
-                ? __('trackers.engine_control_immobilize_requested')
-                : __('trackers.engine_control_release_requested'),
+                ? __('trackers.output_control_activate_requested', ['output' => $data['output']])
+                : __('trackers.output_control_release_requested', ['output' => $data['output']]),
         ], 202);
     }
 }

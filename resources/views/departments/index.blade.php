@@ -31,12 +31,14 @@
                 @include('partials.topbar-actions')
             </header>
 
-            <div class="users-page-actions">
-                <button type="button" class="btn btn-primary users-primary-button" data-bs-toggle="modal" data-bs-target="#departmentModal" data-department-create>
-                    <i class="fa-solid fa-plus"></i>
-                    <span>{{ __('departments.new') }}</span>
-                </button>
-            </div>
+            @if ($canManageDepartments)
+                <div class="users-page-actions">
+                    <button type="button" class="btn btn-primary users-primary-button" data-bs-toggle="modal" data-bs-target="#departmentModal" data-department-create>
+                        <i class="fa-solid fa-plus"></i>
+                        <span>{{ __('departments.new') }}</span>
+                    </button>
+                </div>
+            @endif
 
             <div data-datatable-container>
                 @include('departments.partials.table')
@@ -54,6 +56,7 @@
         </div>
     @endif
 
+    @if ($canManageDepartments)
     <div class="modal fade users-modal" id="departmentModal" tabindex="-1" aria-labelledby="departmentModalTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered users-modal-dialog department-modal-dialog">
             <div class="modal-content">
@@ -74,12 +77,19 @@
                         <div class="users-form-grid">
                             <div>
                                 <label for="department_fleet_id" class="form-label">{{ __('departments.fleet') }} *</label>
-                                <select id="department_fleet_id" name="fleet_id" class="form-select @error('fleet_id') is-invalid @enderror" required data-department-fleet data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-warehouse">
-                                    <option value="">{{ __('departments.choose_fleet') }}</option>
-                                    @foreach ($fleets as $fleet)
-                                        <option value="{{ $fleet->id }}" @selected((int) old('fleet_id') === $fleet->id)>{{ $fleet->name }} &middot; {{ $fleet->code }}</option>
-                                    @endforeach
-                                </select>
+                                @if (auth()->user()->isSuperadmin())
+                                    <select id="department_fleet_id" name="fleet_id" class="form-select @error('fleet_id') is-invalid @enderror" required data-department-fleet data-searchable-database data-search-placeholder="{{ __('ui.search_options') }}" data-no-results="{{ __('ui.no_option_match') }}" data-option-icon="fa-warehouse">
+                                        <option value="">{{ __('departments.choose_fleet') }}</option>
+                                        @foreach ($fleets as $fleet)
+                                            <option value="{{ $fleet->id }}" @selected((int) old('fleet_id') === $fleet->id)>{{ $fleet->name }} &middot; {{ $fleet->code }}</option>
+                                        @endforeach
+                                    </select>
+                                @else
+                                    <input id="department_fleet_id" type="hidden" name="fleet_id" value="{{ auth()->user()->fleet_id }}" data-department-fleet>
+                                    <div class="form-control bg-light" aria-readonly="true">
+                                        {{ auth()->user()->fleet?->name }}{{ auth()->user()->fleet?->code ? ' · '.auth()->user()->fleet->code : '' }}
+                                    </div>
+                                @endif
                                 @error('fleet_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </div>
 
@@ -120,17 +130,21 @@
             </div>
         </div>
     </div>
+    @endif
 
     <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ asset('js/dashboard-sidebar.js') }}?v=20260716-fleet-submenu"></script>
     <script src="{{ asset('js/dashboard-controls.js') }}?v=20260529-shared-controls"></script>
     <script src="{{ asset('js/datatable-controls.js') }}?v=20260529-datatable-controls"></script>
     @include('partials.realtime-alerts')
-    <script src="{{ asset('js/confirm-delete.js') }}?v=20260529-delete-confirm"></script>
-    <script src="{{ asset('js/form-validation.js') }}?v=20260529-form-validation"></script>
-    <script src="{{ asset('js/form-loading.js') }}?v=20260529-form-loading"></script>
-    <script src="{{ asset('js/searchable-select.js') }}?v=20260719-database-selects"></script>
+    @if ($canManageDepartments)
+        <script src="{{ asset('js/confirm-delete.js') }}?v=20260529-delete-confirm"></script>
+        <script src="{{ asset('js/form-validation.js') }}?v=20260529-form-validation"></script>
+        <script src="{{ asset('js/form-loading.js') }}?v=20260529-form-loading"></script>
+        <script src="{{ asset('js/searchable-select.js') }}?v=20260719-database-selects"></script>
+    @endif
     <script>
+        @if ($canManageDepartments)
         (() => {
             const form = document.querySelector('[data-department-form]');
             if (!form) return;
@@ -181,6 +195,7 @@
                 bootstrap.Modal.getOrCreateInstance(modalElement).show();
             @endif
         })();
+        @endif
 
         const departmentToast = document.querySelector('[data-app-toast]');
         if (departmentToast) {

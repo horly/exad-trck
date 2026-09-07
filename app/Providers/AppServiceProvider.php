@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Alert;
 use App\Models\ApplicationSetting;
+use App\Models\Department;
 use App\Models\Device;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -46,6 +47,18 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-platform', fn (User $user): bool => $user->isSuperadmin());
 
         Gate::define('manage-users', fn (User $user): bool => $user->isSuperadmin() || $user->isAdmin());
+
+        Gate::define('view-departments', fn (User $user): bool => $user->isActive()
+            && ($user->isSuperadmin() || $user->fleet_id !== null));
+
+        Gate::define('manage-departments', fn (User $user): bool => $user->isActive()
+            && ($user->isSuperadmin() || ($user->isAdmin() && $user->fleet_id !== null)));
+
+        Gate::define('update-department', fn (User $user, Department $department): bool => $user->can('manage-departments')
+            && ($user->isSuperadmin() || (int) $user->fleet_id === (int) $department->fleet_id));
+
+        Gate::define('delete-department', fn (User $user, Department $department): bool => $user->isActive()
+            && $user->isSuperadmin());
 
         Gate::define('control-engine', function (User $user, Device $device): bool {
             $vehicle = $device->vehicle;

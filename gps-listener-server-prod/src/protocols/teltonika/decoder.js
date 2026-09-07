@@ -6,6 +6,7 @@ function codecName(codecId) {
 }
 
 const DRIVER_IDENTIFIER_IO_IDS = new Set([78, 263, 264, 380, 391, 451, 483]);
+const SECURITY_STATE_P4_ENGINE_RUNNING_BIT = 11n;
 
 function parseIoElements(buffer, offset, codecId) {
   const io = {};
@@ -69,6 +70,37 @@ function firstIo(io, ids) {
   return null;
 }
 
+export function decodeP4EngineRunning(value) {
+  if (value === null || value === undefined || value === '') return null;
+
+  try {
+    const flags = typeof value === 'bigint' ? value : BigInt(String(value).trim());
+    return Number((flags >> SECURITY_STATE_P4_ENGINE_RUNNING_BIT) & 1n);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeDriverIdentifier(value) {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  return normalized !== '' && !/^0+$/.test(normalized) ? normalized : null;
+}
+
+export function driverIdentifierFromIo(io, eventId) {
+  if (DRIVER_IDENTIFIER_IO_IDS.has(eventId)) {
+    const eventIdentifier = normalizeDriverIdentifier(io[eventId]);
+    if (eventIdentifier !== null) return eventIdentifier;
+  }
+
+  for (const id of DRIVER_IDENTIFIER_IO_IDS) {
+    const identifier = normalizeDriverIdentifier(io[id]);
+    if (identifier !== null) return identifier;
+  }
+
+  return null;
+}
+
 function toNumber(value) {
   if (value === null || value === undefined || value === '') return null;
   const numeric = Number(value);
@@ -95,9 +127,9 @@ function compact(values) {
   return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== null && value !== undefined && value !== ''));
 }
 
-function mapIo(io, speed) {
+function mapIo(io, speed, eventId) {
   const totalMileageKm = normalizeDistanceKm(firstIo(io, [389, 199, 16]));
-  const driverIdentifier = firstIo(io, [...DRIVER_IDENTIFIER_IO_IDS]);
+  const driverIdentifier = driverIdentifierFromIo(io, eventId);
 
   return {
     ignition: io[239] === 1 ? 1 : io[239] === 0 ? 0 : '',
@@ -108,7 +140,7 @@ function mapIo(io, speed) {
     battery_level: io[113] ?? '',
     odometer: totalMileageKm,
     engine_seconds: toNumber(firstIo(io, [42])),
-    driver_identifier_uid: driverIdentifier === null ? null : String(driverIdentifier).replace(/[^A-Za-z0-9]/g, '').toUpperCase(),
+    driver_identifier_uid: driverIdentifier,
     io,
     sensors: compact({ io_count: Object.keys(io).length }),
     obd: compact({
@@ -125,7 +157,7 @@ function mapIo(io, speed) {
     can: compact({
       fuel_level_percent: normalizePercent(firstIo(io, [48])),
       total_mileage_km: totalMileageKm,
-      engine_running: toNumber(firstIo(io, [517])),
+      engine_running: decodeP4EngineRunning(firstIo(io, [517])),
     }),
   };
 }
@@ -155,7 +187,7 @@ export function decodeTeltonikaAvlPacket(buffer, imei) {
       imei, protocol: 'teltonika', codec, codec_id: codecId,
       timestamp: new Date(timestamp).toISOString(), priority, latitude, longitude,
       altitude, angle, satellites, speed, event_id: parsedIo.eventId,
-      total_io: parsedIo.totalIo, raw_io: parsedIo.io, ...mapIo(parsedIo.io, speed),
+      total_io: parsedIo.totalIo, raw_io: parsedIo.io, ...mapIo(parsedIo.io, speed, parsedIo.eventId),
     });
   }
 

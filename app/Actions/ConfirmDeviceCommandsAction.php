@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Models\Device;
 use App\Models\DeviceCommand;
 use App\Models\Position;
+use Illuminate\Support\Facades\DB;
 
 class ConfirmDeviceCommandsAction
 {
@@ -14,40 +15,48 @@ class ConfirmDeviceCommandsAction
             ->where('device_id', $device->id)
             ->latest('server_time')
             ->latest('id')
-            ->first(['raw_data']);
+            ->first(['raw_data', 'server_time']);
         $io = data_get($position?->raw_data, 'payload.io', []);
 
-        if (! is_array($io)) {
+        if (! is_array($io) || $position?->server_time === null) {
             return;
         }
 
-        DeviceCommand::query()
-            ->where('device_id', $device->id)
-            ->whereIn('status', [DeviceCommand::STATUS_SENT, DeviceCommand::STATUS_ACKNOWLEDGED])
-            ->oldest('id')
-            ->get()
-            ->each(function (DeviceCommand $command) use ($io): void {
-                $desired = $command->desired_outputs;
-                $dout1 = $io['179'] ?? $io[179] ?? null;
-                $dout2 = $io['180'] ?? $io[180] ?? null;
+        DB::transaction(function () use ($device, $io, $position): void {
+            DeviceCommand::query()
+                ->where('device_id', $device->id)
+                ->whereIn('status', [DeviceCommand::STATUS_SENT, DeviceCommand::STATUS_ACKNOWLEDGED])
+                ->whereNotNull('sent_at')
+                ->where('sent_at', '<', $position->server_time)
+                ->lockForUpdate()
+                ->oldest('id')
+                ->get()
+                ->each(function (DeviceCommand $command) use ($io): void {
+                    $confirmed = $command->targetOutputs() !== [];
 
-                if ($dout1 === null || $dout2 === null) {
-                    return;
-                }
+                    foreach ($command->targetOutputs() as $output) {
+                        $avlId = $output === 1 ? 179 : 180;
+                        $actual = $io[(string) $avlId] ?? $io[$avlId] ?? null;
 
-                if ((int) $dout1 !== (int) ($desired[1] ?? $desired['1'] ?? -1)
-                    || (int) $dout2 !== (int) ($desired[2] ?? $desired['2'] ?? -1)) {
-                    return;
-                }
+                        if ($actual === null || (bool) $actual !== $command->desiredStateFor($output)) {
+                            $confirmed = false;
+                            break;
+                        }
+                    }
 
-                $command->update([
-                    'status' => DeviceCommand::STATUS_CONFIRMED,
-                    'confirmed_at' => now(),
-                ]);
-                $command->commandAttempts()->latest('attempt_number')->first()?->update([
-                    'status' => DeviceCommand::STATUS_CONFIRMED,
-                    'finished_at' => now(),
-                ]);
-            });
+                    if (! $confirmed) {
+                        return;
+                    }
+
+                    $command->update([
+                        'status' => DeviceCommand::STATUS_CONFIRMED,
+                        'confirmed_at' => now(),
+                    ]);
+                    $command->commandAttempts()->latest('attempt_number')->first()?->update([
+                        'status' => DeviceCommand::STATUS_CONFIRMED,
+                        'finished_at' => now(),
+                    ]);
+                });
+        }, 3);
     }
 }

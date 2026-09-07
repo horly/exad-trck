@@ -26,14 +26,21 @@ test('encodes the official Teltonika Codec 12 getinfo example', () => {
   );
 });
 
-test('encodes ignition-gated DOUT1 and DOUT2 immobilization', () => {
-  const frame = encodeCodec12Command('setigndigout 11 0 0');
-  assert.equal(frame.readUInt8(8), 0x0c);
-  assert.equal(frame.subarray(15, -5).toString('ascii'), 'setigndigout 11 0 0');
+test('encodes isolated ignition-gated output commands', () => {
+  for (const command of [
+    'setigndigout 1? 0 ?',
+    'setigndigout 0? 0 ?',
+    'setigndigout ?1 ? 0',
+    'setigndigout ?0 ? 0',
+  ]) {
+    const frame = encodeCodec12Command(command);
+    assert.equal(frame.readUInt8(8), 0x0c);
+    assert.equal(frame.subarray(15, -5).toString('ascii'), command);
+  }
 });
 
 test('decodes and validates a Codec 12 tracker response', () => {
-  const text = 'DOUT1:1 Timeout:INFINITY DOUT2:1 Timeout:INFINITY';
+  const text = 'DOUT1:1 Timeout:INFINITY';
   assert.equal(decodeCodec12Response(responseFrame(text)), text);
 });
 

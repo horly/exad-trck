@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ApplyClientPreview;
 use App\Models\Alert;
 use App\Models\Department;
 use App\Models\Device;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
-test('driver list is readable by clients while core fleet management stays reserved', function () {
+test('driver and department lists are readable by clients while core fleet management stays reserved', function () {
     $superadmin = User::factory()->superadmin()->create();
     $fleet = Fleet::factory()->create();
     $admin = User::factory()->admin($fleet->subscription)->forFleet($fleet)->create();
@@ -24,7 +25,7 @@ test('driver list is readable by clients while core fleet management stays reser
     $this->actingAs($superadmin)->get(route('drivers.index'))->assertSuccessful();
     $this->actingAs($admin)->get(route('drivers.index'))->assertSuccessful();
     $this->actingAs($superadmin)->get(route('departments.index'))->assertSuccessful();
-    $this->actingAs($admin)->get(route('departments.index'))->assertForbidden();
+    $this->actingAs($admin)->get(route('departments.index'))->assertSuccessful();
 
     foreach ([route('garages.index'), route('maintenance.index')] as $url) {
         $this->actingAs($superadmin)->get($url)->assertSuccessful();
@@ -117,6 +118,211 @@ test('superadmin can create a department in a fleet', function () {
         'code' => 'EXP',
         'status' => 'active',
     ]);
+});
+
+test('client accounts only see departments from their own fleet', function () {
+    $ownFleet = Fleet::factory()->create();
+    $otherFleet = Fleet::factory()->create();
+    $admin = User::factory()->admin($ownFleet->subscription)->forFleet($ownFleet)->create();
+    $user = User::factory()->simpleUser($ownFleet->subscription)->forFleet($ownFleet)->create();
+    $superadmin = User::factory()->superadmin()->create();
+    $ownDepartment = Department::query()->create([
+        'fleet_id' => $ownFleet->id,
+        'name' => 'Departement client visible',
+        'status' => 'active',
+    ]);
+    $otherDepartment = Department::query()->create([
+        'fleet_id' => $otherFleet->id,
+        'name' => 'Departement client masque',
+        'status' => 'active',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('departments.index'))
+        ->assertSuccessful()
+        ->assertSee($ownDepartment->name)
+        ->assertDontSee($otherDepartment->name)
+        ->assertSee(route('departments.update', $ownDepartment), false)
+        ->assertDontSee('data-confirm-delete', false);
+
+    $this->actingAs($user)
+        ->get(route('departments.index'))
+        ->assertSuccessful()
+        ->assertSee($ownDepartment->name)
+        ->assertDontSee($otherDepartment->name)
+        ->assertDontSee('data-department-create', false)
+        ->assertDontSee(route('departments.update', $ownDepartment), false);
+
+    $this->actingAs($superadmin)
+        ->get(route('departments.index'))
+        ->assertSuccessful()
+        ->assertSee($ownDepartment->name)
+        ->assertSee($otherDepartment->name);
+});
+
+test('client admin creates updates and deactivates departments only in their fleet', function () {
+    $ownFleet = Fleet::factory()->create();
+    $otherFleet = Fleet::factory()->create();
+    $admin = User::factory()->admin($ownFleet->subscription)->forFleet($ownFleet)->create();
+
+    $this->actingAs($admin)
+        ->post(route('departments.store'), [
+            'fleet_id' => $otherFleet->id,
+            'name' => 'Exploitation client',
+            'code' => 'CLIENT-EXP',
+            'status' => 'active',
+        ])
+        ->assertRedirect(route('departments.index'))
+        ->assertSessionHasNoErrors();
+
+    $department = Department::query()->where('name', 'Exploitation client')->firstOrFail();
+
+    expect($department->fleet_id)->toBe($ownFleet->id);
+
+    $this->actingAs($admin)
+        ->put(route('departments.update', $department), [
+            'fleet_id' => $otherFleet->id,
+            'name' => 'Exploitation client modifiee',
+            'code' => 'CLIENT-EXP',
+            'status' => 'inactive',
+        ])
+        ->assertRedirect(route('departments.index'))
+        ->assertSessionHasNoErrors();
+
+    $department->refresh();
+
+    expect($department->fleet_id)->toBe($ownFleet->id)
+        ->and($department->name)->toBe('Exploitation client modifiee')
+        ->and($department->status)->toBe('inactive');
+});
+
+test('client users cannot write outside their department permissions', function () {
+    $ownFleet = Fleet::factory()->create();
+    $otherFleet = Fleet::factory()->create();
+    $admin = User::factory()->admin($ownFleet->subscription)->forFleet($ownFleet)->create();
+    $user = User::factory()->simpleUser($ownFleet->subscription)->forFleet($ownFleet)->create();
+    $ownDepartment = Department::query()->create([
+        'fleet_id' => $ownFleet->id,
+        'name' => 'Departement propre',
+        'status' => 'active',
+    ]);
+    $otherDepartment = Department::query()->create([
+        'fleet_id' => $otherFleet->id,
+        'name' => 'Departement etranger',
+        'status' => 'active',
+    ]);
+    $payload = [
+        'fleet_id' => $ownFleet->id,
+        'name' => 'Modification refusee',
+        'status' => 'inactive',
+    ];
+
+    $this->actingAs($admin)
+        ->put(route('departments.update', $otherDepartment), $payload)
+        ->assertForbidden();
+
+    $this->actingAs($admin)
+        ->delete(route('departments.destroy', $ownDepartment))
+        ->assertForbidden();
+
+    $this->actingAs($user)
+        ->post(route('departments.store'), $payload)
+        ->assertForbidden();
+
+    $this->actingAs($user)
+        ->put(route('departments.update', $ownDepartment), $payload)
+        ->assertForbidden();
+
+    expect($ownDepartment->fresh()->status)->toBe('active')
+        ->and($otherDepartment->fresh()->name)->toBe('Departement etranger');
+});
+
+test('superadmin only deletes departments without assigned drivers', function () {
+    $superadmin = User::factory()->superadmin()->create();
+    $fleet = Fleet::factory()->create();
+    $occupiedDepartment = Department::query()->create([
+        'fleet_id' => $fleet->id,
+        'name' => 'Departement occupe',
+        'status' => 'active',
+    ]);
+    $emptyDepartment = Department::query()->create([
+        'fleet_id' => $fleet->id,
+        'name' => 'Departement vide',
+        'status' => 'active',
+    ]);
+    $driver = Driver::query()->create([
+        'fleet_id' => $fleet->id,
+        'department_id' => $occupiedDepartment->id,
+        'first_name' => 'Conducteur affecte',
+        'status' => 'active',
+    ]);
+
+    $this->actingAs($superadmin)
+        ->delete(route('departments.destroy', $occupiedDepartment))
+        ->assertRedirect(route('departments.index'))
+        ->assertSessionHas('status', __('departments.delete_blocked'));
+
+    $this->assertModelExists($occupiedDepartment);
+    expect($driver->fresh()->department_id)->toBe($occupiedDepartment->id);
+
+    $this->actingAs($superadmin)
+        ->delete(route('departments.destroy', $emptyDepartment))
+        ->assertRedirect(route('departments.index'))
+        ->assertSessionHas('status', __('departments.deleted'));
+
+    $this->assertModelMissing($emptyDepartment);
+});
+
+test('occupied departments cannot be moved to another fleet', function () {
+    $superadmin = User::factory()->superadmin()->create();
+    $ownFleet = Fleet::factory()->create();
+    $otherFleet = Fleet::factory()->create();
+    $department = Department::query()->create([
+        'fleet_id' => $ownFleet->id,
+        'name' => 'Transport',
+        'status' => 'active',
+    ]);
+    Driver::query()->create([
+        'fleet_id' => $ownFleet->id,
+        'department_id' => $department->id,
+        'first_name' => 'Conducteur lie',
+        'status' => 'active',
+    ]);
+
+    $this->actingAs($superadmin)
+        ->put(route('departments.update', $department), [
+            'fleet_id' => $otherFleet->id,
+            'name' => $department->name,
+            'status' => 'active',
+        ])
+        ->assertSessionHasErrors('fleet_id');
+
+    expect($department->fresh()->fleet_id)->toBe($ownFleet->id);
+});
+
+test('client preview keeps departments scoped and read only', function () {
+    $superadmin = User::factory()->superadmin()->create();
+    $ownFleet = Fleet::factory()->create();
+    $otherFleet = Fleet::factory()->create();
+    $ownDepartment = Department::query()->create([
+        'fleet_id' => $ownFleet->id,
+        'name' => 'Departement apercu',
+        'status' => 'active',
+    ]);
+    $otherDepartment = Department::query()->create([
+        'fleet_id' => $otherFleet->id,
+        'name' => 'Departement hors apercu',
+        'status' => 'active',
+    ]);
+
+    $this->actingAs($superadmin)
+        ->withSession([ApplyClientPreview::SESSION_KEY => $ownFleet->id])
+        ->get(route('departments.index'))
+        ->assertSuccessful()
+        ->assertSee($ownDepartment->name)
+        ->assertDontSee($otherDepartment->name)
+        ->assertDontSee('data-department-create', false)
+        ->assertDontSee(route('departments.update', $ownDepartment), false);
 });
 
 test('superadmin can create a driver with a normalized badge and authorized vehicles', function () {
@@ -225,6 +431,33 @@ test('superadmin can replace a driver badge', function () {
         ->assertSuccessful()
         ->assertSee('38000009A29C2114')
         ->assertDontSee('6C0000028E742F14');
+});
+
+test('driver badges cannot be duplicated in reversed byte order', function () {
+    $superadmin = User::factory()->superadmin()->create();
+    $fleet = Fleet::factory()->create();
+    $driver = Driver::query()->create([
+        'fleet_id' => $fleet->id,
+        'first_name' => 'Premier chauffeur',
+        'status' => 'active',
+    ]);
+    $driver->identifiers()->create([
+        'type' => 'ibutton',
+        'uid' => '38000009A29C2114',
+        'active' => true,
+    ]);
+
+    $this->actingAs($superadmin)
+        ->post(route('drivers.store'), [
+            'fleet_id' => $fleet->id,
+            'first_name' => 'Second chauffeur',
+            'identifier_type' => 'ibutton',
+            'rfid_uid' => '14219CA209000038',
+            'status' => 'active',
+        ])
+        ->assertSessionHasErrors('rfid_uid');
+
+    expect(Driver::query()->where('first_name', 'Second chauffeur')->exists())->toBeFalse();
 });
 
 test('superadmin can search real driver addresses with the configured map provider', function () {

@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Department;
+use App\Models\DriverIdentifier;
 use App\Models\Vehicle;
 use App\Support\DriverIdentifierUid;
 use Illuminate\Foundation\Http\FormRequest;
@@ -87,6 +88,16 @@ class StoreDriverRequest extends FormRequest
 
             if ($validVehicleCount !== $vehicleIds->count()) {
                 $validator->errors()->add('authorized_vehicle_ids', __('drivers.vehicle_fleet_error'));
+            }
+
+            $identifierCandidates = DriverIdentifierUid::candidates($this->input('rfid_uid'));
+            $currentDriverId = $this->route('driver')?->getKey();
+
+            if ($identifierCandidates !== [] && DriverIdentifier::query()
+                ->whereIn('uid', $identifierCandidates)
+                ->when($currentDriverId, fn ($query) => $query->where('driver_id', '!=', $currentDriverId))
+                ->exists()) {
+                $validator->errors()->add('rfid_uid', __('drivers.badge_already_used'));
             }
         }];
     }

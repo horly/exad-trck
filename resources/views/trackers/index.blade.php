@@ -230,7 +230,7 @@
     <script src="{{ asset('js/dashboard-controls.js') }}?v=20260529-shared-controls"></script>
     <script src="{{ asset('js/datatable-controls.js') }}?v=20260529-datatable-controls"></script>
     <script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}?v=11.26.25"></script>
-    <script src="{{ asset('js/tracker-details.js') }}?v=20260903-engine-control-toggle"></script>
+    <script src="{{ asset('js/tracker-details.js') }}?v=20260906-independent-outputs"></script>
     <script src="{{ asset('js/tracker-trips.js') }}?v=20260714-trip-controls-icons"></script>
     <script src="{{ asset('js/searchable-select.js') }}?v=20260719-vehicle-search"></script>
     @include('partials.realtime-alerts')

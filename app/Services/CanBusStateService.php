@@ -121,7 +121,7 @@ class CanBusStateService
                 "ssf_{$state}",
             ]);
 
-            $states[$state] = $individualIoValue ?? $this->booleanValue($namedValue);
+            $states[$state] = $individualIoValue;
 
             if ($states[$state] === null && array_key_exists($state, self::P4_BITS) && $p4Flags !== null) {
                 $states[$state] = $this->bitIsSet($p4Flags, self::P4_BITS[$state]);
@@ -129,6 +129,10 @@ class CanBusStateService
 
             if ($states[$state] === null && array_key_exists($state, self::P2_BITS) && $p2Flags !== null) {
                 $states[$state] = $this->bitIsSet($p2Flags, self::P2_BITS[$state]);
+            }
+
+            if ($states[$state] === null) {
+                $states[$state] = $this->booleanValue($namedValue);
             }
 
             if ($states[$state] === null && array_key_exists($state, self::DOOR_STATUS_MASKS) && $doorStatus !== null) {
@@ -194,7 +198,11 @@ class CanBusStateService
         }
 
         if (is_int($value) || is_float($value)) {
-            return (float) $value !== 0.0;
+            return match ((float) $value) {
+                0.0 => false,
+                1.0 => true,
+                default => null,
+            };
         }
 
         if (! is_string($value)) {

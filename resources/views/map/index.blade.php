@@ -198,7 +198,7 @@
     @endif
     @include('partials.realtime-alerts')
     <script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}?v=11.26.25"></script>
-    <script src="{{ asset('js/tracker-details.js') }}?v=20260903-engine-control-toggle"></script>
+    <script src="{{ asset('js/tracker-details.js') }}?v=20260906-independent-outputs"></script>
     <script src="{{ asset('js/tracker-trips.js') }}?v=20260714-trip-controls-icons"></script>
     @if ($mapProvider === 'google')
         <script src="{{ asset('js/google-map.js') }}?v=20260721-client-details"></script>

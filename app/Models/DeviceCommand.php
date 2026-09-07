@@ -98,6 +98,32 @@ class DeviceCommand extends Model
 
     public function isActive(): bool
     {
-        return in_array($this->status, self::ACTIVE_STATUSES, true);
+        return in_array($this->status, self::ACTIVE_STATUSES, true)
+            && ($this->expires_at === null || $this->expires_at->isFuture());
+    }
+
+    /** @return list<int> */
+    public function targetOutputs(): array
+    {
+        return collect($this->desired_outputs ?? [])
+            ->filter(fn (mixed $state): bool => $state !== null)
+            ->keys()
+            ->map(fn (int|string $output): int => (int) $output)
+            ->filter(fn (int $output): bool => in_array($output, [1, 2], true))
+            ->values()
+            ->all();
+    }
+
+    public function targetsOutput(int $output): bool
+    {
+        return in_array($output, $this->targetOutputs(), true);
+    }
+
+    public function desiredStateFor(int $output): ?bool
+    {
+        $desired = $this->desired_outputs ?? [];
+        $state = $desired[$output] ?? $desired[(string) $output] ?? null;
+
+        return $state === null ? null : (bool) $state;
     }
 }

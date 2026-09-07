@@ -70,6 +70,7 @@ class StoreDeviceCommandRequest extends FormRequest
     {
         return [
             'action' => ['required', Rule::in([DeviceCommand::ACTION_IMMOBILIZE, DeviceCommand::ACTION_RELEASE])],
+            'output' => ['required', 'integer', Rule::in([1, 2])],
             'confirmation' => ['required', 'accepted'],
         ];
     }

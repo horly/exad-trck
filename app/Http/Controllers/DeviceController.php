@@ -3,15 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Device;
-use App\Models\DeviceCommand;
-use App\Models\Driver;
-use App\Models\DriverIdentifier;
 use App\Models\Position;
+use App\Models\User;
 use App\Models\Vehicle;
 use App\Services\CanBusStateService;
+use App\Services\CurrentDriverSessionService;
 use App\Services\DeviceTripService;
+use App\Services\EngineControlStateService;
 use App\Services\PositionAddressService;
-use App\Support\DriverIdentifierUid;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -338,6 +337,8 @@ class DeviceController extends Controller
         Device $device,
         PositionAddressService $positionAddress,
         CanBusStateService $canBusState,
+        CurrentDriverSessionService $currentDriverSessions,
+        EngineControlStateService $engineControlState,
     ): JsonResponse {
         abort_unless(
             Device::query()->visibleTo($request->user())->whereKey($device->id)->exists(),
@@ -348,11 +349,14 @@ class DeviceController extends Controller
             $device,
             $positionAddress,
             $canBusState,
+            $currentDriverSessions,
+            $engineControlState,
             showTechnicalDetails: true,
             showDriverIdentifier: true,
             canControlEngine: $request->user()->can('control-engine', $device),
             engineCommandUrl: route('trackers.engine-commands.store', $device),
             engineDetailsUrl: route('trackers.details', $device),
+            engineControlUser: $request->user(),
         );
     }
 
@@ -361,6 +365,8 @@ class DeviceController extends Controller
         Vehicle $vehicle,
         PositionAddressService $positionAddress,
         CanBusStateService $canBusState,
+        CurrentDriverSessionService $currentDriverSessions,
+        EngineControlStateService $engineControlState,
     ): JsonResponse {
         abort_unless(
             Vehicle::query()->visibleTo($request->user())->whereKey($vehicle->id)->exists(),
@@ -376,12 +382,15 @@ class DeviceController extends Controller
             $device,
             $positionAddress,
             $canBusState,
+            $currentDriverSessions,
+            $engineControlState,
             showTechnicalDetails: true,
             showDriverIdentifier: $request->user()->isSuperadmin(),
             canControlEngine: ! (bool) $request->attributes->get('client_preview', false)
                 && $request->user()->can('control-engine', $device),
             engineCommandUrl: route('vehicles.engine-commands.store', $vehicle),
             engineDetailsUrl: route('vehicles.tracker-details', $vehicle),
+            engineControlUser: $request->user(),
         );
     }
 
@@ -389,31 +398,36 @@ class DeviceController extends Controller
         Device $device,
         PositionAddressService $positionAddress,
         CanBusStateService $canBusState,
+        CurrentDriverSessionService $currentDriverSessions,
+        EngineControlStateService $engineControlState,
         bool $showTechnicalDetails,
         bool $showDriverIdentifier,
         bool $canControlEngine,
         string $engineCommandUrl,
         string $engineDetailsUrl,
+        User $engineControlUser,
     ): JsonResponse {
         $device->load([
             'fleet:id,name,code',
             'vehicle:id,fleet_id,name,registration_number',
             'vehicle.fleet:id,name,code',
-            'trackerEvents' => fn ($query) => $query
+        ]);
+        $device->setRelation(
+            'trackerEvents',
+            $device->trackerEvents()
                 ->vehicleEvents()
                 ->with('position:id,latitude,longitude')
                 ->latest('started_at')
                 ->latest('id')
-                ->limit(5),
-        ]);
+                ->limit(5)
+                ->get()
+        );
         $latestPosition = Position::query()
             ->where('device_id', $device->id)
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->when($device->last_position_at, fn ($query, $lastPositionAt) => $query->where('gps_time', '<=', $lastPositionAt))
             ->latest('gps_time')
-            ->latest('server_time')
-            ->latest('id')
             ->first(['id', 'device_id', 'gps_time', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition', 'raw_data']);
         $latestStoppedPosition = Position::query()
             ->where('device_id', $device->id)
@@ -427,8 +441,6 @@ class DeviceController extends Controller
             })
             ->when($device->last_position_at, fn ($query, $lastPositionAt) => $query->where('gps_time', '<=', $lastPositionAt))
             ->latest('gps_time')
-            ->latest('server_time')
-            ->latest('id')
             ->first(['id', 'device_id', 'gps_time', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition', 'raw_data']);
         $parkingStartPosition = $this->parkingStartPosition($device);
         $locationPosition = $parkingStartPosition ?: ($latestStoppedPosition ?: $latestPosition);
@@ -441,26 +453,23 @@ class DeviceController extends Controller
             $positionAddress,
             $locationPosition instanceof Position && $latestPosition instanceof Position && $locationPosition->is($latestPosition),
         );
-        $currentDriver = $this->currentDriverForDevice($device, $showDriverIdentifier);
-        $engineCommand = $canControlEngine
-            ? DeviceCommand::query()
-                ->where('device_id', $device->id)
-                ->latest('id')
-                ->first()
-            : null;
-        $lastConfirmedEngineCommand = $canControlEngine
-            ? DeviceCommand::query()
-                ->where('device_id', $device->id)
-                ->where('status', DeviceCommand::STATUS_CONFIRMED)
-                ->latest('confirmed_at')
-                ->latest('id')
-                ->first()
+        $currentDriverSession = $currentDriverSessions->forDevice($device);
+        $currentDriver = $currentDriverSession?->driver;
+
+        if ($showDriverIdentifier) {
+            $currentDriver?->setRelation('primaryIdentifier', $currentDriverSession?->identifier);
+        }
+        $engineControl = $canControlEngine
+            ? $engineControlState->forDevice($device, $engineControlUser)
             : null;
 
         return response()->json([
             'html' => view('trackers.partials.details', [
                 'device' => $device,
                 'currentDriver' => $currentDriver,
+                'currentDriverIdentifierUid' => $showDriverIdentifier
+                    ? $currentDriverSession?->identifier?->uid
+                    : null,
                 'latestPosition' => $locationPosition,
                 'locationAddress' => $locationAddress ?? __('trackers.address_unavailable'),
                 'gpsQuality' => $this->gpsQuality($device),
@@ -473,35 +482,9 @@ class DeviceController extends Controller
                 'canControlEngine' => $canControlEngine,
                 'engineCommandUrl' => $engineCommandUrl,
                 'engineDetailsUrl' => $engineDetailsUrl,
-                'engineCommand' => $engineCommand,
-                'engineImmobilized' => $lastConfirmedEngineCommand?->action === DeviceCommand::ACTION_IMMOBILIZE,
+                'engineControl' => $engineControl,
             ])->render(),
         ]);
-    }
-
-    private function currentDriverForDevice(Device $device, bool $includeIdentifier): ?Driver
-    {
-        $vehicleFleetId = $device->vehicle?->fleet_id;
-
-        if ($vehicleFleetId === null || blank($device->last_driver_identifier_uid)) {
-            return null;
-        }
-
-        $identifier = DriverIdentifier::query()
-            ->with([
-                'driver.department:id,name,code',
-            ])
-            ->whereIn('uid', DriverIdentifierUid::candidates($device->last_driver_identifier_uid))
-            ->where('active', true)
-            ->whereHas('driver', fn ($query) => $query->where('fleet_id', $vehicleFleetId))
-            ->whereHas('driver.vehicles', fn ($query) => $query->whereKey($device->vehicle_id))
-            ->first();
-
-        if ($includeIdentifier) {
-            $identifier?->driver?->setRelation('primaryIdentifier', $identifier);
-        }
-
-        return $identifier?->driver;
     }
 
     public function trips(Request $request, Device $device, DeviceTripService $tripService): JsonResponse
@@ -601,10 +584,8 @@ class DeviceController extends Controller
             ->whereNotNull('longitude')
             ->when($device->last_position_at, fn ($query, $lastPositionAt) => $query->where('gps_time', '<=', $lastPositionAt))
             ->latest('gps_time')
-            ->latest('server_time')
-            ->latest('id')
             ->limit(250)
-            ->get(['id', 'device_id', 'gps_time', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition', 'raw_data']);
+            ->get(['id', 'gps_time', 'server_time', 'ignition']);
 
         $parkingStart = null;
 
@@ -616,15 +597,20 @@ class DeviceController extends Controller
             $parkingStart = $position;
         }
 
-        return $parkingStart ?: Position::query()
+        if ($parkingStart instanceof Position) {
+            return Position::query()->find(
+                $parkingStart->id,
+                ['id', 'device_id', 'gps_time', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition', 'raw_data']
+            );
+        }
+
+        return Position::query()
             ->where('device_id', $device->id)
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->where('ignition', false)
             ->when($device->last_position_at, fn ($query, $lastPositionAt) => $query->where('gps_time', '<=', $lastPositionAt))
             ->latest('gps_time')
-            ->latest('server_time')
-            ->latest('id')
             ->first(['id', 'device_id', 'gps_time', 'latitude', 'longitude', 'address', 'altitude', 'server_time', 'speed', 'angle', 'movement', 'ignition', 'raw_data']);
     }
 

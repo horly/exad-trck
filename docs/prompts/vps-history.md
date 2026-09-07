@@ -1008,3 +1008,60 @@ The battery voltage field must not be greater than 100.
 - Aucune migration, suppression de colonne, donnee metier ou variable d'environnement n'a ete modifiee. Les colonnes historiques des abonnements restent intactes pour garantir un retour arriere non destructif.
 - Validation locale avant livraison : 182 tests Laravel avec 1 597 assertions, 113 tests cibles avec 1 031 assertions, Pint, syntaxe PHP, compilation Blade et inventaire des routes valides.
 - Aucun commit n'a ete cree.
+
+## 2026-09-03 - Gestion client des departements preparee localement
+- Les routes de consultation, creation et modification des departements passent sous authentification generale ; chaque action applique ensuite les autorisations de role et la portee de flotte. La suppression conserve en plus le middleware superadministrateur.
+- Le scope `Department::visibleTo()` isole les donnees par `fleet_id`. Les administrateurs clients peuvent creer, modifier et desactiver dans leur flotte, tandis que les utilisateurs standards sont limites a la lecture.
+- Les requetes falsifiees vers une autre flotte, la suppression d'un departement contenant des chauffeurs et le deplacement d'un departement occupe sont bloques cote serveur. L'apercu client reste filtre et sans actions.
+- Aucune migration ni modification de donnee n'est requise. Validation locale : 188 tests Laravel avec 1 643 assertions, 20 tests cibles avec 193 assertions, syntaxe PHP, Pint, compilation Blade et routes valides.
+- Aucun fichier de production n'a encore ete modifie et aucun commit n'a ete cree.
+
+## 2026-09-03 - Deploiement de la gestion client des departements
+- Deploiement cible de 11 fichiers vers `/var/www/exadtracking.app`. Les routes GET, POST et PUT des departements utilisent maintenant l'authentification generale et leurs autorisations serveur par role et flotte ; DELETE conserve le middleware superadministrateur.
+- Archive : `/tmp/deploy-exadtracking-client-departments-20260903-164715.tar.gz`, SHA-256 `13264d87a669087776721128880e12133207d86b218c94a33addd3ba69be69a0`, permissions `0600`.
+- Sauvegarde : `/tmp/exadtracking-before-client-departments-20260903-164844.tar.gz`, SHA-256 `c5b53178a1ac0fb6bd0490c76f5bcbc4f1ae16850c3832251f83396dd2a4ea2c`, permissions `0600`.
+- L'empreinte agregee distante des 11 fichiers est identique a l'empreinte locale `5cfdc3b33d55b11038f5037f479018f64552a593ec9c140510305bf328208ecd`. La syntaxe PHP distante est valide, les caches configuration et vues ont ete reconstruits et les workers de queue signales.
+- Etat final : environnement `production`, debug desactive, maintenance inactive, `/up` et `/login` en HTTP 200, `/departments` en HTTP 302 sans authentification, Apache, PHP-FPM, `gps-tcp.service` et Supervisor actifs.
+- Aucune migration, donnee metier ou variable d'environnement n'a ete modifiee. Aucun commit n'a ete cree.
+
+## 2026-09-03 - API d'alignement mobile preparee localement
+- Ajout local des endpoints mobiles de departements et de commande moteur ainsi que de l'etat d'immobilisation dans le detail vehicule.
+- Les endpoints appliquent l'authentification Sanctum, le cloisonnement par flotte, les Gates existants et le limiteur `engine-control`. Aucun champ technique de commande n'est expose.
+- Validation locale : routes mobiles inventoriees, 28 tests Laravel cibles passes avec 243 assertions et syntaxe PHP valide.
+- Ces fichiers ne sont pas encore deployes sur le VPS ; la production conserve le dernier deploiement web valide.
+
+## 2026-09-05 - Publication Android 1.0.0 build 13
+- L'APK Android universel `1.0.0+13` a ete compile et publie sur `/application`. Son SHA-256 est `6be2ecd4bcba06967ec76a54d6d0cad8c5e9b3fd5e8889768520896cb98abe3d`, sa taille est de `55 346 947` octets et sa signature Android v2 est valide.
+- Le build `1.0.0+12` a egalement ete publie dans les versions precedentes afin que son entree deja preparee ne reste pas liee a un fichier absent. Son SHA-256 est `491c19d3743e00d2a23eeba1098f434556e2a60fd5c7790aae481e0e0561a9fc`.
+- Archive du catalogue et des traductions : `/tmp/deploy-exadtracking-mobile-build-13-20260905-121500.tar.gz`, SHA-256 `f0931a2170a1c9cda386ed1c00932b64eb40e7bfed3b779b59b2f67dcc50a42c`.
+- Sauvegarde de retour arriere : `/tmp/exadtracking-before-mobile-build-13-20260905-121500.tar.gz`, SHA-256 `146149c2418e1f2bef45246f06117390e36b1e31845c41aac3ce8da7d1bb5a14`, permissions `0600`.
+- Les APK ont ete verifies dans le repertoire temporaire, installes atomiquement hors du dossier public avec le proprietaire `exad-tracking:exad-tracking` et le mode `0644`, puis les caches de configuration et de vues ont ete reconstruits. Aucune migration ni donnee metier n'a ete modifiee.
+- Validation locale : analyse Flutter sans anomalie, 17 tests Flutter passes et 6 tests Laravel de telechargement passes avec 34 assertions.
+- Verification production : `/up` et `/application` repondent en HTTP 200 ; la page affiche les builds 13 et 12 ; les deux telechargements partiels repondent en HTTP 206 avec le type APK, `nosniff`, cache immuable, nom et taille corrects. Le mode maintenance est inactif.
+- Aucun commit n'a ete cree.
+
+## 2026-09-05 - Correctif telemetrie mobile et retention de cinq anciennes versions
+- Le diagnostic cible de `Suzuki Horly` a confirme que le traceur transmettait ses donnees mais que l'ancienne API carte ne les exposait pas : signal GSM present, batterie brute a `0` utilisee comme sentinelle et tension interne exploitable.
+- `Device` normalise maintenant la batterie native lorsqu'elle est positive et estime sinon le pourcentage depuis une tension interne valide entre `3,3 V` et `4,2 V`. Le controleur de carte selectionne la tension necessaire et expose les etats GPS ainsi que les pourcentages reseau et batterie.
+- Archive de deploiement : `/tmp/deploy-exadtracking-mobile-telemetry-retention-20260905-123000.tar.gz`, SHA-256 `45ddc9212b69b7172d455568f5a015ff8ccafcf2ed7ac944aa2decaf9af153ce`.
+- Sauvegarde de retour arriere conservee : `/tmp/exadtracking-before-mobile-telemetry-retention-20260905-123000.tar.gz`, SHA-256 `78a3a68dfe6ec29c94ccdd14276b4abc232b72205c76c5c1caba1edd24ff34fb`, permissions `0600`.
+- La plateforme conserve la version actuelle 13 et exactement cinq versions anciennes : 12, 11, 10, 9 et 8. Les fichiers APK 3 a 7 ont ete supprimes du serveur apres verification de leurs noms, tailles et empreintes ; leurs copies locales permettent une restauration.
+- Validation locale : Pint passe, 199 tests Laravel passes avec 1 701 assertions. Validation production de Suzuki Horly : GPS disponible, qualite GPS `100 %`, reseau `80 %`, batterie `80 %` au dernier signal controle.
+- Verification publique : `/up` et `/application` en HTTP 200, catalogue `13, 12, 11, 10, 9, 8`, build 8 en HTTP 206 et build 7 en HTTP 404. Apache, PHP-FPM, GPS TCP et Supervisor sont actifs ; le mode maintenance est inactif.
+- Aucun commit n'a ete cree.
+
+## 2026-09-06 - Publication Android 1.0.0 build 17
+- L'APK Android `1.0.0+17` a ete publie sur `/application` comme version courante. Taille : `55 363 415` octets ; SHA-256 : `e9d8eff678f3dc7aa199069d27ed24e6d965711feda71a83c1cd73637d4eefd7`.
+- Le catalogue conserve exactement cinq versions precedentes disponibles : builds `13`, `12`, `11`, `10` et `9`. Le build `8` a ete retire du serveur apres inclusion dans la sauvegarde.
+- Archive de publication SHA-256 `e94f5bfa2e89101ee67fd13b9b0fa7071d19270a29dd1ce55069e5c164f7440d`. Sauvegarde de retour arriere : `/tmp/exadtracking-before-mobile-build17-20260906-095900.tar.gz`, SHA-256 `b9121aed583ee8cc8c41c85bdbd0f421590220325be6b58f95b0cc6c599ad340`, permissions `0600`.
+- Laravel a ete place en maintenance uniquement pendant la copie. Les caches de configuration et de vues ont ete reconstruits, les workers de queue signales, puis l'application remise en ligne.
+- Verification finale : `/up` et `/application` en HTTP `200`, build 17 visible, telechargement partiel en HTTP `206` avec `application/vnd.android.package-archive`, Apache et `gps-tcp.service` actifs, maintenance inactive.
+- Le paquet temporaire et le script de publication ont ete supprimes du VPS apres verification. Le lot Web/API de separation DOUT1/DOUT2 n'a pas ete inclus dans ce deploiement.
+
+## 2026-09-06 - Sorties DOUT1 et DOUT2 independantes en production
+- Deploiement cible du Web, de l'API, des services d'etat/confirmation et des garde-fous du listener vers `/var/www/exadtracking.app`. Chaque requete cible maintenant exclusivement DOUT1 ou DOUT2 et ignore l'autre sortie avec `?`.
+- L'archive de deploiement porte le SHA-256 `6de59456322e60609a9ccb3e0a97326b2dc04961395da9d1786f976174bc4e5f`. La sauvegarde de retour arriere est `/tmp/exadtracking-before-independent-outputs-web-20260906-101100.tar.gz`, SHA-256 `debac5d84bc14a336fcdefec1c16fcf2efec7d1669884b4f2ed5c2b9fc270394`, permissions `0600`.
+- Les caches Laravel ont ete reconstruits, les workers signales et `gps-tcp.service` redemarre avec son binaire Node explicite. Une premiere tentative de verification Node sans chemin absolu s'est arretee proprement ; Laravel etait deja revenu en ligne grace au garde de maintenance.
+- Les vues Carte et Traceurs ont recu le cache-busting JavaScript `20260906-independent-outputs`. Leur sauvegarde est `/tmp/exadtracking-before-independent-outputs-cache-20260906-101100.tar.gz`, SHA-256 `42bc784d17ad0068ea2fd250eba3fcae214fe24be8f28ae27045bbf1f3f8272c`, permissions `0600`.
+- Toutes les empreintes runtime distantes correspondent aux fichiers locaux. L'interface contient les deux sorties, les routes Web, vehicule et mobile sont actives, `/up` et `/application` repondent en `200` et l'API sans jeton en `401`.
+- Apache, Supervisor et `gps-tcp.service` sont actifs ; maintenance inactive. Aucune migration ni commande materielle n'a ete executee.

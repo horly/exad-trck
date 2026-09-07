@@ -74,6 +74,7 @@ return [
     'employee_placeholder' => 'Ex. EMP-001',
     'social_security_placeholder' => 'Ex. NSS-243-001',
     'badge_placeholder' => 'UID RFID / iButton / NFC',
+    'badge_already_used' => 'Ce badge est déjà attribué à un autre chauffeur, y compris dans son ordre d’octets inversé.',
     'tags_placeholder' => 'Ex. permanent, transport',
     'phone_placeholder' => '+243 000 000 000',
     'email_placeholder' => 'conducteur@entreprise.com',

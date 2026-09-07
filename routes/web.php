@@ -72,6 +72,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
     Route::get('/drivers', [DriverController::class, 'index'])->name('drivers.index');
+    Route::get('/departments', [DepartmentController::class, 'index'])->name('departments.index');
+    Route::post('/departments', [DepartmentController::class, 'store'])->name('departments.store');
+    Route::put('/departments/{department}', [DepartmentController::class, 'update'])->name('departments.update');
     Route::post('/vehicles/{vehicle}/engine-commands', DeviceCommandController::class)
         ->middleware('throttle:engine-control')
         ->name('vehicles.engine-commands.store');
@@ -115,7 +118,7 @@ Route::middleware(['auth', 'superadmin'])->group(function () {
     Route::post('/client-preview/exit', [ClientPreviewController::class, 'destroy'])->name('client-preview.exit');
     Route::resource('fleets', FleetController::class)->except(['show']);
     Route::resource('drivers', DriverController::class)->only(['store', 'update', 'destroy']);
-    Route::resource('departments', DepartmentController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::delete('/departments/{department}', [DepartmentController::class, 'destroy'])->name('departments.destroy');
     Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
     Route::put('/vehicles/{vehicle}', [VehicleController::class, 'update'])->name('vehicles.update');
     Route::delete('/vehicles/{vehicle}', [VehicleController::class, 'destroy'])->name('vehicles.destroy');

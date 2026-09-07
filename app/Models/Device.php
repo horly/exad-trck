@@ -169,6 +169,57 @@ class Device extends Model
         ), true);
     }
 
+    public function gpsStatus(): string
+    {
+        if ($this->status !== 'online') {
+            return 'unavailable';
+        }
+
+        $hasSatelliteFix = ($this->last_satellites ?? 0) > 0;
+        $hasPosition = $this->last_latitude !== null && $this->last_longitude !== null;
+
+        return $hasSatelliteFix || $hasPosition ? 'available' : 'unavailable';
+    }
+
+    public function gpsQualityPercent(): ?int
+    {
+        return $this->last_satellites !== null
+            ? min(100, max(0, $this->last_satellites * 7))
+            : null;
+    }
+
+    public function networkSignalPercent(): ?int
+    {
+        if ($this->last_gsm_signal === null) {
+            return null;
+        }
+
+        return min(100, max(0, $this->last_gsm_signal <= 5
+            ? $this->last_gsm_signal * 20
+            : $this->last_gsm_signal));
+    }
+
+    public function batteryLevelPercent(): ?int
+    {
+        if ($this->last_battery_level !== null && $this->last_battery_level > 0) {
+            return min(100, $this->last_battery_level);
+        }
+
+        if (! is_numeric($this->last_battery_voltage)) {
+            return $this->last_battery_level === null ? null : 0;
+        }
+
+        $voltage = (float) $this->last_battery_voltage;
+
+        if ($voltage < 3 || $voltage > 5) {
+            return $this->last_battery_level === null ? null : 0;
+        }
+
+        $estimated = (int) round((($voltage - 3.3) / (4.2 - 3.3)) * 100);
+
+        return min(100, max(0, $estimated));
+    }
+
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
         if ($user->isSuperadmin()) {

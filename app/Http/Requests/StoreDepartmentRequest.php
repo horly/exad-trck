@@ -9,7 +9,14 @@ class StoreDepartmentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->isSuperadmin();
+        return (bool) $this->user()?->can('manage-departments');
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->user()?->isAdmin()) {
+            $this->merge(['fleet_id' => $this->user()->fleet_id]);
+        }
     }
 
     public function rules(): array

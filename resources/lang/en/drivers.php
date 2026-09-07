@@ -74,6 +74,7 @@ return [
     'employee_placeholder' => 'E.g. EMP-001',
     'social_security_placeholder' => 'E.g. SS-001',
     'badge_placeholder' => 'RFID / iButton / NFC UID',
+    'badge_already_used' => 'This badge is already assigned to another driver, including in reversed byte order.',
     'tags_placeholder' => 'E.g. permanent, transport',
     'phone_placeholder' => '+243 000 000 000',
     'email_placeholder' => 'driver@company.com',

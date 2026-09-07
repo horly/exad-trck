@@ -65,6 +65,9 @@
         @else
             <a class="nav-link {{ $active === 'vehicles' ? 'active' : '' }}" href="{{ route('vehicles.index') }}"><i class="fa-solid fa-car-side"></i><span>{{ __('dashboard.vehicle') }}</span></a>
             <a class="nav-link {{ $active === 'drivers' ? 'active' : '' }}" href="{{ route('drivers.index') }}"><i class="fa-solid fa-id-card"></i><span>{{ __('dashboard.drivers') }}</span></a>
+            @if ($user->fleet_id !== null)
+                <a class="nav-link {{ $active === 'departments' ? 'active' : '' }}" href="{{ route('departments.index') }}"><i class="fa-solid fa-sitemap"></i><span>{{ __('dashboard.departments') }}</span></a>
+            @endif
         @endif
 
         @if ($user->hasClientPermission(\App\Models\User::PERMISSION_MAP_VIEW))

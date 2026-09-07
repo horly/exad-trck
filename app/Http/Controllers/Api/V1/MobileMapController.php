@@ -23,6 +23,24 @@ class MobileMapController extends Controller
         $search = trim((string) ($filters['search'] ?? ''));
         $user = $request->user();
         $query = Device::query()
+            ->select([
+                'id',
+                'fleet_id',
+                'vehicle_id',
+                'status',
+                'last_seen_at',
+                'last_latitude',
+                'last_longitude',
+                'last_speed',
+                'last_angle',
+                'last_ignition',
+                'last_movement',
+                'last_satellites',
+                'last_gsm_signal',
+                'last_battery_level',
+                'last_battery_voltage',
+                'last_address',
+            ])
             ->visibleTo($user)
             ->with(['vehicle:id,fleet_id,name,registration_number', 'vehicle.fleet:id,name,code', 'fleet:id,name,code'])
             ->whereNotNull('vehicle_id')
@@ -79,6 +97,10 @@ class MobileMapController extends Controller
                                 'is_moving' => $this->movementService->isMoving($device),
                                 'is_parking' => $this->movementService->isParking($device),
                                 'is_stationary_running' => $this->movementService->isStationaryRunning($device),
+                                'gps_status' => $device->gpsStatus(),
+                                'gps_quality_percent' => $device->gpsQualityPercent(),
+                                'network_signal_percent' => $device->networkSignalPercent(),
+                                'battery_level_percent' => $device->batteryLevelPercent(),
                                 'trail' => $trails[$device->id] ?? [],
                                 'last_signal_at' => $device->last_seen_at?->toISOString(),
                                 'address' => $device->last_address,

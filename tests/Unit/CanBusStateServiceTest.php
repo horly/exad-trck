@@ -94,3 +94,17 @@ test('it preserves high p4 flags received as hexadecimal strings', function () {
         ->roof_open->toBeTrue()
         ->ignition_on->toBeFalse();
 });
+
+test('it never treats the complete p4 word as a boolean engine state', function () {
+    $stopped = app(CanBusStateService::class)->decode(
+        [517 => 317],
+        ['payload' => ['can' => ['engine_running' => 317]]],
+    );
+    $running = app(CanBusStateService::class)->decode(
+        [517 => 2048],
+        ['payload' => ['can' => ['engine_running' => 0]]],
+    );
+
+    expect($stopped['engine_running'])->toBeFalse()
+        ->and($running['engine_running'])->toBeTrue();
+});

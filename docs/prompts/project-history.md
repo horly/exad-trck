@@ -1219,3 +1219,97 @@ Ce fichier garde une trace des demandes importantes effectuees pendant le projet
 - Aucune migration, suppression de colonne ou modification de donnee metier n'a ete realisee. Les anciennes valeurs `subscription_id` et `subscription_plan` restent conservees en base pour permettre un retour arriere sans perte de donnees.
 - Validation avant deploiement : 182 tests Laravel passes avec 1 597 assertions, dont 113 tests cibles avec 1 031 assertions ; Pint, syntaxe PHP, compilation Blade, routes et controle des occurrences visibles valides.
 - Aucun commit n'a ete cree.
+
+## 2026-09-03 - Gestion des departements par les comptes clients preparee localement
+- La page Departements est maintenant consultable par les administrateurs et utilisateurs standards, avec un filtrage serveur strict sur leur propre flotte. Le superadministrateur conserve la vue globale.
+- L'administrateur client peut creer, modifier et desactiver les departements de sa flotte. Le `fleet_id` transmis par le navigateur est remplace cote serveur par celui du compte afin d'empecher toute ecriture dans une autre flotte.
+- Les utilisateurs standards disposent d'une consultation seule : aucun bouton de creation, formulaire, modal ou action de modification n'est rendu, et les requetes d'ecriture directes sont refusees en `403`.
+- La suppression definitive reste reservee au superadministrateur et est bloquee lorsqu'un chauffeur est encore affecte. Le changement de flotte d'un departement occupe est egalement refuse afin d'eviter des associations incoherentes.
+- L'apercu client du superadministrateur reste filtre sur la flotte selectionnee et entierement en lecture seule. Aucune permission delegable ni migration n'a ete ajoutee ; le statut `inactive` existant sert a desactiver un departement.
+- Validation locale : 188 tests Laravel passes avec 1 643 assertions, dont 20 tests de gestion de flotte avec 193 assertions ; Pint, syntaxe PHP, compilation Blade et routes valides.
+- Cette evolution n'est pas encore deployee et aucun commit n'a ete cree.
+
+## 2026-09-03 - Deploiement de la gestion client des departements
+- Les 11 fichiers applicatifs de gestion, autorisation, interface, navigation, traduction et routage des departements ont ete deployes vers `/var/www/exadtracking.app`.
+- L'administrateur client peut maintenant creer, modifier et desactiver les departements de sa flotte. Les utilisateurs standards disposent de la consultation seule et le superadministrateur conserve la gestion globale ainsi que la suppression des departements inutilises.
+- Archive transferee : `/tmp/deploy-exadtracking-client-departments-20260903-164715.tar.gz`, SHA-256 `13264d87a669087776721128880e12133207d86b218c94a33addd3ba69be69a0`.
+- Sauvegarde de retour arriere : `/tmp/exadtracking-before-client-departments-20260903-164844.tar.gz`, SHA-256 `c5b53178a1ac0fb6bd0490c76f5bcbc4f1ae16850c3832251f83396dd2a4ea2c`, permissions `0600`.
+- Les 11 fichiers distants correspondent exactement aux fichiers locaux, avec l'empreinte agregee `5cfdc3b33d55b11038f5037f479018f64552a593ec9c140510305bf328208ecd`. Les caches ont ete reconstruits et les workers de queue signales.
+- Verification production : environnement `production`, debug desactive, maintenance inactive, `/up` et `/login` en HTTP 200, `/departments` en redirection HTTP 302 sans session, Apache, PHP-FPM, GPS TCP et Supervisor actifs.
+- Aucune migration ni donnee metier n'a ete modifiee. Aucun commit n'a ete cree.
+
+## 2026-09-03 - Alignement de l'application mobile avec les fonctions web
+- L'API mobile expose maintenant les departements avec le meme cloisonnement et les memes droits que le web : lecture pour les comptes de flotte, gestion pour l'administrateur client, gestion globale et suppression conditionnelle pour le superadministrateur.
+- Le detail mobile des vehicules retourne un etat d'immobilisation minimal et non sensible. L'application affiche un seul bouton dynamique, masque pour les traceurs incompatibles comme le FMB003 et pour les comptes non autorises.
+- Les commandes mobiles reutilisent l'action metier serveur existante, son limiteur et ses garde-fous : une immobilisation attend toujours l'arret moteur confirme et ne coupe jamais le moteur pendant la conduite.
+- Le renouvellement des jetons Flutter est maintenant partage entre les requetes concurrentes. La methode, les parametres et le corps de la requete initiale sont conserves au rejeu, ce qui elimine une cause de fermeture de session intermittente.
+- La documentation serveur et mobile a ete synchronisee. Validation : 28 tests Laravel cibles avec 243 assertions, 15 tests Flutter passes, analyse Flutter sans anomalie et APK Android debug compile avec succes.
+- Aucun deploiement de ces nouveaux endpoints ni commit n'a encore ete effectue.
+
+## 2026-09-04 - Coherence conducteur courant et etat moteur CAN
+- Le conducteur des details web et mobile provient maintenant exclusivement de la session de conduite active du traceur et du vehicule. Un ancien UID conserve dans `devices.last_driver_identifier_uid` ne peut plus afficher un chauffeur apres la fermeture de sa session.
+- Les identifiants iButton exacts restent prioritaires sur leur representation en ordre d'octets inverse. La validation refuse desormais l'affectation a deux chauffeurs de badges physiquement equivalents dans les deux ordres.
+- Le listener privilegie l'identifiant porte par l'IO declencheur, ignore les sentinelles composees uniquement de zeros et recherche ensuite le premier identifiant non nul parmi les IO compatibles.
+- Le mot de securite CAN P4/AVL 517 n'est plus converti directement en booleen. Le listener et Laravel extraient le bit moteur 11 : `317` indique un moteur arrete et `2048` un moteur en marche.
+- Les controles d'immobilisation echouent maintenant de maniere sure si l'etat moteur est absent ou ambigu et refusent explicitement un mot P4 dont le bit moteur est actif.
+- Des tests PHP et Node couvrent les sessions actives, les UID perimes, les ordres d'octets inverses, les sentinelles iButton et les mots P4 moteur arrete/en marche.
+
+## 2026-09-05 - Application Android 1.0.0+13 publiee
+- La page publique `/application` propose maintenant le build `1.0.0+13` comme derniere version et conserve le build `1.0.0+12` dans les versions precedentes.
+- Le build 13 apporte la carte mobile modernisee inspiree de X-Monitor, la telemetrie GPS/reseau/batterie, la duree de stationnement et une navigation principale simplifiee.
+- L'APK 13 mesure `55 346 947` octets et porte le SHA-256 `6be2ecd4bcba06967ec76a54d6d0cad8c5e9b3fd5e8889768520896cb98abe3d`. La signature Android v2, les empreintes locale/distante et les telechargements partiels ont ete verifies.
+- Validation : analyse Flutter sans anomalie, 17 tests Flutter passes, 6 tests Laravel avec 34 assertions, `/up` et `/application` en HTTP 200 et APK 12/13 en HTTP 206 pour les requetes partielles.
+- Aucun commit n'a ete cree.
+
+## 2026-09-05 - Telemetrie de Suzuki Horly et politique de conservation Android
+- L'API mobile de la carte expose maintenant les statuts GPS et les pourcentages de signal reseau et de batterie. Une valeur batterie brute egale a zero est remplacee par une estimation issue de la tension interne lorsqu'elle est valide, sans fabriquer de pourcentage reseau.
+- En production, Suzuki Horly restitue desormais GPS `100 %`, reseau `80 %` et batterie `80 %` au dernier controle.
+- La page publique conserve le build actuel 13 et cinq builds precedents, de 12 a 8. Les builds 3 a 7 ont ete retires du catalogue et du stockage serveur.
+- Validation : Pint, 199 tests Laravel avec 1 701 assertions, et controles HTTP publics conformes. Aucun commit n'a ete cree.
+- Correction du suivi des commandes d'immobilisation : acquittement immediat des sorties DOUT confirmees, attente maintenue pour les reponses mises en file, confirmation uniquement par une telemetrie posterieure a l'envoi et rafraichissement mobile automatique toutes les cinq secondes.
+- La fenetre de securite accepte des echantillons de stationnement espaces tout en exigeant toujours trois mesures concordantes, un signal recent, vitesse et regime a zero, contact coupe et moteur arrete. Une commande expiree ne bloque plus l'interface.
+
+## 2026-09-05 - Correctif de suivi des commandes moteur et build Android 14
+- Les reponses du traceur qui confirment exactement DOUT1 et DOUT2 terminent desormais la commande immediatement. Les reponses `QUEUED` restent en attente d'une telemetrie ulterieure et aucune ancienne telemetrie ne peut confirmer une commande nouvelle.
+- L'application mobile recharge l'etat toutes les cinq secondes pendant le traitement, sans masquer les informations deja affichees, puis reactive le bouton unique lorsque la commande atteint un etat terminal.
+- La securite d'immobilisation exige toujours trois mesures concordantes moteur arrete, y compris lorsque les signaux de stationnement sont espaces. Les commandes expirees ne figent plus l'interface.
+- Le build Android `1.0.0+14` a ete genere pour publication. Le catalogue conserve la version courante et cinq versions precedentes, de 13 a 9.
+
+## 2026-09-05 - Toggle moteur et flottes mobiles repliables
+- Le grand bouton de commande moteur mobile est remplace par un interrupteur unique aligne sur le comportement du web. Le libelle et l'icone suivent automatiquement l'action disponible, avec confirmation obligatoire avant envoi.
+- La liste des vehicules est regroupee par flotte. Chaque en-tete affiche le nombre de vehicules et le ratio en ligne, puis permet de replier ou developper uniquement sa flotte.
+- Une recherche force temporairement l'affichage des groupes contenant un resultat afin qu'un vehicule trouve ne reste pas masque.
+- Validation : 18 tests Flutter passes, analyse statique sans anomalie et APK Android `1.0.0+15` genere avec signature v2 valide.
+
+## 2026-09-05 - Correctif des timeouts de details traceur
+- Le profilage de production a mesure 349 321 positions pour Suzuki Horly et un temps de construction de 22,2 secondes, superieur au delai mobile de 18 secondes. Trois tris SQL non couverts par l'index consommaient environ 18 secondes a eux seuls.
+- Les details mobile et web utilisent maintenant l'index `device_id/gps_time`, evitent le tri secondaire couteux et ne decodent plus 250 paquets CAN bruts pour calculer le debut du stationnement.
+- Les cinq evenements sont charges par une requete bornee sans fonction de fenetrage inutile pour un seul traceur. L'etat de commande moteur selectionne uniquement les colonnes necessaires.
+- L'ecran mobile conserve un message d'erreur explicite et propose desormais une action `Reessayer` en cas de panne transitoire.
+- Validation : 205 tests Laravel avec 1 721 assertions, 18 tests Flutter, analyse Flutter sans anomalie et APK Android `1.0.0+16` signe en v2. Le build 16 a ete installe et lance sur l'emulateur `emulator-5554`.
+
+## 2026-09-06 - Sorties du traceur independantes preparees localement
+- La commande Web expose deux interrupteurs distincts, `Sortie #1` et `Sortie #2`, avec un etat et un traitement independants.
+- Chaque requete cible explicitement une seule sortie. L'etat et la temporisation de l'autre sortie sont ignores avec `?`, afin de ne pas perturber un iButton, un voyant, un buzzer ou un autre accessoire cable.
+- L'activation conserve la validation serveur de l'arret moteur et le veto final du listener ; la desactivation de la sortie selectionnee reste immediate. Les permissions, le cloisonnement par flotte, la protection CSRF et la limitation de debit sont inchanges.
+- L'API mobile conserve les actions `immobilize` et `release`, exige maintenant `output` egal a `1` ou `2`, et expose `outputs.1/2` avec `active`, `busy` et `next_action`, sans divulguer le texte Codec 12.
+- L'application Flutter affiche les deux sorties dans une carte unique, transmet le numero cible dans chaque requete et laisse les interrupteurs indisponibles tant que l'ancienne API ne fournit pas leurs etats distincts.
+- Validation : 207 tests Laravel avec 1 741 assertions, 10 tests Node et 18 tests Flutter passes ; analyse Flutter et syntaxes PHP/JavaScript sans anomalie.
+- L'APK Android `1.0.0+17` a ete genere, installe et lance sur `emulator-5554`. Aucun deploiement Web/API, aucune publication d'APK et aucune commande vers un traceur n'ont ete effectues.
+
+## 2026-09-06 - Publication de l'application Android 1.0.0+17
+- Le build Android `1.0.0+17` a ete publie sur la page publique `/application` comme version courante. Son APK mesure `55 363 415` octets et porte le SHA-256 `e9d8eff678f3dc7aa199069d27ed24e6d965711feda71a83c1cd73637d4eefd7`.
+- Le catalogue conserve cinq versions precedentes reellement disponibles : builds `13`, `12`, `11`, `10` et `9`. Le build `8` a ete retire du stockage serveur apres sauvegarde.
+- L'archive de publication portait le SHA-256 `e94f5bfa2e89101ee67fd13b9b0fa7071d19270a29dd1ce55069e5c164f7440d`. La sauvegarde de retour arriere est `/tmp/exadtracking-before-mobile-build17-20260906-095900.tar.gz`, protegee en mode `0600`, SHA-256 `b9121aed583ee8cc8c41c85bdbd0f421590220325be6b58f95b0cc6c599ad340`.
+- Verification production : `/up` et `/application` repondent en HTTP `200`, le build 17 est affiche sur la page et son telechargement partiel repond en HTTP `206` avec le type APK attendu. Apache et l'ecouteur GPS restent actifs, maintenance desactivee.
+- Cette operation a publie uniquement l'APK et son catalogue. Le lot Web/API qui separe DOUT1 et DOUT2 reste prepare localement et n'a pas ete deploye par cette operation.
+
+## 2026-09-06 - Deploiement Web/API des sorties DOUT1 et DOUT2 independantes
+- Le Web et l'API exposent maintenant `Sortie #1` et `Sortie #2` separement. Chaque commande exige le numero de sortie et utilise `?` pour ne jamais modifier l'autre sortie ni sa temporisation.
+- Les etats, commandes actives et confirmations sont suivis independamment pour chaque sortie. Le build Android `1.0.0+17`, deja publie, utilise ce nouveau contrat.
+- Les controles de securite moteur ont ete synchronises dans Laravel et le listener : une activation attend toujours l'arret complet et un etat moteur explicitement arrete. Le listener decode le bit moteur du mot CAN P4 avant toute autorisation.
+- Archive de deploiement SHA-256 `6de59456322e60609a9ccb3e0a97326b2dc04961395da9d1786f976174bc4e5f`. Sauvegarde : `/tmp/exadtracking-before-independent-outputs-web-20260906-101100.tar.gz`, SHA-256 `debac5d84bc14a336fcdefec1c16fcf2efec7d1669884b4f2ed5c2b9fc270394`, permissions `0600`.
+- Une premiere finalisation s'est arretee avant reconstruction des caches car `node` n'etait pas dans le PATH non interactif de `root`. Le garde de maintenance a maintenu Laravel en ligne ; la finalisation a ensuite utilise le binaire Node exact du service et s'est terminee sans erreur.
+- Les pages Carte et Traceurs utilisent le cache-busting `20260906-independent-outputs`, afin qu'aucun navigateur ne conserve l'ancien JavaScript a une seule sortie. Sauvegarde ciblee : `/tmp/exadtracking-before-independent-outputs-cache-20260906-101100.tar.gz`, SHA-256 `42bc784d17ad0068ea2fd250eba3fcae214fe24be8f28ae27045bbf1f3f8272c`.
+- Verification : 38 tests Laravel avec 299 assertions, 10 tests Node, syntaxe PHP/JavaScript, trois routes de commande, empreintes locales/distantes, `/up` et `/application` en HTTP `200`, API sans jeton en `401`, Apache, Supervisor et `gps-tcp.service` actifs, maintenance inactive.
+- Aucune migration, donnee metier, variable d'environnement ou commande vers un traceur n'a ete executee.

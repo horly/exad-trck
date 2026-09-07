@@ -6,8 +6,10 @@ use App\Http\Requests\StoreDriverRequest;
 use App\Http\Requests\UpdateDriverRequest;
 use App\Models\Department;
 use App\Models\Driver;
+use App\Models\DriverIdentifier;
 use App\Models\Fleet;
 use App\Models\Vehicle;
+use App\Support\DriverIdentifierUid;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -155,7 +157,17 @@ class DriverController extends Controller
             return;
         }
 
-        $identifier = $driver->identifiers()->where('uid', $uid)->first();
+        $identifierCandidates = DriverIdentifierUid::candidates($uid);
+        $identifiers = $driver->identifiers()->whereIn('uid', $identifierCandidates)->get();
+        $identifier = null;
+
+        foreach ($identifierCandidates as $candidate) {
+            $identifier = $identifiers->firstWhere('uid', $candidate);
+
+            if ($identifier instanceof DriverIdentifier) {
+                break;
+            }
+        }
 
         $driver->identifiers()
             ->where('active', true)
@@ -163,7 +175,7 @@ class DriverController extends Controller
             ->update(['active' => false]);
 
         if ($identifier) {
-            $identifier->update(['type' => $type, 'active' => true]);
+            $identifier->update(['uid' => $uid, 'type' => $type, 'active' => true]);
 
             return;
         }

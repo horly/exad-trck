@@ -27,6 +27,7 @@ class MobileUserResource extends JsonResource
                 'reports_generate' => $this->hasClientPermission(User::PERMISSION_REPORTS_GENERATE),
                 'garages_manage' => $this->hasClientPermission(User::PERMISSION_GARAGES_MANAGE),
                 'maintenance_manage' => $this->hasClientPermission(User::PERMISSION_MAINTENANCE_MANAGE),
+                'engine_control' => $this->hasClientPermission(User::PERMISSION_ENGINE_CONTROL),
             ],
             'two_factor_enabled' => $this->hasEnabledTwoFactorAuthentication(),
         ];

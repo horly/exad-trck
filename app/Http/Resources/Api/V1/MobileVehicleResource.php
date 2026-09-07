@@ -36,6 +36,10 @@ class MobileVehicleResource extends JsonResource
                 'heading' => $device ? (int) $device->last_angle : null,
                 'ignition' => $device?->last_ignition,
                 'movement' => $device?->last_movement,
+                'gps_status' => $device?->gpsStatus() ?? 'unavailable',
+                'gps_quality_percent' => $device?->gpsQualityPercent(),
+                'network_signal_percent' => $device?->networkSignalPercent(),
+                'battery_level_percent' => $device?->batteryLevelPercent(),
                 'last_signal_at' => $device?->last_seen_at?->toISOString(),
                 'last_position_at' => $device?->last_position_at?->toISOString(),
                 'position' => $device && $device->last_latitude !== null && $device->last_longitude !== null ? [

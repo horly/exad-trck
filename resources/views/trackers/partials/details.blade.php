@@ -227,16 +227,7 @@
         default => __('trackers.parking_unknown'),
     };
     $canControlEngine = $canControlEngine ?? false;
-    $engineCommand = $engineCommand ?? null;
-    $engineImmobilized = (bool) ($engineImmobilized ?? false);
-    $engineCommandActive = $engineCommand?->isActive() ?? false;
-    $engineLockRequested = $engineCommandActive
-        ? $engineCommand?->action === 'immobilize'
-        : $engineImmobilized;
-    $engineNextAction = $engineLockRequested ? 'release' : 'immobilize';
-    $engineNextLabel = $engineNextAction === 'immobilize'
-        ? __('trackers.engine_control_immobilize')
-        : __('trackers.engine_control_release');
+    $engineOutputs = $engineControl['outputs'] ?? [];
 @endphp
 
 <section class="tracker-details-overview" aria-label="{{ __('trackers.details_overview_label') }}">
@@ -482,7 +473,7 @@
             @if ($showDriverIdentifier)
                 <div>
                     <dt><i class="fa-solid fa-id-card-clip"></i></dt>
-                    <dd>{{ __('trackers.driver_identifier_uid_value', ['uid' => $device->last_driver_identifier_uid ?: __('trackers.unknown_value')]) }}</dd>
+                    <dd>{{ __('trackers.driver_identifier_uid_value', ['uid' => $currentDriverIdentifierUid ?: __('trackers.unknown_value')]) }}</dd>
                 </div>
             @endif
             <div>
@@ -629,7 +620,9 @@
 
                     <dl class="tracker-can-state-grid">
                         @foreach ($availableCanStates as $key => $definition)
-                            @php($isActive = (bool) $canBusStates[$key])
+                            @php
+                                $isActive = (bool) $canBusStates[$key];
+                            @endphp
                             <div class="tracker-can-state-item tracker-can-state-item--{{ $isActive ? 'active' : 'inactive' }}">
                                 <dt>
                                     <span class="tracker-can-state-icon" aria-hidden="true"><i class="fa-solid {{ $definition['icon'] }}"></i></span>
@@ -661,32 +654,42 @@
     @if ($canControlEngine)
         <article class="tracker-details-card tracker-engine-control tracker-details-card-wide" data-engine-control>
             <div class="tracker-details-card-header tracker-engine-control-header">
-                <h3>{{ __('trackers.engine_control_title') }}</h3>
+                <h3>{{ __('trackers.output_control_title') }}</h3>
             </div>
 
             <div class="tracker-engine-control-actions">
-                <button
-                    type="button"
-                    class="tracker-engine-button tracker-engine-button--{{ $engineNextAction === 'immobilize' ? 'danger' : 'release' }}"
-                    data-engine-control-trigger
-                    data-action="{{ $engineNextAction }}"
-                    data-url="{{ $engineCommandUrl }}"
-                    data-refresh-url="{{ $engineDetailsUrl }}"
-                    data-csrf="{{ csrf_token() }}"
-                    data-confirm-title="{{ $engineNextAction === 'immobilize' ? __('trackers.engine_control_immobilize_confirm') : __('trackers.engine_control_release_confirm') }}"
-                    data-confirm-text="{{ $engineNextAction === 'immobilize' ? __('trackers.engine_control_safe_description') : __('trackers.engine_control_release_description') }}"
-                    data-confirm-button="{{ $engineNextLabel }}"
-                    data-cancel-button="{{ __('trackers.cancel') }}"
-                    data-success-title="{{ __('trackers.engine_control_success_title') }}"
-                    data-error-title="{{ __('trackers.engine_control_error_title') }}"
-                    aria-pressed="{{ $engineLockRequested ? 'true' : 'false' }}"
-                >
-                    <span class="tracker-engine-button-icon" aria-hidden="true">
-                        <i class="fa-solid {{ $engineNextAction === 'immobilize' ? 'fa-lock' : 'fa-lock-open' }}"></i>
-                    </span>
-                    <span>{{ $engineNextLabel }}</span>
-                    <span class="tracker-engine-switch {{ $engineLockRequested ? 'is-active' : '' }}" aria-hidden="true"></span>
-                </button>
+                @foreach ([1, 2] as $outputNumber)
+                    @php
+                        $outputState = $engineOutputs[(string) $outputNumber] ?? $engineOutputs[$outputNumber] ?? [];
+                        $outputActive = (bool) ($outputState['active'] ?? false);
+                        $outputBusy = (bool) ($outputState['busy'] ?? false);
+                        $outputAction = $outputState['next_action'] ?? ($outputActive ? 'release' : 'immobilize');
+                    @endphp
+                    <button
+                        type="button"
+                        class="tracker-engine-button tracker-engine-button--{{ $outputAction === 'immobilize' ? 'danger' : 'release' }}"
+                        data-engine-control-trigger
+                        data-action="{{ $outputAction }}"
+                        data-output="{{ $outputNumber }}"
+                        data-url="{{ $engineCommandUrl }}"
+                        data-refresh-url="{{ $engineDetailsUrl }}"
+                        data-csrf="{{ csrf_token() }}"
+                        data-confirm-title="{{ $outputAction === 'immobilize' ? __('trackers.output_control_activate_confirm', ['output' => $outputNumber]) : __('trackers.output_control_release_confirm', ['output' => $outputNumber]) }}"
+                        data-confirm-text="{{ $outputAction === 'immobilize' ? __('trackers.output_control_activate_description') : __('trackers.output_control_release_description') }}"
+                        data-confirm-button="{{ $outputAction === 'immobilize' ? __('trackers.output_control_activate') : __('trackers.output_control_release') }}"
+                        data-cancel-button="{{ __('trackers.cancel') }}"
+                        data-success-title="{{ __('trackers.output_control_success_title') }}"
+                        data-error-title="{{ __('trackers.output_control_error_title') }}"
+                        aria-pressed="{{ $outputActive ? 'true' : 'false' }}"
+                        @disabled($outputBusy)
+                    >
+                        <span class="tracker-engine-button-icon" aria-hidden="true">
+                            <i class="fa-solid fa-toggle-{{ $outputActive ? 'on' : 'off' }}"></i>
+                        </span>
+                        <span>{{ __('trackers.output_control_label', ['output' => $outputNumber]) }}</span>
+                        <span class="tracker-engine-switch {{ $outputActive ? 'is-active' : '' }}" aria-hidden="true"></span>
+                    </button>
+                @endforeach
             </div>
         </article>
     @endif

@@ -9,12 +9,19 @@ use App\Models\Fleet;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class DepartmentController extends Controller
 {
     public function index(Request $request): View|JsonResponse
     {
+        Gate::authorize('view-departments');
+
+        $user = $request->user();
+        $canManageDepartments = Gate::allows('manage-departments')
+            && ! $request->attributes->getBoolean('client_preview');
         $search = trim((string) $request->query('search', ''));
         $isAjax = $request->ajax();
         $columns = [
@@ -31,11 +38,12 @@ class DepartmentController extends Controller
         $direction = $request->query('direction') === 'asc' ? 'asc' : 'desc';
 
         $departments = Department::query()
-            ->with('fleet:id,name,code')
-            ->withCount('drivers')
+            ->visibleTo($user)
             ->select('departments.*')
             ->leftJoin('fleets', 'fleets.id', '=', 'departments.fleet_id')
             ->addSelect('fleets.name as fleet_name')
+            ->with('fleet:id,name,code')
+            ->withCount('drivers')
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($query) use ($search): void {
                     $query->where('departments.name', 'like', "%{$search}%")
@@ -52,10 +60,13 @@ class DepartmentController extends Controller
 
         $data = [
             'departments' => $departments,
-            'fleets' => Fleet::query()->orderBy('name')->get(['id', 'name', 'code']),
+            'fleets' => $canManageDepartments
+                ? Fleet::query()->visibleTo($user)->orderBy('name')->get(['id', 'name', 'code'])
+                : collect(),
             'search' => $search,
             'sort' => $sort,
             'direction' => $direction,
+            'canManageDepartments' => $canManageDepartments,
         ];
 
         if ($isAjax) {
@@ -79,9 +90,25 @@ class DepartmentController extends Controller
         return to_route('departments.index')->with('status', __('departments.updated'));
     }
 
-    public function destroy(Department $department): RedirectResponse
+    public function destroy(Request $request, Department $department): RedirectResponse
     {
-        $department->delete();
+        Gate::forUser($request->user())->authorize('delete-department', $department);
+
+        $deleted = DB::transaction(function () use ($department): bool {
+            $lockedDepartment = Department::query()->lockForUpdate()->findOrFail($department->id);
+
+            if ($lockedDepartment->drivers()->exists()) {
+                return false;
+            }
+
+            return (bool) $lockedDepartment->delete();
+        });
+
+        if (! $deleted) {
+            return to_route('departments.index')
+                ->with('status', __('departments.delete_blocked'))
+                ->with('status_type', 'danger');
+        }
 
         return to_route('departments.index')
             ->with('status', __('departments.deleted'))
